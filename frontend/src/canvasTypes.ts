@@ -30,3 +30,8 @@ let nextId = 1
 export function newId(): number {
   return nextId++
 }
+
+/** Move the id counter past already-persisted ids (called after load). */
+export function reseedIds(maxSeen: number): void {
+  if (maxSeen >= nextId) nextId = maxSeen + 1
+}

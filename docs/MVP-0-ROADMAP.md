@@ -63,7 +63,7 @@ Frontend apenas, sem backend novo:
 
 ---
 
-## L3 — Persistência local
+## L3 — Persistência local ✅ DONE (localStorage no perfil WebView2 em `%APPDATA%/com.canvie.app`, debounce 500ms, restore de strokes/textos/câmera no boot, `window.__canvie` export/clear em dev; sem comando Rust dedicado — suficiente para o MVP-0)
 
 **Objetivo:** fechar e reabrir sem perder nada.
 

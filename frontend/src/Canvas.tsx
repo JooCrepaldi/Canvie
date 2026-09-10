@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   Camera,
   Point,
@@ -7,6 +7,7 @@ import type {
   Tool,
 } from './canvasTypes'
 import { ERASER_WIDTH, PEN_WIDTH, newId } from './canvasTypes'
+import { clearDoc, createSaver, loadDoc } from './persistence'
 
 type Action = { kind: 'stroke'; stroke: Stroke } | { kind: 'text'; text: TextItem }
 
@@ -26,9 +27,31 @@ export default function Canvas() {
   const wrapRef = useRef<HTMLDivElement>(null)
 
   const [tool, setTool] = useState<Tool>('pen')
-  const [strokes, setStrokes] = useState<Stroke[]>([])
-  const [texts, setTexts] = useState<TextItem[]>([])
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 })
+  // L3: restore persisted doc on boot (loaded once).
+  const bootDoc = useMemo(() => loadDoc(), [])
+  const [strokes, setStrokes] = useState<Stroke[]>(() => bootDoc?.strokes ?? [])
+  const [texts, setTexts] = useState<TextItem[]>(() => bootDoc?.texts ?? [])
+  const [camera, setCamera] = useState<Camera>(() => bootDoc?.camera ?? { x: 0, y: 0, zoom: 1 })
+  const saver = useMemo(() => createSaver(500), [])
+
+  // L3: autosave on every change (debounced). Debug hooks: window.__canvie.
+  useEffect(() => {
+    saver({ version: 1, strokes, texts, camera })
+  }, [strokes, texts, camera, saver])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && import.meta.env.DEV) {
+      const w = window as unknown as Record<string, unknown>
+      w.__canvie = {
+        export: () => JSON.stringify({ version: 1 as const, strokes, texts, camera }),
+        clear: () => {
+          clearDoc()
+          setStrokes([])
+          setTexts([])
+        },
+      }
+    }
+  }, [strokes, texts, camera])
   const [, setUndoStack] = useState<Action[]>([])
   const [, setRedoStack] = useState<Action[]>([])
 

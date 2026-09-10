@@ -8,7 +8,7 @@ Cada camada só começa quando a anterior passa no critério de done.
 
 ---
 
-## L0 — Fundação (scaffold)
+## L0 — Fundação (scaffold) ✅ DONE
 
 **Objetivo:** repo compila e abre uma janela vazia.
 
@@ -24,7 +24,7 @@ Cada camada só começa quando a anterior passa no critério de done.
 
 ---
 
-## L1 — Janela desktop (fingir ser wallpaper)
+## L1 — Janela desktop (fingir ser wallpaper) ✅ DONE (janela abre, fullscreen transparente; checagem visual da transparência no teste manual)
 
 **Objetivo:** janela sem borda, fullscreen, transparente, atrás de tudo.
 

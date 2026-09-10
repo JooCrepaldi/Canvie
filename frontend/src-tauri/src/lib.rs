@@ -6,7 +6,8 @@
 //!   `get_mode` / `toggle_lock` / `toggle_overlay` commands.
 
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -158,6 +159,17 @@ fn register_hotkey(app: &AppHandle, accelerator: &str, label: &str) {
 pub fn run() {
   tauri::Builder::default()
     .manage(ModeState::default())
+    .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+      if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+      }
+      log::info!("second instance blocked, focused existing window");
+    }))
+    .plugin(tauri_plugin_autostart::init(
+      tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+      None,
+    ))
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -167,6 +179,12 @@ pub fn run() {
             .build(),
         )?;
       }
+      // L5: start with Windows (quiet second-plane behavior).
+      match app.autolaunch().enable() {
+        Ok(_) => log::info!("autostart enabled"),
+        Err(e) => log::warn!("autostart NOT enabled: {e}"),
+      }
+      build_tray(app.handle())?;
       register_hotkey(app.handle(), "ctrl+l", "lock");
       // NOTE: Win+T (super+t) is reserved by Windows Explorer (taskbar focus)
       // and RegisterHotKey fails with "already registered". MVP-0 uses
@@ -174,7 +192,81 @@ pub fn run() {
       register_hotkey(app.handle(), "ctrl+alt+t", "overlay");
       Ok(())
     })
+    .on_menu_event(|app, event| match event.id.as_ref() {
+      "show" => {
+        if let Some(window) = app.get_webview_window("main") {
+          let _ = window.show();
+          let _ = window.set_focus();
+        }
+      }
+      "lock" => {
+        if let Err(e) = toggle_lock_inner(app) {
+          log::warn!("tray lock failed: {e}");
+        }
+      }
+      "overlay" => {
+        if let Err(e) = toggle_overlay_inner(app) {
+          log::warn!("tray overlay failed: {e}");
+        }
+      }
+      "autostart" => {
+        let manager = app.autolaunch();
+        let result = match manager.is_enabled() {
+          Ok(true) => manager.disable(),
+          _ => manager.enable(),
+        };
+        match result {
+          Ok(_) => log::info!("autostart toggled"),
+          Err(e) => log::warn!("autostart toggle failed: {e}"),
+        }
+      }
+      "quit" => app.exit(0),
+      _ => {}
+    })
+    .on_window_event(|window, event| {
+      // L5: closing the window hides to tray instead of quitting.
+      if let WindowEvent::CloseRequested { api, .. } = event {
+        api.prevent_close();
+        let _ = window.hide();
+        log::info!("window close requested -> hidden to tray");
+      }
+    })
     .invoke_handler(tauri::generate_handler![get_mode, toggle_lock, toggle_overlay])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+/// L5: tray icon with Show / Lock / Overlay / Autostart / Quit.
+fn build_tray(app: &AppHandle) -> Result<(), String> {
+  use tauri::menu::{Menu, MenuItem};
+  use tauri::tray::TrayIconBuilder;
+
+  let autostart_label = match app.autolaunch().is_enabled() {
+    Ok(true) => "Disable autostart",
+    _ => "Enable autostart",
+  };
+  let show = MenuItem::with_id(app, "show", "Show Canvie", true, None::<&str>)
+    .map_err(|e| e.to_string())?;
+  let lock = MenuItem::with_id(app, "lock", "Lock / unlock canvas", true, None::<&str>)
+    .map_err(|e| e.to_string())?;
+  let overlay = MenuItem::with_id(app, "overlay", "Overlay mode", true, None::<&str>)
+    .map_err(|e| e.to_string())?;
+  let autostart = MenuItem::with_id(app, "autostart", autostart_label, true, None::<&str>)
+    .map_err(|e| e.to_string())?;
+  let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
+    .map_err(|e| e.to_string())?;
+  let menu = Menu::with_items(app, &[&show, &lock, &overlay, &autostart, &quit])
+    .map_err(|e| e.to_string())?;
+
+  let icon_bytes = include_bytes!("../icons/icon.png");
+  let icon = tauri::image::Image::from_bytes(icon_bytes).map_err(|e| e.to_string())?;
+  TrayIconBuilder::with_id("main")
+    .tooltip("Canvie")
+    .icon(icon)
+    .menu(&menu)
+    .show_menu_on_left_click(true)
+    .build(app)
+    .map_err(|e| e.to_string())?;
+  log::info!("tray icon ready");
+  Ok(())
 }

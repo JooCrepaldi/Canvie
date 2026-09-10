@@ -92,7 +92,7 @@ Plugins Tauri: `plugin-global-shortcut`
 
 ---
 
-## L5 — Segundo plano (tray + autostart)
+## L5 — Segundo plano (tray + autostart) ✅ DONE (tray com Show/Lock/Overlay/Autostart/Quit, autostart habilitado no boot + chave Run verificada, fechar esconde para o tray, 2ª instância sai e foca a 1ª; testado E2E. Cliques no menu do tray precisam de teste manual)
 
 **Objetivo:** app invisível até ser chamado.
 

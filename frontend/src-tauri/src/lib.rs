@@ -1,9 +1,13 @@
-//! L4: mode state machine (canvas / locked / overlay) + global shortcuts.
+//! L4/L5 + wallpaper: mode state machine, global shortcuts, tray.
 //!
 //! - `Ctrl+L` toggles Lock Mode (click-through, frozen canvas).
-//! - `Win+T` (`super+t`) toggles Overlay Mode (always on top, foreground).
+//! - `Ctrl+Alt+T` toggles Overlay Mode (always on top, foreground).
+//! - Canvas/Lock live embedded in the desktop wallpaper layer (WorkerW,
+//!   see `wallpaper`); Overlay detaches to a normal top-level window.
 //! - Frontend stays in sync via the `canvie-mode` event and the
 //!   `get_mode` / `toggle_lock` / `toggle_overlay` commands.
+
+mod wallpaper;
 
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
@@ -31,6 +35,8 @@ struct ModeState {
   current: Mutex<Mode>,
   /// Where Overlay Mode returns to when toggled off.
   return_to: Mutex<Mode>,
+  /// Whether the window is currently parented into the wallpaper WorkerW.
+  embedded: Mutex<bool>,
 }
 
 impl Default for ModeState {
@@ -38,7 +44,42 @@ impl Default for ModeState {
     Self {
       current: Mutex::new(Mode::Canvas),
       return_to: Mutex::new(Mode::Canvas),
+      embedded: Mutex::new(false),
     }
+  }
+}
+
+fn mark_embedded(app: &AppHandle, embedded: bool) {
+  if let Some(state) = app.try_state::<ModeState>() {
+    if let Ok(mut flag) = state.embedded.lock() {
+      *flag = embedded;
+    }
+  }
+}
+
+/// Best-effort embed into the wallpaper layer. On failure the app keeps
+/// working as a fullscreen overlay (pre-wallpaper behavior).
+///
+/// NOTE: tao rewrites the whole window style on `set_always_on_top` /
+/// `set_ignore_cursor_events`, which drops our WS_CHILD. So this must run
+/// AFTER those calls, on every Canvas/Locked transition.
+fn ensure_embedded(app: &AppHandle, window: &tauri::WebviewWindow) {
+  let was = app
+    .try_state::<ModeState>()
+    .and_then(|s| s.embedded.lock().ok().map(|v| *v))
+    .unwrap_or(false);
+  let ok = match window.hwnd() {
+    Ok(hwnd) => wallpaper::embed(hwnd),
+    Err(e) => {
+      log::warn!("wallpaper embed skipped (no hwnd): {e}");
+      return;
+    }
+  };
+  mark_embedded(app, ok);
+  if ok && !was {
+    log::info!("wallpaper embedded behind desktop icons");
+  } else if !ok {
+    log::warn!("wallpaper embed failed, running as fullscreen overlay");
   }
 }
 
@@ -47,19 +88,19 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
     .get_webview_window("main")
     .ok_or("main window not found")?;
   match mode {
-    Mode::Canvas => {
+    Mode::Canvas | Mode::Locked => {
       window.set_always_on_top(false).map_err(|e| e.to_string())?;
       window
-        .set_ignore_cursor_events(false)
+        .set_ignore_cursor_events(mode == Mode::Locked)
         .map_err(|e| e.to_string())?;
-    }
-    Mode::Locked => {
-      window.set_always_on_top(false).map_err(|e| e.to_string())?;
-      window
-        .set_ignore_cursor_events(true)
-        .map_err(|e| e.to_string())?;
+      // Re-embed AFTER the tao calls above: they rewrite GWL_STYLE wholesale.
+      ensure_embedded(app, &window);
     }
     Mode::Overlay => {
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::detach(hwnd);
+      }
+      mark_embedded(app, false);
       window
         .set_ignore_cursor_events(false)
         .map_err(|e| e.to_string())?;
@@ -185,6 +226,9 @@ pub fn run() {
         Err(e) => log::warn!("autostart NOT enabled: {e}"),
       }
       build_tray(app.handle())?;
+      if let Some(window) = app.get_webview_window("main") {
+        ensure_embedded(app.handle(), &window);
+      }
       register_hotkey(app.handle(), "ctrl+l", "lock");
       // NOTE: Win+T (super+t) is reserved by Windows Explorer (taskbar focus)
       // and RegisterHotKey fails with "already registered". MVP-0 uses

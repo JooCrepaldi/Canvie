@@ -40,7 +40,7 @@ O Canvie tem 3 estados:
 
 ### 🎨 Canvas Mode (padrão)
 
-Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser.
+Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser — ele fica atrás dos ícones, como parte do papel de parede.
 
 Aqui você edita, move, desenha e organiza os elementos livremente, direto no desktop.
 

@@ -76,7 +76,7 @@ Frontend apenas, sem backend novo:
 
 ---
 
-## L4 — Modos + atalhos globais
+## L4 — Modos + atalhos globais ✅ DONE (`Ctrl+L` lock via click-through, `Ctrl+Alt+T` overlay via always-on-top, `Esc` volta; badge mostra o modo; testado E2E com teclas reais. ⚠️ `Win+T` é reservado pelo Explorer — RegisterHotKey falha; `Ctrl+Alt+T` é o substituto do MVP-0)
 
 **Objetivo:** os 3 estados funcionam mesmo sem foco.
 

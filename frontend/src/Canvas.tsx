@@ -8,6 +8,7 @@ import type {
 } from './canvasTypes'
 import { ERASER_WIDTH, PEN_WIDTH, newId } from './canvasTypes'
 import { clearDoc, createSaver, loadDoc } from './persistence'
+import { getMode, onModeChanged, toggleOverlay, type AppMode } from './mode'
 
 type Action = { kind: 'stroke'; stroke: Stroke } | { kind: 'text'; text: TextItem }
 
@@ -54,6 +55,22 @@ export default function Canvas() {
   }, [strokes, texts, camera])
   const [, setUndoStack] = useState<Action[]>([])
   const [, setRedoStack] = useState<Action[]>([])
+  const [mode, setMode] = useState<AppMode>('canvas')
+  const modeRef = useRef<AppMode>('canvas')
+  const setModeBoth = useCallback((m: AppMode) => {
+    modeRef.current = m
+    setMode(m)
+  }, [])
+
+  // L4: sync with Rust mode state machine.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null
+    getMode().then(setModeBoth)
+    onModeChanged(setModeBoth).then((u) => {
+      unlisten = u
+    })
+    return () => unlisten?.()
+  }, [setModeBoth])
 
   // Draft being drawn (kept in ref to avoid re-renders per pointermove)
   const draftRef = useRef<Point[] | null>(null)
@@ -174,6 +191,10 @@ export default function Canvas() {
       if (e.code === 'Space') {
         spaceHeldRef.current = true
         e.preventDefault()
+        return
+      }
+      if (e.key === 'Escape' && modeRef.current === 'overlay') {
+        void toggleOverlay()
         return
       }
       const target = e.target as HTMLElement | null
@@ -336,8 +357,11 @@ export default function Canvas() {
           )
         })()}
       <div className="canvie-toolbar-hint">
-        {tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Space+arrastar move · scroll zoom · duplo-clique
-        texto
+        {mode === 'locked'
+          ? '🔒 travado — Ctrl+L para voltar'
+          : mode === 'overlay'
+            ? '🪟 overlay — Ctrl+Alt+T ou Esc para voltar'
+            : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Space+arrastar move · scroll zoom · duplo-clique texto`}
       </div>
     </div>
   )

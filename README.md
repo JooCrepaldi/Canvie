@@ -112,7 +112,7 @@ Você pode mudar os atalhos como bem entender. Os padrões planejados são:
 | Entrada | Ação |
 | --- | --- |
 | `Q` *(provisório)* | Mostrar / esconder a toolbar |
-| `Win + T` | Ativar / desativar o Overlay Mode |
+| `Ctrl + Alt + T` *(provisório no MVP-0 — `Win + T` é reservado pelo Windows)* | Ativar / desativar o Overlay Mode |
 | `Ctrl + L` | Fixar / descongelar o canvas (Lock Mode) |
 | `Ctrl + Z` / `Ctrl + Shift + Z` | Desfazer / refazer |
 | `Ctrl + V` | Colar texto ou imagem |

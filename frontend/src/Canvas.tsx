@@ -1,0 +1,321 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  Camera,
+  Point,
+  Stroke,
+  TextItem,
+  Tool,
+} from './canvasTypes'
+import { ERASER_WIDTH, PEN_WIDTH, newId } from './canvasTypes'
+
+type Action = { kind: 'stroke'; stroke: Stroke } | { kind: 'text'; text: TextItem }
+
+const MIN_ZOOM = 0.2
+const MAX_ZOOM = 4
+
+function screenToWorld(screen: Point, cam: Camera): Point {
+  return { x: (screen.x - cam.x) / cam.zoom, y: (screen.y - cam.y) / cam.zoom }
+}
+
+function worldToScreen(world: Point, cam: Camera): Point {
+  return { x: world.x * cam.zoom + cam.x, y: world.y * cam.zoom + cam.y }
+}
+
+export default function Canvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  const [tool, setTool] = useState<Tool>('pen')
+  const [strokes, setStrokes] = useState<Stroke[]>([])
+  const [texts, setTexts] = useState<TextItem[]>([])
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 })
+  const [, setUndoStack] = useState<Action[]>([])
+  const [, setRedoStack] = useState<Action[]>([])
+
+  // Draft being drawn (kept in ref to avoid re-renders per pointermove)
+  const draftRef = useRef<Point[] | null>(null)
+  // Live camera mirror for high-frequency updates (pan/zoom/draw)
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
+  const spaceHeldRef = useRef(false)
+  const panningRef = useRef<{ startScreen: Point; startCam: Camera } | null>(null)
+  const [editing, setEditing] = useState<{ at: Point; value: string } | null>(null)
+
+  const pushAction = useCallback((action: Action) => {
+    setUndoStack((s) => [...s, action])
+    setRedoStack([])
+  }, [])
+
+  const undo = useCallback(() => {
+    setUndoStack((stack) => {
+      if (stack.length === 0) return stack
+      const action = stack[stack.length - 1]
+      setRedoStack((r) => [...r, action])
+      if (action.kind === 'stroke') {
+        setStrokes((s) => s.filter((st) => st.id !== action.stroke.id))
+      } else {
+        setTexts((t) => t.filter((tx) => tx.id !== action.text.id))
+      }
+      return stack.slice(0, -1)
+    })
+  }, [])
+
+  const redo = useCallback(() => {
+    setRedoStack((stack) => {
+      if (stack.length === 0) return stack
+      const action = stack[stack.length - 1]
+      setUndoStack((u) => [...u, action])
+      if (action.kind === 'stroke') {
+        setStrokes((s) => [...s, action.stroke])
+      } else {
+        setTexts((t) => [...t, action.text])
+      }
+      return stack.slice(0, -1)
+    })
+  }, [])
+
+  // ---- rendering ----
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const w = window.innerWidth
+    const h = window.innerHeight
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    const cam = cameraRef.current
+    const paint = (points: Point[], erase: boolean, width: number) => {
+      if (points.length === 0) return
+      ctx.save()
+      if (erase) {
+        ctx.globalCompositeOperation = 'destination-out'
+        ctx.strokeStyle = 'rgba(0,0,0,1)'
+      } else {
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.strokeStyle = '#ffffff'
+        ctx.shadowColor = 'rgba(0,0,0,0.6)'
+        ctx.shadowBlur = 3
+      }
+      ctx.lineWidth = width * cam.zoom
+      ctx.beginPath()
+      const p0 = worldToScreen(points[0], cam)
+      ctx.moveTo(p0.x, p0.y)
+      for (let i = 1; i < points.length; i++) {
+        const p = worldToScreen(points[i], cam)
+        ctx.lineTo(p.x, p.y)
+      }
+      if (points.length === 1) {
+        // dot: draw a tiny segment so single clicks are visible
+        ctx.lineTo(p0.x + 0.01, p0.y + 0.01)
+      }
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    for (const st of strokesRef.current) {
+      paint(st.points, st.erase, st.erase ? ERASER_WIDTH : PEN_WIDTH)
+    }
+    if (draftRef.current) {
+      const erasing = toolRef.current === 'eraser'
+      paint(draftRef.current, erasing, erasing ? ERASER_WIDTH : PEN_WIDTH)
+    }
+  }, [])
+
+  const strokesRef = useRef(strokes)
+  strokesRef.current = strokes
+  const toolRef = useRef(tool)
+  toolRef.current = tool
+
+  useEffect(() => {
+    draw()
+  }, [strokes, camera, tool, draw])
+
+  useEffect(() => {
+    const onResize = () => draw()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [draw])
+
+  // ---- keyboard: tools + undo/redo ----
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        spaceHeldRef.current = true
+        e.preventDefault()
+        return
+      }
+      const target = e.target as HTMLElement | null
+      const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+      if (typing) return
+      if (e.key === '1') setTool('pen')
+      else if (e.key === '2') setTool('eraser')
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) redo()
+        else undo()
+        e.preventDefault()
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        redo()
+        e.preventDefault()
+      }
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') spaceHeldRef.current = false
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [undo, redo])
+
+  // ---- wheel zoom (non-passive, centered on cursor) ----
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+      setCamera((cam) => {
+        const factor = Math.exp(-e.deltaY * 0.0015)
+        const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * factor))
+        const before = screenToWorld(cursor, cam)
+        return {
+          zoom,
+          x: cursor.x - before.x * zoom,
+          y: cursor.y - before.y * zoom,
+        }
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  // ---- pointer: draw or pan ----
+  const posFromEvent = (e: React.PointerEvent): Point => {
+    const rect = wrapRef.current!.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button === 1 || spaceHeldRef.current) {
+      panningRef.current = { startScreen: posFromEvent(e), startCam: cameraRef.current }
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      return
+    }
+    if (e.button !== 0) return
+    const world = screenToWorld(posFromEvent(e), cameraRef.current)
+    draftRef.current = [world]
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    draw()
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (panningRef.current) {
+      const screen = posFromEvent(e)
+      const { startScreen, startCam } = panningRef.current
+      setCamera({
+        ...startCam,
+        x: startCam.x + (screen.x - startScreen.x),
+        y: startCam.y + (screen.y - startScreen.y),
+      })
+      return
+    }
+    if (!draftRef.current) return
+    draftRef.current.push(screenToWorld(posFromEvent(e), cameraRef.current))
+    draw()
+  }
+
+  const onPointerUp = () => {
+    if (panningRef.current) {
+      panningRef.current = null
+      return
+    }
+    if (!draftRef.current) return
+    const points = draftRef.current
+    draftRef.current = null
+    if (points.length === 0) {
+      draw()
+      return
+    }
+    const stroke: Stroke = { id: newId(), points, erase: toolRef.current === 'eraser' }
+    setStrokes((s) => [...s, stroke])
+    pushAction({ kind: 'stroke', stroke })
+  }
+
+  // ---- text: double-click to create ----
+  const onDoubleClick = (e: React.MouseEvent) => {
+    const rect = wrapRef.current!.getBoundingClientRect()
+    const screen = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    setEditing({ at: screenToWorld(screen, cameraRef.current), value: '' })
+  }
+
+  const commitEditing = () => {
+    if (!editing) return
+    const value = editing.value.trim()
+    if (value.length > 0) {
+      const text: TextItem = { id: newId(), at: editing.at, content: value }
+      setTexts((t) => [...t, text])
+      pushAction({ kind: 'text', text })
+    }
+    setEditing(null)
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      className="canvie-canvas-wrap"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onDoubleClick={onDoubleClick}
+    >
+      <canvas ref={canvasRef} className="canvie-canvas" />
+      {texts.map((t) => {
+        const s = worldToScreen(t.at, camera)
+        return (
+          <div
+            key={t.id}
+            className="canvie-text"
+            style={{ left: s.x, top: s.y, fontSize: 16 * camera.zoom }}
+          >
+            {t.content}
+          </div>
+        )
+      })}
+      {editing &&
+        (() => {
+          const s = worldToScreen(editing.at, camera)
+          return (
+            <input
+              autoFocus
+              className="canvie-text-input"
+              style={{ left: s.x, top: s.y, fontSize: 16 * camera.zoom }}
+              value={editing.value}
+              onChange={(e) => setEditing({ ...editing, value: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitEditing()
+                else if (e.key === 'Escape') setEditing(null)
+                e.stopPropagation()
+              }}
+              onBlur={commitEditing}
+            />
+          )
+        })()}
+      <div className="canvie-toolbar-hint">
+        {tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Space+arrastar move · scroll zoom · duplo-clique
+        texto
+      </div>
+    </div>
+  )
+}

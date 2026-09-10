@@ -46,7 +46,7 @@ Validações Windows:
 
 ---
 
-## L2 — Canvas mínimo
+## L2 — Canvas mínimo ✅ DONE (caneta/borracha via 1/2, pan Space+arrastar, zoom no cursor, texto por duplo-clique, undo/redo em memória; sem persistência ainda)
 
 **Objetivo:** desenhar, apagar, navegar.
 

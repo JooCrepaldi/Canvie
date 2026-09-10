@@ -42,6 +42,8 @@ O Canvie tem 3 estados:
 
 Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser — ele fica atrás dos ícones, como parte do papel de parede.
 
+> 🖊️ Para desenhar no wallpaper, pressione `Ctrl + D`: a camada sobe acima dos ícones (continuando atrás da taskbar e das janelas). Pressione de novo para afundar e voltar a usar os ícones normalmente.
+
 Aqui você edita, move, desenha e organiza os elementos livremente, direto no desktop.
 
 ### 🔒 Lock Mode
@@ -112,6 +114,7 @@ Você pode mudar os atalhos como bem entender. Os padrões planejados são:
 | Entrada | Ação |
 | --- | --- |
 | `Q` *(provisório)* | Mostrar / esconder a toolbar |
+| `Ctrl + D` *(provisório)* | Erguer / afundar o canvas para desenhar no wallpaper |
 | `Ctrl + Alt + T` *(provisório no MVP-0 — `Win + T` é reservado pelo Windows)* | Ativar / desativar o Overlay Mode |
 | `Ctrl + L` | Fixar / descongelar o canvas (Lock Mode) |
 | `Ctrl + Z` / `Ctrl + Shift + Z` | Desfazer / refazer |

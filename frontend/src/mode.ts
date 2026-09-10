@@ -3,6 +3,11 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 export type AppMode = 'canvas' | 'locked' | 'overlay'
 
+export interface ModeState {
+  mode: AppMode
+  raised: boolean
+}
+
 export function inTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 }
@@ -34,10 +39,19 @@ export async function toggleOverlay(): Promise<void> {
   }
 }
 
-export async function onModeChanged(cb: (mode: AppMode) => void): Promise<UnlistenFn | null> {
+export async function toggleDraw(): Promise<void> {
+  if (!inTauri()) return
+  try {
+    await invoke('toggle_draw')
+  } catch {
+    // MVP-0: UI stays usable even if the command is denied
+  }
+}
+
+export async function onModeChanged(cb: (state: ModeState) => void): Promise<UnlistenFn | null> {
   if (!inTauri()) return null
   try {
-    return await listen<AppMode>('canvie-mode', (event) => cb(event.payload))
+    return await listen<ModeState>('canvie-mode', (event) => cb(event.payload))
   } catch {
     return null
   }

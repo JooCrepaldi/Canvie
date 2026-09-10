@@ -37,6 +37,9 @@ struct ModeState {
   return_to: Mutex<Mode>,
   /// Whether the window is currently parented into the wallpaper WorkerW.
   embedded: Mutex<bool>,
+  /// Whether the canvas is raised above the icon layer for drawing
+  /// (only meaningful in Canvas Mode; reset on every mode change).
+  raised: Mutex<bool>,
 }
 
 impl Default for ModeState {
@@ -45,6 +48,35 @@ impl Default for ModeState {
       current: Mutex::new(Mode::Canvas),
       return_to: Mutex::new(Mode::Canvas),
       embedded: Mutex::new(false),
+      raised: Mutex::new(false),
+    }
+  }
+}
+
+#[derive(Clone, Copy, serde::Serialize)]
+struct StatePayload<'a> {
+  mode: &'a str,
+  raised: bool,
+}
+
+fn current_mode(app: &AppHandle) -> Mode {
+  app
+    .try_state::<ModeState>()
+    .and_then(|s| s.current.lock().ok().map(|m| *m))
+    .unwrap_or(Mode::Canvas)
+}
+
+fn is_raised(app: &AppHandle) -> bool {
+  app
+    .try_state::<ModeState>()
+    .and_then(|s| s.raised.lock().ok().map(|v| *v))
+    .unwrap_or(false)
+}
+
+fn set_raised_flag(app: &AppHandle, raised: bool) {
+  if let Some(state) = app.try_state::<ModeState>() {
+    if let Ok(mut flag) = state.raised.lock() {
+      *flag = raised;
     }
   }
 }
@@ -95,12 +127,21 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
       // Re-embed AFTER the tao calls above: they rewrite GWL_STYLE wholesale.
       ensure_embedded(app, &window);
+      if mode == Mode::Locked {
+        // A frozen canvas must never eat desktop clicks.
+        set_raised_flag(app, false);
+      } else if is_raised(app) {
+        if let Ok(hwnd) = window.hwnd() {
+          wallpaper::raise(hwnd);
+        }
+      }
     }
     Mode::Overlay => {
       if let Ok(hwnd) = window.hwnd() {
         wallpaper::detach(hwnd);
       }
       mark_embedded(app, false);
+      set_raised_flag(app, false);
       window
         .set_ignore_cursor_events(false)
         .map_err(|e| e.to_string())?;
@@ -113,11 +154,67 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   if let Some(state) = app.try_state::<ModeState>() {
     *state.current.lock().map_err(|e| e.to_string())? = mode;
   }
-  log::info!("canvie mode -> {}", mode.as_str());
+  log::info!(
+    "canvie mode -> {} (raised={})",
+    mode.as_str(),
+    is_raised(app)
+  );
   app
-    .emit("canvie-mode", mode.as_str())
+    .emit(
+      "canvie-mode",
+      StatePayload {
+        mode: mode.as_str(),
+        raised: is_raised(app),
+      },
+    )
     .map_err(|e| e.to_string())?;
   Ok(mode.as_str().to_string())
+}
+
+/// Raise/lower the canvas inside Progman so the user can draw on the
+/// wallpaper itself (behind icons when lowered). No-op in Overlay Mode.
+fn set_raised(app: &AppHandle, raised: bool) -> Result<(), String> {
+  let window = app
+    .get_webview_window("main")
+    .ok_or("main window not found")?;
+  let hwnd = window.hwnd().map_err(|e| e.to_string())?;
+  let ok = if raised {
+    wallpaper::raise(hwnd)
+  } else {
+    wallpaper::lower(hwnd)
+  };
+  if !ok {
+    return Err("layer change failed".to_string());
+  }
+  set_raised_flag(app, raised);
+  log::info!("canvie layer -> {}", if raised { "raised" } else { "lowered" });
+  app
+    .emit(
+      "canvie-mode",
+      StatePayload {
+        mode: current_mode(app).as_str(),
+        raised,
+      },
+    )
+    .map_err(|e| e.to_string())?;
+  Ok(())
+}
+
+fn toggle_draw_inner(app: &AppHandle) -> Result<String, String> {
+  match current_mode(app) {
+    Mode::Overlay => Ok(current_mode(app).as_str().to_string()),
+    Mode::Locked => {
+      // One press: unlock and raise, ready to draw.
+      apply_mode(app, Mode::Canvas)?;
+      set_raised(app, true)?;
+      Ok(Mode::Canvas.as_str().to_string())
+    }
+    Mode::Canvas => {
+      let next = !is_raised(app);
+      set_raised(app, next)?;
+      Ok(Mode::Canvas.as_str().to_string())
+    }
+  }
 }
 
 fn toggle_lock_inner(app: &AppHandle) -> Result<String, String> {
@@ -176,14 +273,18 @@ fn toggle_overlay(app: AppHandle) -> Result<String, String> {
   toggle_overlay_inner(&app)
 }
 
+#[tauri::command]
+fn toggle_draw(app: AppHandle) -> Result<String, String> {
+  toggle_draw_inner(&app)
+}
+
 fn register_hotkey(app: &AppHandle, accelerator: &str, label: &str) {
-  let is_lock = label == "lock";
-  let label_owned = label.to_string();
-  let action: fn(&AppHandle) -> Result<String, String> = if is_lock {
-    toggle_lock_inner
-  } else {
-    toggle_overlay_inner
+  let action: fn(&AppHandle) -> Result<String, String> = match label {
+    "lock" => toggle_lock_inner,
+    "draw" => toggle_draw_inner,
+    _ => toggle_overlay_inner,
   };
+  let label_owned = label.to_string();
   match app.global_shortcut().on_shortcut(accelerator, move |h, _shortcut, event| {
     if event.state == ShortcutState::Pressed {
       if let Err(e) = action(h) {
@@ -213,13 +314,16 @@ pub fn run() {
     ))
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
+      // Logs go to stdout in dev and always to %LOCALAPPDATA%/com.canvie.app/logs
+      // (release builds have no console, so the file is the only trace).
+      let log_builder = tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .target(tauri_plugin_log::Target::new(
+          tauri_plugin_log::TargetKind::LogDir {
+            file_name: Some("canvie".into()),
+          },
+        ));
+      app.handle().plugin(log_builder.build())?;
       // L5: start with Windows (quiet second-plane behavior).
       match app.autolaunch().enable() {
         Ok(_) => log::info!("autostart enabled"),
@@ -234,6 +338,9 @@ pub fn run() {
       // and RegisterHotKey fails with "already registered". MVP-0 uses
       // Ctrl+Alt+T until a product decision on the final shortcut.
       register_hotkey(app.handle(), "ctrl+alt+t", "overlay");
+      // Provisional draw-layer toggle: raise the canvas above the icon layer
+      // to draw on the wallpaper itself, lower it back to use the desktop.
+      register_hotkey(app.handle(), "ctrl+d", "draw");
       Ok(())
     })
     .on_menu_event(|app, event| match event.id.as_ref() {
@@ -251,6 +358,11 @@ pub fn run() {
       "overlay" => {
         if let Err(e) = toggle_overlay_inner(app) {
           log::warn!("tray overlay failed: {e}");
+        }
+      }
+      "draw" => {
+        if let Err(e) = toggle_draw_inner(app) {
+          log::warn!("tray draw toggle failed: {e}");
         }
       }
       "autostart" => {
@@ -275,7 +387,12 @@ pub fn run() {
         log::info!("window close requested -> hidden to tray");
       }
     })
-    .invoke_handler(tauri::generate_handler![get_mode, toggle_lock, toggle_overlay])
+    .invoke_handler(tauri::generate_handler![
+      get_mode,
+      toggle_lock,
+      toggle_overlay,
+      toggle_draw
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
@@ -295,11 +412,13 @@ fn build_tray(app: &AppHandle) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
   let overlay = MenuItem::with_id(app, "overlay", "Overlay mode", true, None::<&str>)
     .map_err(|e| e.to_string())?;
+  let draw = MenuItem::with_id(app, "draw", "Draw on wallpaper", true, None::<&str>)
+    .map_err(|e| e.to_string())?;
   let autostart = MenuItem::with_id(app, "autostart", autostart_label, true, None::<&str>)
     .map_err(|e| e.to_string())?;
   let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
     .map_err(|e| e.to_string())?;
-  let menu = Menu::with_items(app, &[&show, &lock, &overlay, &autostart, &quit])
+  let menu = Menu::with_items(app, &[&show, &lock, &draw, &overlay, &autostart, &quit])
     .map_err(|e| e.to_string())?;
 
   let icon_bytes = include_bytes!("../icons/icon.png");

@@ -9,6 +9,7 @@
     "core:default",
     "allow-get-mode",
     "allow-toggle-lock",
-    "allow-toggle-overlay"
+    "allow-toggle-overlay",
+    "allow-toggle-draw"
   ]
 }

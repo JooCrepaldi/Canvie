@@ -28,6 +28,8 @@ Cada camada só começa quando a anterior passa no critério de done.
 
 **Evolução — wallpaper real ✅ DONE:** canvas parentado no Progman atrás do SHELLDLL_DefView (atrás dos ícones, taskbar e janelas normais; só monitor primário). Overlay desanexa e re-anexa ao sair. Descobertas: `0x052C`/WorkerW não se aplica neste Win11; chamadas tao reescrevem o style (re-embed sempre DEPOIS delas). Se o Explorer reiniciar, reabrir o app.
 
+**Evolução — desenhar no wallpaper ✅ DONE:** atrás do DefView o clique nunca chega (a camada de ícones consome todo hit-test), então `Ctrl+D` (provisório) ergue a camada acima dos ícones para desenhar e afunda de volta para usar o desktop. Vale também no Locked (desbloqueia e ergue); no Overlay é no-op. Pill de ajuda centralizada acima da taskbar, visível nos 3 modos.
+
 **Objetivo:** janela sem borda, fullscreen, transparente, atrás de tudo.
 
 Configuração da janela (`tauri.conf.json` / código Rust):

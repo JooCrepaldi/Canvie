@@ -8,7 +8,7 @@ import type {
 } from './canvasTypes'
 import { ERASER_WIDTH, PEN_WIDTH, newId } from './canvasTypes'
 import { clearDoc, createSaver, loadDoc } from './persistence'
-import { getMode, onModeChanged, toggleOverlay, type AppMode } from './mode'
+import { getMode, onModeChanged, toggleOverlay, type AppMode, type ModeState } from './mode'
 
 type Action = { kind: 'stroke'; stroke: Stroke } | { kind: 'text'; text: TextItem }
 
@@ -56,21 +56,29 @@ export default function Canvas() {
   const [, setUndoStack] = useState<Action[]>([])
   const [, setRedoStack] = useState<Action[]>([])
   const [mode, setMode] = useState<AppMode>('canvas')
+  const [raised, setRaised] = useState(false)
   const modeRef = useRef<AppMode>('canvas')
   const setModeBoth = useCallback((m: AppMode) => {
     modeRef.current = m
     setMode(m)
   }, [])
+  const setStateBoth = useCallback(
+    (s: ModeState) => {
+      setModeBoth(s.mode)
+      setRaised(s.raised)
+    },
+    [setModeBoth],
+  )
 
   // L4: sync with Rust mode state machine.
   useEffect(() => {
     let unlisten: (() => void) | null = null
     getMode().then(setModeBoth)
-    onModeChanged(setModeBoth).then((u) => {
+    onModeChanged(setStateBoth).then((u) => {
       unlisten = u
     })
     return () => unlisten?.()
-  }, [setModeBoth])
+  }, [setModeBoth, setStateBoth])
 
   // Draft being drawn (kept in ref to avoid re-renders per pointermove)
   const draftRef = useRef<Point[] | null>(null)
@@ -361,7 +369,9 @@ export default function Canvas() {
           ? '🔒 travado — Ctrl+L para voltar'
           : mode === 'overlay'
             ? '🪟 overlay — Ctrl+Alt+T ou Esc para voltar'
-            : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Space+arrastar move · scroll zoom · duplo-clique texto`}
+            : raised
+              ? `🖊️ desenhando no wallpaper — Ctrl+D para afundar`
+              : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Ctrl+D desenhar · Space+arrastar move · scroll zoom · duplo-clique texto`}
       </div>
     </div>
   )

@@ -116,6 +116,45 @@ pub fn embed(canvas: HWND) -> bool {
   }
 }
 
+/// Raise the canvas above the icon layer (still a child of Progman, still
+/// below taskbar and normal windows) so it receives mouse input for drawing.
+pub fn raise(canvas: HWND) -> bool {
+  unsafe {
+    SetWindowPos(
+      canvas,
+      Some(HWND_TOP),
+      0,
+      0,
+      0,
+      0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+    )
+    .is_ok()
+  }
+}
+
+/// Lower the canvas back behind the icon layer (resting wallpaper state).
+pub fn lower(canvas: HWND) -> bool {
+  unsafe {
+    let Some(progman) = find_progman() else {
+      return false;
+    };
+    let Some(defview) = find_icon_layer(progman) else {
+      return false;
+    };
+    SetWindowPos(
+      canvas,
+      Some(defview),
+      0,
+      0,
+      0,
+      0,
+      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
+    )
+    .is_ok()
+  }
+}
+
 /// Detach the canvas back to a normal top-level window (for Overlay Mode).
 pub fn detach(canvas: HWND) -> bool {
   unsafe {

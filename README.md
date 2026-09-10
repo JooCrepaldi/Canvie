@@ -33,31 +33,27 @@ O Canvie usa esse espaço como uma superfície de pensamento persistente: deixar
 
 ## Como funciona?
 
-### Desktop Mode
+O Canvie tem 3 estados:
 
-O Canvie fica atrás das janelas, como uma lousa que aparece quando o desktop está exposto.
+### Canvas Mode (padrão)
 
-A ideia é simples: seu desktop vira o seu mural.
+Esse é o estado normal do app. Seu wallpaper é um canvas onde você fica livre para colocar o que quiser.
 
-### Canvas Mode
-
-Com um atalho (`Win + T`), o Canvie vem para frente e vira uma superfície ativa de trabalho.
-
-Aqui você edita, move, desenha e organiza os elementos livremente.
-
-### Overlay Mode
-
-Um canvas transparente sobre outros aplicativos para anotações rápidas.
-
-Rápido de ativar e desativar, focado em desenhar e anotar sem atrapalhar o trabalho principal.
+Aqui você edita, move, desenha e organiza os elementos livremente, direto no desktop.
 
 ### Lock Mode
 
-Com um atalho (`Ctrl + L`), você congela o canvas.
+Com um atalho (`Ctrl + L`), você fixa o canvas.
 
-Os elementos continuam visíveis, mas não podem ser movidos ou editados sem querer.
+Todas as interações deixam de funcionar e os elementos ficam congelados: continuam visíveis, mas não podem ser selecionados, movidos ou editados sem querer.
 
 Lock não é só "somente leitura". É **fixar o pensamento**: você termina uma ideia, trava o canvas e deixa aquela composição no desktop.
+
+### Overlay Mode
+
+O terceiro estado, ativado com `Win + T`. A tela do Canvie vem para frente dos outros apps e você usa o canvas em primeiro plano, acima de tudo.
+
+Ideal para anotações rápidas sem perder o contexto do que está aberto: rápido de ativar e desativar, focado em desenhar e anotar sem atrapalhar o trabalho principal.
 
 ---
 
@@ -103,8 +99,8 @@ Para provar primeiro que o canvas no desktop é útil e agradável, ficam de for
 
 | Entrada | Ação |
 | --- | --- |
-| `Win + T` | Abrir / ativar o Canvas Mode |
-| `Ctrl + L` | Alternar o Lock Mode |
+| `Win + T` | Ativar / desativar o Overlay Mode |
+| `Ctrl + L` | Fixar / descongelar o canvas (Lock Mode) |
 | `Ctrl + Z` / `Ctrl + Shift + Z` | Desfazer / refazer |
 | `Ctrl + V` | Colar texto ou imagem |
 | `Space + arrastar` | Navegar pelo canvas |
@@ -129,4 +125,4 @@ Possíveis linhas de marca: *“Your desktop, your canvas.”* / *“Leave it on
 
 > 💡 Conceito / início de MVP — Windows — Desktop canvas / visual workspace
 
-O MVP será considerado bem-sucedido se você conseguir criar uma composição visual em poucos segundos, reiniciar o Windows e encontrar o canvas intacto, no mesmo estado — alternando rapidamente entre edição, desktop e overlay sem sentir que abriu um aplicativo tradicional.
+O MVP será considerado bem-sucedido se você conseguir criar uma composição visual em poucos segundos, reiniciar o Windows e encontrar o canvas intacto, no mesmo estado — alternando rapidamente entre canvas, lock e overlay sem sentir que abriu um aplicativo tradicional.

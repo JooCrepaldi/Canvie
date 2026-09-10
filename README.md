@@ -1,7 +1,6 @@
 # 🖼️ Canvie
 
-**Your desktop, your canvas.**
-**Seu desktop, seu canvas.**
+**Leave it on the wall.**
 
 > 💻 App desktop para Windows que roda em segundo plano · 🐧 Planos para Linux no futuro
 
@@ -104,10 +103,6 @@ Isso significa que você pode usar formatações diferentes como:
 - Listas e checklists
 - Negrito, itálico e mais
 
-E o melhor: dá para **copiar o texto já formatado** para usar fora do Canvie, como em um `.md` / README.
-
-> Escreveu no Canvie, copiou pronto. Deu pra entender? É texto de verdade, não só desenho.
-
 ---
 
 ## ⌨️ Atalhos
@@ -145,27 +140,13 @@ O plano para a v1 do Canvie:
 
 ---
 
-## 🚫 O que o Canvie não é (por enquanto)
-
-Para provar primeiro que o canvas no desktop é útil e agradável, ficam de fora da primeira versão:
-
-- IA, colaboração em tempo real e sincronização em nuvem
-- Integrações, calendário, OCR e templates complexos
-- Automações, mobile e recursos avançados de produtividade
-
-> Regra: primeiro provar que o canvas no desktop é útil e agradável.
-
----
-
 ## 🎨 Visual e identidade
 
 Visual minimalista, caloroso e levemente lúdico.
 
 Sem cara de SaaS genérico ou dashboard. A interface aparece só quando precisa — o canvas e o seu conteúdo são os protagonistas.
 
-🖼️ **Canvie — Think slowly. Build freely.**
-
-Possíveis linhas de marca: *“Your desktop, your canvas.”* / *“Leave it on the wall.”*
+🖼️ **Canvie — Leave it on the wall.**
 
 ---
 

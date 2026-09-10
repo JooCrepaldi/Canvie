@@ -107,7 +107,7 @@ Plugins Tauri: `plugin-tray`, `plugin-autostart`, `plugin-single-instance`
 
 ---
 
-## L6 — Build instalável + primeiro teste na máquina
+## L6 — Build instalável + primeiro teste na máquina ✅ DONE (release `Canvie_0.0.1_x64-setup.exe` instalado em `%LOCALAPPDATA%\Canvie`; aceite headless: abre em 0.6s, 42MB idle, overlay topmost on/off, lock sem crash, close→tray, autostart aponta p/ instalado. Manual restante: desenho na mão, cliques no tray, transparência visual, reboot com canvas)
 
 **Objetivo:** `.exe`/`.msi` instalável para teste real.
 

@@ -61,32 +61,34 @@ struct StatePayload<'a> {
   raised: bool,
 }
 
-fn current_mode(app: &AppHandle) -> Mode {
-  app
-    .try_state::<ModeState>()
-    .and_then(|s| s.current.lock().ok().map(|m| *m))
-    .unwrap_or(Mode::Canvas)
-}
+impl ModeState {
+  fn current(app: &AppHandle) -> Mode {
+    app
+      .try_state::<ModeState>()
+      .and_then(|s| s.current.lock().ok().map(|m| *m))
+      .unwrap_or(Mode::Canvas)
+  }
 
-fn is_raised(app: &AppHandle) -> bool {
-  app
-    .try_state::<ModeState>()
-    .and_then(|s| s.raised.lock().ok().map(|v| *v))
-    .unwrap_or(false)
-}
+  fn raised(app: &AppHandle) -> bool {
+    app
+      .try_state::<ModeState>()
+      .and_then(|s| s.raised.lock().ok().map(|v| *v))
+      .unwrap_or(false)
+  }
 
-fn set_raised_flag(app: &AppHandle, raised: bool) {
-  if let Some(state) = app.try_state::<ModeState>() {
-    if let Ok(mut flag) = state.raised.lock() {
-      *flag = raised;
+  fn set_raised(app: &AppHandle, raised: bool) {
+    if let Some(state) = app.try_state::<ModeState>() {
+      if let Ok(mut flag) = state.raised.lock() {
+        *flag = raised;
+      }
     }
   }
-}
 
-fn mark_embedded(app: &AppHandle, embedded: bool) {
-  if let Some(state) = app.try_state::<ModeState>() {
-    if let Ok(mut flag) = state.embedded.lock() {
-      *flag = embedded;
+  fn set_embedded(app: &AppHandle, embedded: bool) {
+    if let Some(state) = app.try_state::<ModeState>() {
+      if let Ok(mut flag) = state.embedded.lock() {
+        *flag = embedded;
+      }
     }
   }
 }
@@ -109,7 +111,7 @@ fn ensure_embedded(app: &AppHandle, window: &tauri::WebviewWindow) {
       return;
     }
   };
-  mark_embedded(app, ok);
+  ModeState::set_embedded(app, ok);
   if ok && !was {
     log::info!("wallpaper embedded behind desktop icons");
   } else if !ok {
@@ -131,8 +133,8 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
       ensure_embedded(app, &window);
       if mode == Mode::Locked {
         // A frozen canvas must never eat desktop clicks.
-        set_raised_flag(app, false);
-      } else if is_raised(app) {
+        ModeState::set_raised(app, false);
+      } else if ModeState::raised(app) {
         if let Ok(hwnd) = window.hwnd() {
           wallpaper::raise(hwnd);
         }
@@ -142,8 +144,8 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
       if let Ok(hwnd) = window.hwnd() {
         wallpaper::detach(hwnd);
       }
-      mark_embedded(app, false);
-      set_raised_flag(app, false);
+      ModeState::set_embedded(app, false);
+      ModeState::set_raised(app, false);
       window
         .set_ignore_cursor_events(false)
         .map_err(|e| e.to_string())?;
@@ -159,14 +161,14 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   log::info!(
     "canvie mode -> {} (raised={})",
     mode.as_str(),
-    is_raised(app)
+    ModeState::raised(app)
   );
   app
     .emit(
       "canvie-mode",
       StatePayload {
         mode: mode.as_str(),
-        raised: is_raised(app),
+        raised: ModeState::raised(app),
       },
     )
     .map_err(|e| e.to_string())?;
@@ -188,13 +190,13 @@ fn set_raised(app: &AppHandle, raised: bool) -> Result<(), String> {
   if !ok {
     return Err("layer change failed".to_string());
   }
-  set_raised_flag(app, raised);
+  ModeState::set_raised(app, raised);
   log::info!("canvie layer -> {}", if raised { "raised" } else { "lowered" });
   app
     .emit(
       "canvie-mode",
       StatePayload {
-        mode: current_mode(app).as_str(),
+        mode: ModeState::current(app).as_str(),
         raised,
       },
     )
@@ -203,8 +205,8 @@ fn set_raised(app: &AppHandle, raised: bool) -> Result<(), String> {
 }
 
 fn toggle_draw_inner(app: &AppHandle) -> Result<String, String> {
-  match current_mode(app) {
-    Mode::Overlay => Ok(current_mode(app).as_str().to_string()),
+  match ModeState::current(app) {
+    Mode::Overlay => Ok(ModeState::current(app).as_str().to_string()),
     Mode::Locked => {
       // One press: unlock and raise, ready to draw.
       apply_mode(app, Mode::Canvas)?;
@@ -212,7 +214,7 @@ fn toggle_draw_inner(app: &AppHandle) -> Result<String, String> {
       Ok(Mode::Canvas.as_str().to_string())
     }
     Mode::Canvas => {
-      let next = !is_raised(app);
+      let next = !ModeState::raised(app);
       set_raised(app, next)?;
       Ok(Mode::Canvas.as_str().to_string())
     }
@@ -220,10 +222,7 @@ fn toggle_draw_inner(app: &AppHandle) -> Result<String, String> {
 }
 
 fn toggle_lock_inner(app: &AppHandle) -> Result<String, String> {
-  let current = app
-    .try_state::<ModeState>()
-    .and_then(|s| s.current.lock().ok().map(|m| *m))
-    .unwrap_or(Mode::Canvas);
+  let current = ModeState::current(app);
   let next = match current {
     Mode::Canvas => Mode::Locked,
     Mode::Locked => Mode::Canvas,
@@ -280,17 +279,37 @@ fn toggle_draw(app: AppHandle) -> Result<String, String> {
   toggle_draw_inner(&app)
 }
 
-fn register_hotkey(app: &AppHandle, accelerator: &str, label: &str) {
-  let action: fn(&AppHandle) -> Result<String, String> = match label {
-    "lock" => toggle_lock_inner,
-    "draw" => toggle_draw_inner,
-    _ => toggle_overlay_inner,
-  };
-  let label_owned = label.to_string();
+#[derive(Clone, Copy)]
+enum HotkeyAction {
+  Lock,
+  Overlay,
+  Draw,
+}
+
+impl HotkeyAction {
+  fn run(self, app: &AppHandle) -> Result<String, String> {
+    match self {
+      Self::Lock => toggle_lock_inner(app),
+      Self::Overlay => toggle_overlay_inner(app),
+      Self::Draw => toggle_draw_inner(app),
+    }
+  }
+
+  fn label(self) -> &'static str {
+    match self {
+      Self::Lock => "lock",
+      Self::Overlay => "overlay",
+      Self::Draw => "draw",
+    }
+  }
+}
+
+fn register_hotkey(app: &AppHandle, accelerator: &str, action: HotkeyAction) {
+  let label = action.label();
   match app.global_shortcut().on_shortcut(accelerator, move |h, _shortcut, event| {
     if event.state == ShortcutState::Pressed {
-      if let Err(e) = action(h) {
-        log::warn!("hotkey {label_owned} handler failed: {e}");
+      if let Err(e) = action.run(h) {
+        log::warn!("hotkey {label} handler failed: {e}");
       }
     }
   }) {
@@ -335,14 +354,14 @@ pub fn run() {
       if let Some(window) = app.get_webview_window("main") {
         ensure_embedded(app.handle(), &window);
       }
-      register_hotkey(app.handle(), "ctrl+l", "lock");
+      register_hotkey(app.handle(), "ctrl+l", HotkeyAction::Lock);
       // NOTE: Win+T (super+t) is reserved by Windows Explorer (taskbar focus)
       // and RegisterHotKey fails with "already registered". MVP-0 uses
       // Ctrl+Alt+T until a product decision on the final shortcut.
-      register_hotkey(app.handle(), "ctrl+alt+t", "overlay");
+      register_hotkey(app.handle(), "ctrl+alt+t", HotkeyAction::Overlay);
       // Provisional draw-layer toggle: raise the canvas above the icon layer
       // to draw on the wallpaper itself, lower it back to use the desktop.
-      register_hotkey(app.handle(), "ctrl+d", "draw");
+      register_hotkey(app.handle(), "ctrl+d", HotkeyAction::Draw);
       Ok(())
     })
     .on_menu_event(|app, event| match event.id.as_ref() {
@@ -401,27 +420,28 @@ pub fn run() {
 
 /// L5: tray icon with Show / Lock / Draw / Overlay / Autostart / Quit.
 fn build_tray(app: &AppHandle) -> Result<(), String> {
-  use tauri::menu::{Menu, MenuItem};
+  use tauri::menu::{IsMenuItem, Menu, MenuItem};
   use tauri::tray::TrayIconBuilder;
 
   let autostart_label = match app.autolaunch().is_enabled() {
     Ok(true) => "Disable autostart",
     _ => "Enable autostart",
   };
-  let show = MenuItem::with_id(app, "show", "Show Canvie", true, None::<&str>)
+  let entries = [
+    ("show", "Show Canvie"),
+    ("lock", "Lock / unlock canvas"),
+    ("draw", "Draw on wallpaper"),
+    ("overlay", "Overlay mode"),
+    ("autostart", autostart_label),
+    ("quit", "Quit"),
+  ];
+  let items: Vec<MenuItem<tauri::Wry>> = entries
+    .into_iter()
+    .map(|(id, text)| MenuItem::with_id(app, id, text, true, None::<&str>))
+    .collect::<Result<Vec<_>, _>>()
     .map_err(|e| e.to_string())?;
-  let lock = MenuItem::with_id(app, "lock", "Lock / unlock canvas", true, None::<&str>)
-    .map_err(|e| e.to_string())?;
-  let overlay = MenuItem::with_id(app, "overlay", "Overlay mode", true, None::<&str>)
-    .map_err(|e| e.to_string())?;
-  let draw = MenuItem::with_id(app, "draw", "Draw on wallpaper", true, None::<&str>)
-    .map_err(|e| e.to_string())?;
-  let autostart = MenuItem::with_id(app, "autostart", autostart_label, true, None::<&str>)
-    .map_err(|e| e.to_string())?;
-  let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
-    .map_err(|e| e.to_string())?;
-  let menu = Menu::with_items(app, &[&show, &lock, &draw, &overlay, &autostart, &quit])
-    .map_err(|e| e.to_string())?;
+  let refs: Vec<&dyn IsMenuItem<tauri::Wry>> = items.iter().map(|item| item as _).collect();
+  let menu = Menu::with_items(app, &refs).map_err(|e| e.to_string())?;
 
   let icon_bytes = include_bytes!("../icons/icon.png");
   let icon = tauri::image::Image::from_bytes(icon_bytes).map_err(|e| e.to_string())?;

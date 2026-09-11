@@ -45,7 +45,7 @@ Boot `getMode().then(setStateBoth)` + `onModeChanged(setStateBoth)` + `onToolCha
 
 ## 7. Transparency + fallback rules
 
-`html/body/#root` transparent (`index.css:6-12`), shell transparent, no opaque backgrounds (`App.css:1-19`). Every `mode.ts`/`persistence.ts` bridge degrades without Tauri (`inTauri` check, try/catch, null adapter) so `npm run dev` in a browser still draws.
+`html/body/#root` transparent (`index.css:6-12`), shell transparent, no opaque backgrounds in Canvas/Locked (`App.css:1-19`). Overlay renders `.canvie-overlay-backdrop` first: fullscreen `backdrop-filter: blur(12px) brightness(0.72)` + `rgba(8,8,10,0.38)` tint with a 160ms fade-in, `pointer-events: none`, behind strokes/texts/toolbar. Every `mode.ts`/`persistence.ts` bridge degrades without Tauri (`inTauri` check, try/catch, null adapter) so `npm run dev` in a browser still draws.
 
 ## 8. How to add a tool (v1 pattern, not yet built)
 

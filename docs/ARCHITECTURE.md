@@ -64,7 +64,7 @@ Commands (`build.rs` + `capabilities/default.json` + `invoke_handler` in `lib.rs
 | Drawing + camera + tools | `Canvas.tsx` | DPR render, `screenToWorld`/`worldToScreen`, drafts in refs, undo/redo stacks, Toolbar with hover tooltips |
 | Doc model + validation | `persistence.ts` + `canvasTypes.ts` | `CanvasDoc v1`, `STORAGE_KEY=canvie.canvas.v1`, `parseDoc`, `createSaver(500)`, `reseedIds`, `Tool='cursor'\|'brush'\|'eraser'` |
 | Mode bridge | `mode.ts` | `inTauri`, `getMode`, `toggleLock/toggleOverlay`, `setPassthrough`, `onModeChanged/onToolChanged` |
-| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds except the toolbar itself, which eats clicks only inside its own rect |
+| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds in Canvas/Locked except the toolbar itself (clicks only in its own rect); Overlay adds a fullscreen blur+dim backdrop behind canvas content |
 
 ## 6. Data model
 

@@ -19,7 +19,7 @@ Quem vive no desktop e pensa visualmente. Nunca pediu um whiteboard; ganha uma p
 | Canvas (padrão) | boot, ou `Ctrl+L` / `Ctrl+Alt+T` / `Esc` de volta | Janela parentada no Progman, elevada acima dos ícones por padrão (atrás de taskbar e janelas). Com a ferramenta cursor ativa, cliques atravessam para o desktop; com pincel/borracha, desenha. |
 | Cursor (ferramenta default) | `V`, botão da toolbar ou tray | Click-through na janela: usa o desktop normalmente (ícones, janelas). Voltar ao pincel: `B` com a janela focada, botão da toolbar ou tray. `B` puro não pode ser global (sequestraria a letra no Windows inteiro). |
 | Lock | `Ctrl+L` alterna (no-op dentro do Overlay), botão da toolbar ou tray | `setIgnoreCursorEvents(true)`, canvas congelado e clicável-através. |
-| Overlay | `Ctrl+Alt+T` alterna; `Esc` volta; botão da toolbar ou tray | Desanexa do Progman, `alwaysOnTop(true)` + foco, sempre interativo; ao sair, volta para `return_to` (Canvas ou Locked) e re-embebe elevado. |
+| Overlay | `Ctrl+Alt+T` alterna; `Esc` volta; botão da toolbar ou tray | Desanexa do Progman, `alwaysOnTop(true)` + foco, sempre interativo; um backdrop com blur + leve escurecida cobre a tela para focar o canvas; ao sair, volta para `return_to` (Canvas ou Locked) e re-embebe elevado. |
 
 Detalhe de implementação: `ModeState` em `frontend/src-tauri/src/lib.rs:36-56`, transições em `apply_mode` / `toggle_*_inner`, evento `canvie-mode` para o frontend. Ver `docs/ARCHITECTURE.md`.
 

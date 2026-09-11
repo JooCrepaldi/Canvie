@@ -481,6 +481,10 @@ export default function Canvas() {
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
     >
+      {/* Focus backdrop: blurs + dims everything behind the canvas content
+          while in Overlay Mode. First child so strokes, texts and the
+          toolbar paint above it; pointer-events stay with the canvas. */}
+      {mode === 'overlay' && <div className="canvie-overlay-backdrop" aria-hidden="true" />}
       <canvas ref={canvasRef} className="canvie-canvas" />
       {texts.map((t) => (
         <CanvasText key={t.id} item={t} camera={camera} />

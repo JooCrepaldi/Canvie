@@ -46,6 +46,11 @@ If a change would require violating #1, stop and flag it — updating the produc
 | Doc                        | Holds                                                        |
 | -------------------------- | ------------------------------------------------------------ |
 | README.md                  | Product vision, modes, shortcuts, v1 scope (pt-BR, user-facing, non-technical) |
+| docs/PRD.md                | Frozen MVP-0 requirements + v1 sketch (pt-BR, buildable)     |
+| docs/ARCHITECTURE.md       | Runtime, ModeState, layering, bridge, ownership, ADRs        |
+| docs/FRONTEND.md           | Canvas, camera, tools, persistence wiring, transparency      |
+| docs/BACKEND.md            | Rust state machine, wallpaper.rs, commands/ACL, tray/lifecycle |
+| docs/OPERATIONS.md         | Commands, E2E matrix, machine quirks, troubleshooting (pt-BR) |
 | docs/MVP-0-ROADMAP.md      | Build order L0–L6, done criteria, hard-won findings per layer |
 | AGENTS.md (this file)      | How to think and work here                                   |
 
@@ -169,7 +174,11 @@ After any meaningful decision, ask: "does this need to enter the documentation?"
 
 | Changed                          | Update                  |
 | -------------------------------- | ----------------------- |
-| Product behavior / UX / shortcuts | README.md               |
+| Product behavior / UX / shortcuts | README.md + docs/PRD.md |
+| Runtime / modes / layering / bridge | docs/ARCHITECTURE.md |
+| Canvas / persistence / transparency | docs/FRONTEND.md     |
+| Rust commands / tray / Win32      | docs/BACKEND.md         |
+| Commands / E2E / quirks           | docs/OPERATIONS.md      |
 | Build order / layer findings      | docs/MVP-0-ROADMAP.md   |
 | How to think / work here          | AGENTS.md (this file)   |
 

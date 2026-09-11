@@ -1,0 +1,16 @@
+# Local-only AI harness skills — NEVER commit/push to github/production.
+# Instalado via `npx impeccable install` apenas para uso local.
+.opencode/skills/
+.opencode/commands/impeccable.md
+.claude/skills/
+.cursor/skills/
+.agents/skills/
+.gemini/skills/
+.codex/skills/
+.kiro/skills/
+.qoder/skills/
+.trae/skills/
+.trae-cn/skills/
+.rovodev/skills/
+.pi/skills/
+.impeccable/

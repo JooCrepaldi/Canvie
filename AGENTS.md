@@ -53,9 +53,25 @@ Never decide alone what a doc has already decided. Docs > memory > instinct.
 
 ### 5. Development flow — always the same
 
-Read docs → Plan → Implement (one small vertical slice, one layer at a time) → Test (real hotkeys, real processes, never assume) → Self-review → Update docs (if behavior changed) → Commit → Push to main → Tag per milestone (`mvp-0-*`).
+Read docs → Plan → Implement (one small vertical slice, one layer at a time, on a branch) → Test (real hotkeys, real processes, never assume) → Self-review → Update docs (if behavior changed) → PR to main → Assistant code review (§5b) → Address findings → Merge → Tag per milestone (`mvp-0-*`).
 
-Solo founder, no PRs, no issues: work lands directly on main in small commits. Don't start a layer whose predecessors aren't DONE.
+Don't start a layer whose predecessors aren't DONE.
+
+### 5b. Assistant code review — the merge gate (replaces CodeRabbit)
+
+Every code PR gets a review by the assistant before merge. Docs-only PRs skip it.
+
+Review angles, in order:
+
+1. Invariants (§10) — any broken Win32/persistence/transparency/shortcut invariant is a blocker.
+2. Architecture rules (§9) — layering, ACL permissions, single state machine.
+3. Correctness — logic errors, race conditions (hotkey/hot-path threads), error paths that swallow failures.
+4. Standards (§11/12) — strict TS/Rust, no dead code, comments only for inexpressible constraints.
+5. Tests & evidence — E2E script updated or re-run for behavior changes; frontend + Rust builds green.
+6. Docs — README/roadmap updated in the same PR when behavior changed.
+7. Security (§14) — writes outside allowed paths, elevated execution, secrets, shell injection via unquoted paths.
+
+Verdict is binary: **approve** or **request changes** with a finding list (file:line + why + suggested fix). Findings are addressed in the PR (fix or reply with justification); re-review until approve, then merge. The review lives in the PR as a comment so the reasoning is on record.
 
 ### 6. Checklist — before implementing
 
@@ -63,8 +79,9 @@ Solo founder, no PRs, no issues: work lands directly on main in small commits. D
 - Is it inside MVP-0 scope? (the roadmap's frozen scope is a contract)
 - Is there an existing pattern, component, or command to reuse?
 - Which layer does this belong to, and is the previous one DONE?
+- Branch cut from main (`feat/<layer>-<slug>`)?
 
-### 7. Checklist — before considering a task done / pushing
+### 7. Checklist — before considering a task done / merging a PR
 
 - Frontend build passes (`npm run build`: `tsc -b` + vite); `npx oxlint` clean
 - Rust compiles (`cargo check`); Tauri bundle builds when the shell changed
@@ -72,6 +89,10 @@ Solo founder, no PRs, no issues: work lands directly on main in small commits. D
 - Self-reviewed the full diff
 - Docs updated in the same commit if behavior/shortcuts/architecture changed
 - Commits: imperative, English, `feat:` / `docs:` / `assets:` / `fix:`, explain the why
+- Assistant review approved (§5b); every finding fixed or answered
+- Squash or small-commit history readable; branch deleted after merge
+
+Branch per change (`feat/<layer>-<slug>`) → PR to main. Docs-only changes may go straight to main.
 
 ---
 
@@ -161,6 +182,8 @@ After any meaningful decision, ask: "does this need to enter the documentation?"
 | Debug bundle | `npx tauri build --debug` |
 | Release bundle | `npx tauri build` |
 | E2E (real hotkeys + window asserts) | `powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\<name>.ps1` |
+| Open a PR | `gh pr create --fill` (from the feature branch) |
+| Merge after approval | `gh pr merge --squash --delete-branch` |
 | App log file | `%LOCALAPPDATA%\com.canvie.app\logs\Canvie.log` |
 | Installed app | `%LOCALAPPDATA%\Canvie\canvie.exe` |
 

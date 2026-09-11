@@ -23,6 +23,64 @@ function worldToScreen(world: Point, cam: Camera): Point {
   return { x: world.x * cam.zoom + cam.x, y: world.y * cam.zoom + cam.y }
 }
 
+const TEXT_FONT_SIZE = 16
+
+function CanvasText({ item, camera }: { item: TextItem; camera: Camera }) {
+  const s = worldToScreen(item.at, camera)
+  return (
+    <div
+      className="canvie-text"
+      style={{ left: s.x, top: s.y, fontSize: TEXT_FONT_SIZE * camera.zoom }}
+    >
+      {item.content}
+    </div>
+  )
+}
+
+function TextEditor({
+  at,
+  camera,
+  onCommit,
+  onCancel,
+}: {
+  at: Point
+  camera: Camera
+  onCommit: (value: string) => void
+  onCancel: () => void
+}) {
+  const [value, setValue] = useState('')
+  const s = worldToScreen(at, camera)
+  return (
+    <input
+      autoFocus
+      className="canvie-text-input"
+      style={{ left: s.x, top: s.y, fontSize: TEXT_FONT_SIZE * camera.zoom }}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onCommit(value)
+        else if (e.key === 'Escape') onCancel()
+        e.stopPropagation()
+      }}
+      onBlur={() => onCommit(value)}
+    />
+  )
+}
+
+function HintPill({ mode, raised, tool }: { mode: AppMode; raised: boolean; tool: Tool }) {
+  return (
+    <div className="canvie-toolbar-hint">
+      {mode === 'locked'
+        ? '🔒 travado — Ctrl+L para voltar'
+        : mode === 'overlay'
+          ? '🪟 overlay — Ctrl+Alt+T ou Esc para voltar'
+          : raised
+            ? `🖊️ desenhando no wallpaper — Ctrl+D para afundar`
+            : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Ctrl+D desenhar · Space+arrastar move · scroll zoom · duplo-clique texto`}
+    </div>
+  )
+}
+
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -53,8 +111,10 @@ export default function Canvas() {
       }
     }
   }, [strokes, texts, camera])
-  const [, setUndoStack] = useState<Action[]>([])
-  const [, setRedoStack] = useState<Action[]>([])
+  // History lives in refs: state updaters must stay pure (StrictMode
+  // double-invokes impure updaters). Nothing renders from the stacks.
+  const undoStackRef = useRef<Action[]>([])
+  const redoStackRef = useRef<Action[]>([])
   const [mode, setMode] = useState<AppMode>('canvas')
   const [raised, setRaised] = useState(false)
   const modeRef = useRef<AppMode>('canvas')
@@ -82,44 +142,50 @@ export default function Canvas() {
 
   // Draft being drawn (kept in ref to avoid re-renders per pointermove)
   const draftRef = useRef<Point[] | null>(null)
-  // Live camera mirror for high-frequency updates (pan/zoom/draw)
-  const cameraRef = useRef(camera)
-  cameraRef.current = camera
+  // Live mirrors for high-frequency reads inside draw() and handlers.
+  const strokesRef = useRef<Stroke[]>(strokes)
+  const toolRef = useRef<Tool>(tool)
+  const cameraRef = useRef<Camera>(camera)
+  useEffect(() => {
+    strokesRef.current = strokes
+  }, [strokes])
+  useEffect(() => {
+    toolRef.current = tool
+  }, [tool])
+  useEffect(() => {
+    cameraRef.current = camera
+  }, [camera])
   const spaceHeldRef = useRef(false)
   const panningRef = useRef<{ startScreen: Point; startCam: Camera } | null>(null)
   const [editing, setEditing] = useState<{ at: Point; value: string } | null>(null)
 
   const pushAction = useCallback((action: Action) => {
-    setUndoStack((s) => [...s, action])
-    setRedoStack([])
+    undoStackRef.current.push(action)
+    redoStackRef.current = []
   }, [])
 
   const undo = useCallback(() => {
-    setUndoStack((stack) => {
-      if (stack.length === 0) return stack
-      const action = stack[stack.length - 1]
-      setRedoStack((r) => [...r, action])
-      if (action.kind === 'stroke') {
-        setStrokes((s) => s.filter((st) => st.id !== action.stroke.id))
-      } else {
-        setTexts((t) => t.filter((tx) => tx.id !== action.text.id))
-      }
-      return stack.slice(0, -1)
-    })
+    const action = undoStackRef.current.pop()
+    if (!action) return
+    redoStackRef.current.push(action)
+    if (action.kind === 'stroke') {
+      const id = action.stroke.id
+      setStrokes((s) => s.filter((st) => st.id !== id))
+    } else {
+      const id = action.text.id
+      setTexts((t) => t.filter((tx) => tx.id !== id))
+    }
   }, [])
 
   const redo = useCallback(() => {
-    setRedoStack((stack) => {
-      if (stack.length === 0) return stack
-      const action = stack[stack.length - 1]
-      setUndoStack((u) => [...u, action])
-      if (action.kind === 'stroke') {
-        setStrokes((s) => [...s, action.stroke])
-      } else {
-        setTexts((t) => [...t, action.text])
-      }
-      return stack.slice(0, -1)
-    })
+    const action = redoStackRef.current.pop()
+    if (!action) return
+    undoStackRef.current.push(action)
+    if (action.kind === 'stroke') {
+      setStrokes((s) => [...s, action.stroke])
+    } else {
+      setTexts((t) => [...t, action.text])
+    }
   }, [])
 
   // ---- rendering ----
@@ -177,11 +243,6 @@ export default function Canvas() {
       paint(draftRef.current, erasing, erasing ? ERASER_WIDTH : PEN_WIDTH)
     }
   }, [])
-
-  const strokesRef = useRef(strokes)
-  strokesRef.current = strokes
-  const toolRef = useRef(tool)
-  toolRef.current = tool
 
   useEffect(() => {
     draw()
@@ -312,16 +373,18 @@ export default function Canvas() {
     setEditing({ at: screenToWorld(screen, cameraRef.current), value: '' })
   }
 
-  const commitEditing = () => {
-    if (!editing) return
-    const value = editing.value.trim()
-    if (value.length > 0) {
-      const text: TextItem = { id: newId(), at: editing.at, content: value }
-      setTexts((t) => [...t, text])
-      pushAction({ kind: 'text', text })
-    }
-    setEditing(null)
-  }
+  const commitEditing = useCallback(
+    (value: string) => {
+      const trimmed = value.trim()
+      if (trimmed.length > 0 && editing) {
+        const text: TextItem = { id: newId(), at: editing.at, content: trimmed }
+        setTexts((t) => [...t, text])
+        pushAction({ kind: 'text', text })
+      }
+      setEditing(null)
+    },
+    [editing, pushAction],
+  )
 
   return (
     <div
@@ -333,46 +396,18 @@ export default function Canvas() {
       onDoubleClick={onDoubleClick}
     >
       <canvas ref={canvasRef} className="canvie-canvas" />
-      {texts.map((t) => {
-        const s = worldToScreen(t.at, camera)
-        return (
-          <div
-            key={t.id}
-            className="canvie-text"
-            style={{ left: s.x, top: s.y, fontSize: 16 * camera.zoom }}
-          >
-            {t.content}
-          </div>
-        )
-      })}
-      {editing &&
-        (() => {
-          const s = worldToScreen(editing.at, camera)
-          return (
-            <input
-              autoFocus
-              className="canvie-text-input"
-              style={{ left: s.x, top: s.y, fontSize: 16 * camera.zoom }}
-              value={editing.value}
-              onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitEditing()
-                else if (e.key === 'Escape') setEditing(null)
-                e.stopPropagation()
-              }}
-              onBlur={commitEditing}
-            />
-          )
-        })()}
-      <div className="canvie-toolbar-hint">
-        {mode === 'locked'
-          ? '🔒 travado — Ctrl+L para voltar'
-          : mode === 'overlay'
-            ? '🪟 overlay — Ctrl+Alt+T ou Esc para voltar'
-            : raised
-              ? `🖊️ desenhando no wallpaper — Ctrl+D para afundar`
-              : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Ctrl+D desenhar · Space+arrastar move · scroll zoom · duplo-clique texto`}
-      </div>
+      {texts.map((t) => (
+        <CanvasText key={t.id} item={t} camera={camera} />
+      ))}
+      {editing && (
+        <TextEditor
+          at={editing.at}
+          camera={camera}
+          onCommit={commitEditing}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+      <HintPill mode={mode} raised={raised} tool={tool} />
     </div>
   )
 }

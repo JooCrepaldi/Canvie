@@ -21,15 +21,6 @@ export async function getMode(): Promise<AppMode> {
   }
 }
 
-export async function toggleLock(): Promise<void> {
-  if (!inTauri()) return
-  try {
-    await invoke('toggle_lock')
-  } catch {
-    // MVP-0: UI stays usable even if the command is denied
-  }
-}
-
 export async function toggleOverlay(): Promise<void> {
   if (!inTauri()) return
   try {

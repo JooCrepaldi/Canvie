@@ -2,10 +2,12 @@
 //!
 //! - `Ctrl+L` toggles Lock Mode (click-through, frozen canvas).
 //! - `Ctrl+Alt+T` toggles Overlay Mode (always on top, foreground).
-//! - Canvas/Lock live embedded in the desktop wallpaper layer (WorkerW,
-//!   see `wallpaper`); Overlay detaches to a normal top-level window.
+//! - `Ctrl+D` raises/lowers the canvas inside Progman to draw on the wallpaper.
+//! - Canvas/Lock live embedded in the desktop wallpaper layer (Progman child
+//!   behind the icon layer, see `wallpaper`); Overlay detaches to a normal
+//!   top-level window.
 //! - Frontend stays in sync via the `canvie-mode` event and the
-//!   `get_mode` / `toggle_lock` / `toggle_overlay` commands.
+//!   `get_mode` / `toggle_lock` / `toggle_overlay` / `toggle_draw` commands.
 
 mod wallpaper;
 
@@ -397,7 +399,7 @@ pub fn run() {
     .expect("error while running tauri application");
 }
 
-/// L5: tray icon with Show / Lock / Overlay / Autostart / Quit.
+/// L5: tray icon with Show / Lock / Draw / Overlay / Autostart / Quit.
 fn build_tray(app: &AppHandle) -> Result<(), String> {
   use tauri::menu::{Menu, MenuItem};
   use tauri::tray::TrayIconBuilder;

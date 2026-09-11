@@ -79,7 +79,10 @@ export function clearDoc(adapter: StorageAdapter | null = defaultAdapter()): voi
 }
 
 /** Debounced saver: call on every state change, writes at most once per `delay`. */
-export function createSaver(delayMs = 500): (doc: CanvasDoc) => void {
+export function createSaver(
+  delayMs = 500,
+  adapter: StorageAdapter | null = defaultAdapter(),
+): (doc: CanvasDoc) => void {
   let timer: ReturnType<typeof setTimeout> | null = null
   let pending: CanvasDoc | null = null
   return (doc: CanvasDoc) => {
@@ -88,7 +91,7 @@ export function createSaver(delayMs = 500): (doc: CanvasDoc) => void {
     timer = setTimeout(() => {
       timer = null
       if (pending) {
-        saveDoc(pending)
+        saveDoc(pending, adapter)
         pending = null
       }
     }, delayMs)

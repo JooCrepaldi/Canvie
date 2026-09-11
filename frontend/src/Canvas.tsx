@@ -8,7 +8,7 @@ import type {
 } from './canvasTypes'
 import { ERASER_WIDTH, PEN_WIDTH, newId } from './canvasTypes'
 import { clearDoc, createSaver, loadDoc } from './persistence'
-import { getMode, onModeChanged, toggleOverlay, type AppMode, type ModeState } from './mode'
+import { getMode, onModeChanged, onToolChanged, setPassthrough, toggleLock, toggleOverlay, type AppMode, type ModeState } from './mode'
 
 type Action = { kind: 'stroke'; stroke: Stroke } | { kind: 'text'; text: TextItem }
 
@@ -67,16 +67,85 @@ function TextEditor({
   )
 }
 
-function HintPill({ mode, raised, tool }: { mode: AppMode; raised: boolean; tool: Tool }) {
+function ToolButton({
+  label,
+  shortcut,
+  active,
+  onClick,
+  children,
+}: {
+  label: string
+  shortcut: string
+  active?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
-    <div className="canvie-toolbar-hint">
-      {mode === 'locked'
-        ? '🔒 travado — Ctrl+L para voltar'
-        : mode === 'overlay'
-          ? '🪟 overlay — Ctrl+Alt+T ou Esc para voltar'
-          : raised
-            ? `🖊️ desenhando no wallpaper — Ctrl+D para afundar`
-            : `${tool === 'pen' ? '🖊️ caneta [1]' : '🧽 borracha [2]'} · Ctrl+D desenhar · Space+arrastar move · scroll zoom · duplo-clique texto`}
+    <button
+      type="button"
+      className={`canvie-tool-btn${active ? ' active' : ''}`}
+      onClick={onClick}
+      aria-label={`${label} (${shortcut})`}
+    >
+      {children}
+      <span className="canvie-tool-tip">
+        {label} · {shortcut}
+      </span>
+    </button>
+  )
+}
+
+function Toolbar({
+  mode,
+  tool,
+  onTool,
+}: {
+  mode: AppMode
+  tool: Tool
+  onTool: (t: Tool) => void
+}) {
+  const iconProps = {
+    width: 16,
+    height: 16,
+    viewBox: '0 0 16 16',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.5,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  } as const
+  return (
+    <div className="canvie-toolbar" role="toolbar" aria-label="Ferramentas do Canvie">
+      <ToolButton label="Cursor" shortcut="V" active={tool === 'cursor'} onClick={() => onTool('cursor')}>
+        <svg {...iconProps}>
+          <path d="M4 2l8 6-4.5.8L5.5 13 4 2z" />
+        </svg>
+      </ToolButton>
+      <ToolButton label="Pincel" shortcut="B" active={tool === 'brush'} onClick={() => onTool('brush')}>
+        <svg {...iconProps}>
+          <path d="M11.5 2.5l2 2L6 12l-2.8.8L4 10l7.5-7.5z" />
+          <path d="M10 4l2 2" />
+        </svg>
+      </ToolButton>
+      <ToolButton label="Borracha" shortcut="E" active={tool === 'eraser'} onClick={() => onTool('eraser')}>
+        <svg {...iconProps}>
+          <path d="M9.5 3.5l3 3-4.5 4.5H4.5l-1-1 6-6.5z" />
+          <path d="M3 13.5h10" />
+        </svg>
+      </ToolButton>
+      <span className="canvie-toolbar-sep" />
+      <ToolButton label="Travar" shortcut="Ctrl+L" active={mode === 'locked'} onClick={() => void toggleLock()}>
+        <svg {...iconProps}>
+          <rect x="3.5" y="7" width="9" height="6" rx="1.5" />
+          <path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
+        </svg>
+      </ToolButton>
+      <ToolButton label="Overlay" shortcut="Ctrl+Alt+T" active={mode === 'overlay'} onClick={() => void toggleOverlay()}>
+        <svg {...iconProps}>
+          <rect x="2" y="4.5" width="9" height="7" rx="1.5" />
+          <path d="M5 4.5V3.5A1.5 1.5 0 016.5 2H12.5A1.5 1.5 0 0114 3.5v6" />
+        </svg>
+      </ToolButton>
     </div>
   )
 }
@@ -85,7 +154,7 @@ export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  const [tool, setTool] = useState<Tool>('pen')
+  const [tool, setTool] = useState<Tool>('cursor')
   // L3: restore persisted doc on boot (loaded once).
   const bootDoc = useMemo(() => loadDoc(), [])
   const [strokes, setStrokes] = useState<Stroke[]>(() => bootDoc?.strokes ?? [])
@@ -116,7 +185,6 @@ export default function Canvas() {
   const undoStackRef = useRef<Action[]>([])
   const redoStackRef = useRef<Action[]>([])
   const [mode, setMode] = useState<AppMode>('canvas')
-  const [raised, setRaised] = useState(false)
   const modeRef = useRef<AppMode>('canvas')
   const setModeBoth = useCallback((m: AppMode) => {
     modeRef.current = m
@@ -125,20 +193,33 @@ export default function Canvas() {
   const setStateBoth = useCallback(
     (s: ModeState) => {
       setModeBoth(s.mode)
-      setRaised(s.raised)
     },
     [setModeBoth],
   )
 
-  // L4: sync with Rust mode state machine.
+  // v1: sync with Rust mode state machine + tray tool picks.
   useEffect(() => {
-    let unlisten: (() => void) | null = null
-    getMode().then(setModeBoth)
+    let unlistenMode: (() => void) | null = null
+    let unlistenTool: (() => void) | null = null
+    getMode().then(setStateBoth)
     onModeChanged(setStateBoth).then((u) => {
-      unlisten = u
+      unlistenMode = u
     })
-    return () => unlisten?.()
-  }, [setModeBoth, setStateBoth])
+    onToolChanged(setTool).then((u) => {
+      unlistenTool = u
+    })
+    return () => {
+      unlistenMode?.()
+      unlistenTool?.()
+    }
+  }, [setStateBoth])
+
+  // v1: cursor tool passes clicks through to the desktop (backend owns the
+  // OS flag). Bare V/B/E only arrive when the window is focused; the tray
+  // menu and the app shortcut are the focus-free paths back to the brush.
+  useEffect(() => {
+    void setPassthrough(tool === 'cursor')
+  }, [tool, mode])
 
   // Draft being drawn (kept in ref to avoid re-renders per pointermove)
   const draftRef = useRef<Point[] | null>(null)
@@ -269,8 +350,9 @@ export default function Canvas() {
       const target = e.target as HTMLElement | null
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
       if (typing) return
-      if (e.key === '1') setTool('pen')
-      else if (e.key === '2') setTool('eraser')
+      if (e.key === 'v' || e.key === 'V') setTool('cursor')
+      else if (e.key === 'b' || e.key === 'B') setTool('brush')
+      else if (e.key === 'e' || e.key === 'E') setTool('eraser')
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) redo()
         else undo()
@@ -327,6 +409,9 @@ export default function Canvas() {
       return
     }
     if (e.button !== 0) return
+    // Cursor tool never paints: clicks belong to the desktop (the backend
+    // passes them through) or to pan/zoom/text gestures.
+    if (toolRef.current === 'cursor') return
     const world = screenToWorld(posFromEvent(e), cameraRef.current)
     draftRef.current = [world]
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -390,11 +475,16 @@ export default function Canvas() {
     <div
       ref={wrapRef}
       className="canvie-canvas-wrap"
+      style={{ cursor: tool === 'cursor' ? 'default' : 'crosshair' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
     >
+      {/* Focus backdrop: blurs + dims everything behind the canvas content
+          while in Overlay Mode. First child so strokes, texts and the
+          toolbar paint above it; pointer-events stay with the canvas. */}
+      {mode === 'overlay' && <div className="canvie-overlay-backdrop" aria-hidden="true" />}
       <canvas ref={canvasRef} className="canvie-canvas" />
       {texts.map((t) => (
         <CanvasText key={t.id} item={t} camera={camera} />
@@ -407,7 +497,7 @@ export default function Canvas() {
           onCancel={() => setEditing(null)}
         />
       )}
-      <HintPill mode={mode} raised={raised} tool={tool} />
+      <Toolbar mode={mode} tool={tool} onTool={setTool} />
     </div>
   )
 }

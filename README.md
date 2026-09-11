@@ -40,9 +40,9 @@ O Canvie tem 3 estados:
 
 ### 🎨 Canvas Mode (padrão)
 
-Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser — ele fica atrás dos ícones, como parte do papel de parede.
+Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser — ele fica acima dos ícones, como parte do papel de parede, mas atrás da taskbar e das janelas.
 
-> 🖊️ Para desenhar no wallpaper, pressione `Ctrl + D`: a camada sobe acima dos ícones (continuando atrás da taskbar e das janelas). Pressione de novo para afundar e voltar a usar os ícones normalmente.
+> 🖊️ O app abre pronto para desenhar. Com a ferramenta **cursor** (`V`), os cliques atravessam o Canvie e você usa o desktop normalmente; com o **pincel** (`B`), você desenha no wallpaper.
 
 Aqui você edita, move, desenha e organiza os elementos livremente, direto no desktop.
 
@@ -75,9 +75,11 @@ A ideia é simples: às vezes você quer uma lousa limpa, às vezes quer pensar 
 
 ## 🧰 Toolbar
 
-A toolbar do Canvie aparece quando você pressiona um atalho — inspirada na do Excalidraw: simples, flutuante e só aparece quando precisa.
+A toolbar do Canvie fica sempre visível acima da taskbar — inspirada na do Excalidraw: simples e flutuante.
 
-> ⌨️ Atalho provisório: `Q` — ainda vai mudar, e você vai poder personalizar.
+Ela reúne cursor, pincel e borracha, além de travar e ir ao Overlay. Passe o mouse sobre um botão para ver o nome e o atalho.
+
+> 💡 Com o cursor ativo, a toolbar continua visível mas não recebe cliques (os cliques vão para o desktop) — volte ao pincel pelo tray ou pela tecla `B`.
 
 Ela reúne tudo que importa para o v1:
 
@@ -113,8 +115,7 @@ Você pode mudar os atalhos como bem entender. Os padrões planejados são:
 
 | Entrada | Ação |
 | --- | --- |
-| `Q` *(provisório)* | Mostrar / esconder a toolbar |
-| `Ctrl + D` *(provisório)* | Erguer / afundar o canvas para desenhar no wallpaper |
+| `V` / `B` / `E` | Cursor / pincel / borracha |
 | `Ctrl + Alt + T` *(provisório no MVP-0 — `Win + T` é reservado pelo Windows)* | Ativar / desativar o Overlay Mode |
 | `Ctrl + L` | Fixar / descongelar o canvas (Lock Mode) |
 | `Ctrl + Z` / `Ctrl + Shift + Z` | Desfazer / refazer |

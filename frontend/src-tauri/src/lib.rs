@@ -1,18 +1,20 @@
-//! L4/L5 + wallpaper: mode state machine, global shortcuts, tray.
+//! v1: mode state machine, global shortcuts, tray, cursor passthrough.
 //!
 //! - `Ctrl+L` toggles Lock Mode (click-through, frozen canvas).
 //! - `Ctrl+Alt+T` toggles Overlay Mode (always on top, foreground).
-//! - `Ctrl+D` raises/lowers the canvas inside Progman to draw on the wallpaper.
-//! - Canvas/Lock live embedded in the desktop wallpaper layer (Progman child
-//!   behind the icon layer, see `wallpaper`); Overlay detaches to a normal
+//! - `V`/`B`/`E` (frontend, when focused) pick cursor/brush/eraser; the
+//!   cursor tool sets window click-through so the desktop stays usable.
+//! - Canvas lives raised above the icon layer by default (Progman child,
+//!   still below taskbar and normal windows); Overlay detaches to a normal
 //!   top-level window.
-//! - Frontend stays in sync via the `canvie-mode` event and the
-//!   `get_mode` / `toggle_lock` / `toggle_overlay` / `toggle_draw` commands.
+//! - Frontend stays in sync via the `canvie-mode` / `canvie-tool` events and
+//!   the `get_mode` / `toggle_lock` / `toggle_overlay` / `set_passthrough`
+//!   commands.
 
 mod wallpaper;
 
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -40,8 +42,11 @@ struct ModeState {
   /// Whether the window is currently parented into the wallpaper WorkerW.
   embedded: Mutex<bool>,
   /// Whether the canvas is raised above the icon layer for drawing
-  /// (only meaningful in Canvas Mode; reset on every mode change).
+  /// (default in Canvas Mode; reset on every mode change).
   raised: Mutex<bool>,
+  /// Whether the cursor tool is active: Canvas clicks pass through to the
+  /// desktop (default true, matching the frontend default tool).
+  passthrough: Mutex<bool>,
 }
 
 impl Default for ModeState {
@@ -51,6 +56,7 @@ impl Default for ModeState {
       return_to: Mutex::new(Mode::Canvas),
       embedded: Mutex::new(false),
       raised: Mutex::new(false),
+      passthrough: Mutex::new(true),
     }
   }
 }
@@ -74,6 +80,13 @@ impl ModeState {
       .try_state::<ModeState>()
       .and_then(|s| s.raised.lock().ok().map(|v| *v))
       .unwrap_or(false)
+  }
+
+  fn passthrough(app: &AppHandle) -> bool {
+    app
+      .try_state::<ModeState>()
+      .and_then(|s| s.passthrough.lock().ok().map(|v| *v))
+      .unwrap_or(true)
   }
 
   fn set_raised(app: &AppHandle, raised: bool) {
@@ -123,26 +136,46 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   let window = app
     .get_webview_window("main")
     .ok_or("main window not found")?;
+  let prev = ModeState::current(app);
   match mode {
     Mode::Canvas | Mode::Locked => {
+      // Disable the Overlay blur BEFORE re-embedding: DWM blur-behind only
+      // applies to top-level windows, so leaving Overlay must switch it
+      // off while still detached.
+      if prev == Mode::Overlay {
+        if let Ok(hwnd) = window.hwnd() {
+          if wallpaper::set_blur(hwnd, false) {
+            log::info!("blur -> off");
+          } else {
+            log::warn!("blur disable failed");
+          }
+        }
+      }
       window.set_always_on_top(false).map_err(|e| e.to_string())?;
+      // Locked always passes clicks through; Canvas does when the cursor
+      // tool is active. Overlay (below) is always interactive.
+      let ignore = mode == Mode::Locked || (mode == Mode::Canvas && ModeState::passthrough(app));
       window
-        .set_ignore_cursor_events(mode == Mode::Locked)
+        .set_ignore_cursor_events(ignore)
         .map_err(|e| e.to_string())?;
       // Re-embed AFTER the tao calls above: they rewrite GWL_STYLE wholesale.
       ensure_embedded(app, &window);
-      if mode == Mode::Locked {
-        // A frozen canvas must never eat desktop clicks.
-        ModeState::set_raised(app, false);
-      } else if ModeState::raised(app) {
-        if let Ok(hwnd) = window.hwnd() {
-          wallpaper::raise(hwnd);
-        }
+      // v1: wallpaper modes rest raised above the icon layer; Locked frees
+      // the desktop via click-through, so nothing ever disappears behind
+      // the icons when leaving Overlay.
+      ModeState::set_raised(app, true);
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::raise(hwnd);
       }
     }
     Mode::Overlay => {
       if let Ok(hwnd) = window.hwnd() {
         wallpaper::detach(hwnd);
+        if wallpaper::set_blur(hwnd, true) {
+          log::info!("blur -> on");
+        } else {
+          log::warn!("blur enable failed");
+        }
       }
       ModeState::set_embedded(app, false);
       ModeState::set_raised(app, false);
@@ -175,50 +208,54 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   Ok(mode.as_str().to_string())
 }
 
-/// Raise/lower the canvas inside Progman so the user can draw on the
-/// wallpaper itself (behind icons when lowered). No-op in Overlay Mode.
-fn set_raised(app: &AppHandle, raised: bool) -> Result<(), String> {
+/// Raise the canvas above the icon layer (v1 resting order). Logs and
+/// emits so the frontend and the log file observe the order.
+fn raise_canvas(app: &AppHandle) -> Result<(), String> {
   let window = app
     .get_webview_window("main")
     .ok_or("main window not found")?;
   let hwnd = window.hwnd().map_err(|e| e.to_string())?;
-  let ok = if raised {
-    wallpaper::raise(hwnd)
-  } else {
-    wallpaper::lower(hwnd)
-  };
-  if !ok {
+  if !wallpaper::raise(hwnd) {
     return Err("layer change failed".to_string());
   }
-  ModeState::set_raised(app, raised);
-  log::info!("canvie layer -> {}", if raised { "raised" } else { "lowered" });
+  ModeState::set_raised(app, true);
+  log::info!("canvie layer -> raised");
   app
     .emit(
       "canvie-mode",
       StatePayload {
         mode: ModeState::current(app).as_str(),
-        raised,
+        raised: true,
       },
     )
     .map_err(|e| e.to_string())?;
   Ok(())
 }
 
-fn toggle_draw_inner(app: &AppHandle) -> Result<String, String> {
-  match ModeState::current(app) {
-    Mode::Overlay => Ok(ModeState::current(app).as_str().to_string()),
-    Mode::Locked => {
-      // One press: unlock and raise, ready to draw.
-      apply_mode(app, Mode::Canvas)?;
-      set_raised(app, true)?;
-      Ok(Mode::Canvas.as_str().to_string())
-    }
-    Mode::Canvas => {
-      let next = !ModeState::raised(app);
-      set_raised(app, next)?;
-      Ok(Mode::Canvas.as_str().to_string())
+/// Apply the current click-through state to the window.
+///
+/// NOTE: tao rewrites the whole window style on `set_ignore_cursor_events`,
+/// which drops our WS_CHILD. So this re-embeds AFTER that call and restores
+/// the default-raised order in Canvas Mode — same rule as `apply_mode`.
+fn apply_input(app: &AppHandle) -> Result<(), String> {
+  let window = app
+    .get_webview_window("main")
+    .ok_or("main window not found")?;
+  let mode = ModeState::current(app);
+  let ignore = mode == Mode::Locked || (mode == Mode::Canvas && ModeState::passthrough(app));
+  window
+    .set_ignore_cursor_events(ignore)
+    .map_err(|e| e.to_string())?;
+  if mode == Mode::Canvas || mode == Mode::Locked {
+    ensure_embedded(app, &window);
+    if mode == Mode::Canvas && ModeState::raised(app) {
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::raise(hwnd);
+      }
     }
   }
+  log::info!("passthrough -> {}", if ignore { "on" } else { "off" });
+  Ok(())
 }
 
 fn toggle_lock_inner(app: &AppHandle) -> Result<String, String> {
@@ -255,13 +292,25 @@ fn toggle_overlay_inner(app: &AppHandle) -> Result<String, String> {
   }
 }
 
+#[derive(Clone, Copy, serde::Serialize)]
+struct ToolPayload<'a> {
+  tool: &'a str,
+}
+
+fn emit_tool(app: &AppHandle, tool: &'static str) {
+  if let Err(e) = app.emit("canvie-tool", ToolPayload { tool }) {
+    log::warn!("tool emit failed: {e}");
+  } else {
+    log::info!("tool -> {tool} (from tray)");
+  }
+}
+
 #[tauri::command]
-fn get_mode(state: State<ModeState>) -> String {
-  state
-    .current
-    .lock()
-    .map(|m| m.as_str().to_string())
-    .unwrap_or_else(|_| "canvas".to_string())
+fn get_mode(app: AppHandle) -> StatePayload<'static> {
+  StatePayload {
+    mode: ModeState::current(&app).as_str(),
+    raised: ModeState::raised(&app),
+  }
 }
 
 #[tauri::command]
@@ -275,15 +324,20 @@ fn toggle_overlay(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn toggle_draw(app: AppHandle) -> Result<String, String> {
-  toggle_draw_inner(&app)
+fn set_passthrough(app: AppHandle, active: bool) -> Result<String, String> {
+  if let Some(state) = app.try_state::<ModeState>() {
+    if let Ok(mut flag) = state.passthrough.lock() {
+      *flag = active;
+    }
+  }
+  apply_input(&app)?;
+  Ok(if active { "on".to_string() } else { "off".to_string() })
 }
 
 #[derive(Clone, Copy)]
 enum HotkeyAction {
   Lock,
   Overlay,
-  Draw,
 }
 
 impl HotkeyAction {
@@ -291,7 +345,6 @@ impl HotkeyAction {
     match self {
       Self::Lock => toggle_lock_inner(app),
       Self::Overlay => toggle_overlay_inner(app),
-      Self::Draw => toggle_draw_inner(app),
     }
   }
 
@@ -299,7 +352,6 @@ impl HotkeyAction {
     match self {
       Self::Lock => "lock",
       Self::Overlay => "overlay",
-      Self::Draw => "draw",
     }
   }
 }
@@ -318,15 +370,58 @@ fn register_hotkey(app: &AppHandle, accelerator: &str, action: HotkeyAction) {
   }
 }
 
+/// Re-show the existing window after a manual launch (second instance) or
+/// the tray "Show" entry, without stealing focus.
+///
+/// Canvas rests raised above the icon layer, where a bare `show()` after an
+/// Explorer restart may leave it behind DefView. So re-embed (which orders
+/// behind DefView), restore the raised order in Canvas Mode, ensure
+/// visibility, and re-emit the current mode so the frontend repaints —
+/// but never detach to overlay.
+fn show_existing(app: &AppHandle) {
+  let mode = ModeState::current(app);
+  if let Some(window) = app.get_webview_window("main") {
+    if mode == Mode::Overlay {
+      if let Ok(hwnd) = window.hwnd() {
+        if !wallpaper::set_blur(hwnd, true) {
+          log::warn!("blur enable failed");
+        }
+      }
+      let _ = window.show();
+      let _ = window.set_focus();
+    } else {
+      ensure_embedded(app, &window);
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::raise(hwnd);
+        // Best-effort drift cleanup (authoritative blur state is set by
+        // apply_mode, which switches it off while still top-level).
+        let _ = wallpaper::set_blur(hwnd, false);
+      }
+      let _ = window.show();
+      if let Err(e) = app.emit(
+        "canvie-mode",
+        StatePayload {
+          mode: mode.as_str(),
+          raised: ModeState::raised(app),
+        },
+      ) {
+        log::warn!("show_existing emit failed: {e}");
+      }
+    }
+  }
+  log::info!(
+    "show requested -> {} (raised={})",
+    mode.as_str(),
+    ModeState::raised(app)
+  );
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .manage(ModeState::default())
     .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-      if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
-      }
+      show_existing(app);
       log::info!("second instance blocked, focused existing window");
     }))
     .plugin(tauri_plugin_autostart::init(
@@ -345,7 +440,9 @@ pub fn run() {
           },
         ));
       app.handle().plugin(log_builder.build())?;
-      // L5: start with Windows (quiet second-plane behavior).
+      // v1: start with Windows, raised above the icon layer and ready to
+      // draw. The cursor tool (default) keeps clicks passing through, so
+      // the desktop stays usable until the brush is picked.
       match app.autolaunch().enable() {
         Ok(_) => log::info!("autostart enabled"),
         Err(e) => log::warn!("autostart NOT enabled: {e}"),
@@ -353,23 +450,23 @@ pub fn run() {
       build_tray(app.handle())?;
       if let Some(window) = app.get_webview_window("main") {
         ensure_embedded(app.handle(), &window);
+        if let Err(e) = raise_canvas(app.handle()) {
+          log::warn!("default raise failed: {e}");
+        }
+        if let Err(e) = apply_input(app.handle()) {
+          log::warn!("default input state failed: {e}");
+        }
       }
       register_hotkey(app.handle(), "ctrl+l", HotkeyAction::Lock);
       // NOTE: Win+T (super+t) is reserved by Windows Explorer (taskbar focus)
-      // and RegisterHotKey fails with "already registered". MVP-0 uses
+      // and RegisterHotKey fails with "already registered". v1 uses
       // Ctrl+Alt+T until a product decision on the final shortcut.
       register_hotkey(app.handle(), "ctrl+alt+t", HotkeyAction::Overlay);
-      // Provisional draw-layer toggle: raise the canvas above the icon layer
-      // to draw on the wallpaper itself, lower it back to use the desktop.
-      register_hotkey(app.handle(), "ctrl+d", HotkeyAction::Draw);
       Ok(())
     })
     .on_menu_event(|app, event| match event.id.as_ref() {
       "show" => {
-        if let Some(window) = app.get_webview_window("main") {
-          let _ = window.show();
-          let _ = window.set_focus();
-        }
+        show_existing(app);
       }
       "lock" => {
         if let Err(e) = toggle_lock_inner(app) {
@@ -381,11 +478,9 @@ pub fn run() {
           log::warn!("tray overlay failed: {e}");
         }
       }
-      "draw" => {
-        if let Err(e) = toggle_draw_inner(app) {
-          log::warn!("tray draw toggle failed: {e}");
-        }
-      }
+      "cursor" => emit_tool(app, "cursor"),
+      "brush" => emit_tool(app, "brush"),
+      "eraser" => emit_tool(app, "eraser"),
       "autostart" => {
         let manager = app.autolaunch();
         let result = match manager.is_enabled() {
@@ -412,13 +507,13 @@ pub fn run() {
       get_mode,
       toggle_lock,
       toggle_overlay,
-      toggle_draw
+      set_passthrough
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
 
-/// L5: tray icon with Show / Lock / Draw / Overlay / Autostart / Quit.
+/// Tray icon with Show / tools / Lock / Overlay / Autostart / Quit.
 fn build_tray(app: &AppHandle) -> Result<(), String> {
   use tauri::menu::{IsMenuItem, Menu, MenuItem};
   use tauri::tray::TrayIconBuilder;
@@ -429,8 +524,10 @@ fn build_tray(app: &AppHandle) -> Result<(), String> {
   };
   let entries = [
     ("show", "Show Canvie"),
+    ("cursor", "Cursor (use desktop)"),
+    ("brush", "Brush (draw)"),
+    ("eraser", "Eraser"),
     ("lock", "Lock / unlock canvas"),
-    ("draw", "Draw on wallpaper"),
     ("overlay", "Overlay mode"),
     ("autostart", autostart_label),
     ("quit", "Quit"),

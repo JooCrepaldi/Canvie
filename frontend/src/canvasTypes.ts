@@ -21,7 +21,7 @@ export interface Camera {
   zoom: number
 }
 
-export type Tool = 'pen' | 'eraser'
+export type Tool = 'cursor' | 'brush' | 'eraser'
 
 export const PEN_WIDTH = 3
 export const ERASER_WIDTH = 24

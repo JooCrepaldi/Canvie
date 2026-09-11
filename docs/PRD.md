@@ -16,10 +16,10 @@ Quem vive no desktop e pensa visualmente. Nunca pediu um whiteboard; ganha uma p
 
 | Modo | Como entra/sai | Comportamento real |
 | --- | --- | --- |
-| Canvas (padrão) | boot, ou `Ctrl+L` / `Ctrl+Alt+T` / `Esc` de volta | Janela parentada no Progman atrás dos ícones; visível como wallpaper, sem receber clique (física do DefView). Desenho exige `Ctrl+D`. |
-| Draw elevado (`raised`, não é modo, é flag dentro do Canvas/Lock) | `Ctrl+D` alterna; no Locked, um toque desbloqueia e já eleva; no Overlay é no-op | Canvas continua filho do Progman mas ordenado acima dos ícones (ainda abaixo de taskbar/janelas) para receber mouse. Pill indica estado. |
-| Lock | `Ctrl+L` alterna (no-op dentro do Overlay) | `setIgnoreCursorEvents(true)`, canvas congelado e clicável-através; `raised` é zerado ao entrar. |
-| Overlay | `Ctrl+Alt+T` alterna; `Esc` volta | Desanexa do Progman, `alwaysOnTop(true)` + foco; ao sair, volta para `return_to` (Canvas ou Locked) e re-embebe. |
+| Canvas (padrão) | boot, ou `Ctrl+L` / `Ctrl+Alt+T` / `Esc` de volta | Janela parentada no Progman, elevada acima dos ícones por padrão (atrás de taskbar e janelas). Com a ferramenta cursor ativa, cliques atravessam para o desktop; com pincel/borracha, desenha. |
+| Cursor (ferramenta default) | `V`, botão da toolbar ou tray | Click-through na janela: usa o desktop normalmente (ícones, janelas). Voltar ao pincel: `B` com a janela focada, botão da toolbar ou tray. `B` puro não pode ser global (sequestraria a letra no Windows inteiro). |
+| Lock | `Ctrl+L` alterna (no-op dentro do Overlay), botão da toolbar ou tray | `setIgnoreCursorEvents(true)`, canvas congelado e clicável-através, mas tudo continua visível elevado acima dos ícones — nada some ao travar ou ao sair do Overlay para o lock. |
+| Overlay | `Ctrl+Alt+T` alterna; `Esc` volta; botão da toolbar ou tray | Desanexa do Progman, `alwaysOnTop(true)` + foco + blur real do Windows (DWM) atrás do canvas, sempre interativo; um dim leve cobre a tela para focar o canvas; ao sair, volta para `return_to` (Canvas ou Locked, ambos elevados) e re-embebe. |
 
 Detalhe de implementação: `ModeState` em `frontend/src-tauri/src/lib.rs:36-56`, transições em `apply_mode` / `toggle_*_inner`, evento `canvie-mode` para o frontend. Ver `docs/ARCHITECTURE.md`.
 
@@ -31,8 +31,7 @@ O README cita `Win+T` para Overlay. `Win+T` pertence ao Explorer (`RegisterHotKe
 
 | Entrada | Ação real |
 | --- | --- |
-| `1` / `2` | caneta / borracha (temporário, sem toolbar) |
-| `Ctrl+D` | erguer/afundar canvas para desenhar no wallpaper |
+| `V` / `B` / `E` | cursor / pincel / borracha (toolbar, tray ou teclas com a janela focada) |
 | `Ctrl+L` | travar/destravar (Lock) |
 | `Ctrl+Alt+T` ou `Esc` (no Overlay) | Overlay on/off |
 | `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` | desfazer/refazer (pilha em memória) |
@@ -40,16 +39,17 @@ O README cita `Win+T` para Overlay. `Win+T` pertence ao Explorer (`RegisterHotKe
 | `Scroll` | zoom centrado no cursor |
 | Duplo-clique | criar texto simples (Enter confirma, Esc cancela) |
 
-Planejado v1 (não existe no MVP-0): `Q` toolbar, paleta, atalhos editáveis, `Ctrl+V` imagem/clipboard, arrastar arquivo.
+Sem `Ctrl+D`: elevar/afundar deixou de existir como conceito — o canvas nasce elevado e o cursor libera o desktop via click-through.
 
-## 5. Canvas MVP-0 (congelado)
+Planejado (não existe ainda): paleta, atalhos editáveis, `Ctrl+V` imagem/clipboard, arrastar arquivo.
+
+## 5. Canvas (v1 inicial)
 
 - Um `<canvas>` fullscreen, DPR-aware, transform de câmera (`screenToWorld`/`worldToScreen`).
-- Ferramentas: caneta branca fixa (`PEN_WIDTH=3`), borracha (`ERASER_WIDTH=24`), sem escolha de cor/espessura.
+- Ferramentas na toolbar sempre visível (acima da taskbar, tooltip com atalho no hover): cursor (`V`, default, libera o desktop), pincel (`B`), borracha (`E`, `ERASER_WIDTH=24`).
 - Texto simples sem markdown, uma fonte do sistema, sem edição após confirmar (só mover via recarga? na prática: cria/apaga via undo, sem select/move/resize).
 - Undo/redo só em memória (perde histórico ao reiniciar; o documento persiste, o histórico não).
 - Pan/zoom com câmera restaurada no boot.
-- Pill de ajuda centralizada acima da taskbar, `pointer-events: none`, visível nos 3 modos.
 
 ## 6. Persistência (congelada)
 
@@ -60,15 +60,15 @@ Planejado v1 (não existe no MVP-0): `Q` toolbar, paleta, atalhos editáveis, `C
 
 ## 7. Segundo plano (congelado)
 
-- Tray com Show / Lock / Draw / Overlay / Autostart / Quit; fechar (X) esconde para o tray, só Quit sai.
+- Tray com Show / Cursor / Brush / Eraser / Lock / Overlay / Autostart / Quit; fechar (X) esconde para o tray, só Quit sai. As entradas de ferramenta emitem `canvie-tool` (o frontend aplica).
 - Single-instance: 2ª instância sai e foca a 1ª.
 - Autostart habilitado no setup, apontando para o build instalado (`%LOCALAPPDATA%\Canvie\canvie.exe`), nunca dev binary.
 - Global shortcuts registradas com falha degradada (log warn, app continua).
 
 ## 8. Wallpaper embedding (congelado)
 
-- Canvas é filho do Progman ordenado atrás do `SHELLDLL_DefView` (atrás dos ícones, taskbar e janelas normais). Só monitor primário. Se o Explorer reiniciar, reabrir o app.
-- Atrás do DefView = sem input (o DefView consome todo hit-test). Por isso existe o `Ctrl+D`. Desenhar "atrás dos ícones" é impossível — é física, não bug.
+- Canvas é filho do Progman elevado acima do `SHELLDLL_DefView` por padrão (acima dos ícones, abaixo de taskbar e janelas normais). Só monitor primário. Se o Explorer reiniciar, o próximo show/mode-change re-embebe e re-eleva.
+- Atrás do DefView = sem input (o DefView consome todo hit-test) — por isso o default é elevado; quem libera o desktop é o cursor (click-through), não mais uma ordem de camada.
 - Overlay desanexa para janela top-level normal e re-anexa ao sair.
 
 ## 9. Critérios de aceite MVP-0
@@ -78,9 +78,9 @@ Planejado v1 (não existe no MVP-0): `Q` toolbar, paleta, atalhos editáveis, `C
 - Kill + reboot: canvas intacto, tray ativo, autostart aponta para o instalado.
 - E2E real (não mock): `scripts/e2e/l4-modes.ps1`, `l5-background.ps1`, `l6-accept.ps1`, `wallpaper-layers.ps1`. Ver `docs/OPERATIONS.md`.
 
-## 10. Não-metas do MVP-0 (não fazer, ir para v1)
+## 10. Não-metas (ir para próximos passos v1)
 
-Toolbar `Q`, 3 brushes, paleta, setas/formas/cards, markdown com fontes, fundo sólido/transparente configurável, imagens/clipboard/arrastar-arquivo, seleção/mover/redimensionar/apagar individual, atalhos editáveis, multi-monitor real, Linux.
+3 brushes, paleta, setas/formas/cards, markdown com fontes, fundo sólido/transparente configurável, imagens/clipboard/arrastar-arquivo, seleção/mover/redimensionar/apagar individual, atalhos editáveis, multi-monitor real, Linux.
 
 ## 11. Esboço v1 (intenção, sem detalhar)
 

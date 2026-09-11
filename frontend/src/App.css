@@ -22,7 +22,6 @@ body,
   position: absolute;
   inset: 0;
   touch-action: none;
-  cursor: crosshair;
 }
 
 .canvie-canvas {
@@ -55,16 +54,99 @@ body,
   outline: none;
 }
 
-.canvie-toolbar-hint {
+/* Overlay focus backdrop: dims the screen behind the canvas content so it
+   is the focus. The real blur comes from the DWM blur-behind (see
+   wallpaper::set_blur): CSS backdrop-filter has no OS-desktop pixels to
+   blur inside a transparent WebView. Rendered only in Overlay Mode, behind
+   strokes/texts/toolbar, and never intercepts pointer input. */
+.canvie-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 10, 0.38);
+  pointer-events: none;
+  animation: canvie-backdrop-in 160ms ease;
+}
+
+@keyframes canvie-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* v1 toolbar: floating button bar above the taskbar. Unlike the old hint
+   pill, it intentionally receives clicks — but only inside its own rect. */
+.canvie-toolbar {
   position: absolute;
   left: 50%;
   bottom: 56px;
   transform: translateX(-50%);
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(20, 20, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.canvie-toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.canvie-tool-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #e8e8e8;
+  cursor: pointer;
+}
+
+.canvie-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.canvie-tool-btn.active {
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
-  font: 13px/1.4 system-ui, 'Segoe UI', sans-serif;
+}
+
+/* Shortcut tooltip above the button, shown on hover. */
+.canvie-tool-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(2px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(20, 20, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: 12px/1.4 system-ui, 'Segoe UI', sans-serif;
   white-space: nowrap;
+  opacity: 0;
   pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.canvie-tool-btn:hover .canvie-tool-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

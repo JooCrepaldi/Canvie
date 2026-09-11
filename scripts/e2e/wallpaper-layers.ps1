@@ -77,23 +77,22 @@ function Show-State([string]$tag) {
   $pcls = if ($par -ne [IntPtr]::Zero) { [WE]::Cls($par) } else { "(desktop-top)" }
   $extra = ""
   if ($pcls -eq "Progman") { $extra = " " + (Sibling-Order $f.h) }
-  Write-Output "$tag parent=[$pcls]$extra"
+  Write-Host "$tag parent=[$pcls]$extra"
   return $f.h
 }
 
-Show-State "BOOT   "
-$wshell.SendKeys("^d"); Start-Sleep -Seconds 2
-Show-State "RAISED "
-$wshell.SendKeys("^d"); Start-Sleep -Seconds 2
-Show-State "LOWERED"
+# v1: boot rests raised above the icon layer (defIdx vs canvasIdx proves
+# order inside Progman). No raise/lower toggle anymore: cursor tool frees
+# the desktop via click-through, Overlay detaches on top.
+Show-State "BOOT   " | Out-Null
 $wshell.SendKeys("^%t"); Start-Sleep -Seconds 3
 $oh = Show-State "OVERLAY"
 if ($oh) { [WE]::SetForegroundWindow($oh) | Out-Null; Start-Sleep -Seconds 1 }
 $wshell.SendKeys("{ESC}"); Start-Sleep -Seconds 2
-Show-State "BACK   "
+Show-State "BACK   " | Out-Null
 
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 Write-Output "--- log file ---"
 Get-ChildItem "$env:LOCALAPPDATA\com.canvie.app\logs" -ErrorAction SilentlyContinue | Select-Object Name
 $lf = Get-ChildItem "$env:LOCALAPPDATA\com.canvie.app\logs\*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
-if ($lf) { Select-String -Path $lf.FullName -Pattern "wallpaper embedded|canvie layer|canvie mode|hotkey registered" | Select-Object -ExpandProperty Line }
+if ($lf) { Select-String -Path $lf.FullName -Pattern "wallpaper embedded|canvie layer|canvie mode|hotkey registered|passthrough|blur|show requested" | Select-Object -ExpandProperty Line }

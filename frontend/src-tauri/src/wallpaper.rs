@@ -133,26 +133,20 @@ pub fn raise(canvas: HWND) -> bool {
   }
 }
 
-/// Lower the canvas back behind the icon layer (resting wallpaper state).
-pub fn lower(canvas: HWND) -> bool {
-  unsafe {
-    let Some(progman) = find_progman() else {
-      return false;
-    };
-    let Some(defview) = find_icon_layer(progman) else {
-      return false;
-    };
-    SetWindowPos(
-      canvas,
-      Some(defview),
-      0,
-      0,
-      0,
-      0,
-      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW,
-    )
-    .is_ok()
-  }
+/// Enable/disable the DWM blur behind the window (Overlay focus mode).
+///
+/// CSS `backdrop-filter` cannot blur the OS desktop behind a transparent
+/// WebView2 window (the page behind the element is empty), so the real blur
+/// comes from the compositor. A null region blurs the entire window.
+pub fn set_blur(canvas: HWND, on: bool) -> bool {
+  use windows::Win32::Graphics::Dwm::{DwmEnableBlurBehindWindow, DWM_BB_ENABLE, DWM_BLURBEHIND};
+  let behind = DWM_BLURBEHIND {
+    dwFlags: DWM_BB_ENABLE,
+    fEnable: on.into(),
+    hRgnBlur: Default::default(),
+    fTransitionOnMaximized: false.into(),
+  };
+  unsafe { DwmEnableBlurBehindWindow(canvas, &behind).is_ok() }
 }
 
 /// Detach the canvas back to a normal top-level window (for Overlay Mode).

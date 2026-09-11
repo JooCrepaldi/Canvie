@@ -37,9 +37,9 @@
 - `register_hotkey` (`285-302`): `ctrl+l`→lock, `ctrl+alt+t`→overlay, `ctrl+d`→draw; registration failure logs warn and keeps running degraded — never crash/block startup.
 - Setup (`320-349`): file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded`, hotkeys.
 - Tray (`405-439`): Show / Lock / Draw / Overlay / Autostart(toggle label) / Quit; `show_menu_on_left_click(true)`.
-- Menu events (`350-385`): show, lock/draw/overlay toggles with warn on failure, autostart toggle by current state, quit.
-- `CloseRequested` → `prevent_close` + `hide` (`386-393`): X goes to tray.
-- Plugins: `single_instance` focuses existing window (`308-314`); `autostart` LaunchAgent/none (`315-318`); `global-shortcut` + `log`.
+- Menu events: show → `show_existing` (re-embed + show + re-emit current mode, never raise/detach), lock/draw/overlay toggles with warn on failure, autostart toggle by current state, quit.
+- `CloseRequested` → `prevent_close` + `hide`: X goes to tray.
+- Plugins: `single_instance` runs `show_existing` on second launch (existing window re-embedded as wallpaper and re-shown, staying behind icons); `autostart` LaunchAgent/none; `global-shortcut` + `log`.
 
 ## 5. How to add a command (L4 pattern — mandatory)
 

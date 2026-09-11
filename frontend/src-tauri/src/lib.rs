@@ -318,15 +318,48 @@ fn register_hotkey(app: &AppHandle, accelerator: &str, action: HotkeyAction) {
   }
 }
 
+/// Re-show the existing window after a manual launch (second instance) or
+/// the tray "Show" entry, without stealing desktop input.
+///
+/// Canvas/Locked live as a Progman child behind the icon layer, where
+/// `show() + set_focus()` alone is a visible no-op: the window stays behind
+/// DefView hit-testing. So re-embed (Explorer may have restarted), ensure
+/// visibility, and re-emit the current mode so the frontend repaints — but
+/// never raise above the icons and never detach to overlay. A click on the
+/// app shortcut therefore always produces feedback while staying quiet.
+fn show_existing(app: &AppHandle) {
+  let mode = ModeState::current(app);
+  if let Some(window) = app.get_webview_window("main") {
+    if mode == Mode::Overlay {
+      let _ = window.show();
+      let _ = window.set_focus();
+    } else {
+      ensure_embedded(app, &window);
+      let _ = window.show();
+      if let Err(e) = app.emit(
+        "canvie-mode",
+        StatePayload {
+          mode: mode.as_str(),
+          raised: ModeState::raised(app),
+        },
+      ) {
+        log::warn!("show_existing emit failed: {e}");
+      }
+    }
+  }
+  log::info!(
+    "show requested -> {} (raised={})",
+    mode.as_str(),
+    ModeState::raised(app)
+  );
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .manage(ModeState::default())
     .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-      if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
-      }
+      show_existing(app);
       log::info!("second instance blocked, focused existing window");
     }))
     .plugin(tauri_plugin_autostart::init(
@@ -366,10 +399,7 @@ pub fn run() {
     })
     .on_menu_event(|app, event| match event.id.as_ref() {
       "show" => {
-        if let Some(window) = app.get_webview_window("main") {
-          let _ = window.show();
-          let _ = window.set_focus();
-        }
+        show_existing(app);
       }
       "lock" => {
         if let Err(e) = toggle_lock_inner(app) {

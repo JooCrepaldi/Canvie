@@ -51,6 +51,7 @@ Armadilhas dos scripts: `MainWindowHandle` aponta para o helper `com.canvie.app-
 | --- | --- |
 | `Ctrl+Alt+T` não entra em overlay | log `hotkey registered`; outra app comeu o atalho; `Win+T` nunca vai funcionar (Explorer) |
 | Canvas atrás dos ícones não recebe clique | esperado — aperte `Ctrl+D` (raise); ver `canvie layer -> raised` no log |
+| Cliquei no atalho e "nada abriu" | esperado se o canvas está vazio (transparente atrás dos ícones é indistinguível do wallpaper) — confira o ícone no tray e o log `show requested -> ...`; `Ctrl+D` eleva para desenhar |
 | Embed falhou, virou overlay fullscreen | log `wallpaper embed failed`; Explorer reiniciou? reabra o app |
 | Doc sumiu | `localStorage canvie.canvas.v1` corrompido → boot vazio por desenho (nunca crasha); cheque DevTools/botão `window.__canvie.export` em dev |
 | Autostart aponta para dev | apague a chave Run e reinstale pelo setup; E2E `AUTOSTART VALUE` deve mostrar `%LOCALAPPDATA%\Canvie` |

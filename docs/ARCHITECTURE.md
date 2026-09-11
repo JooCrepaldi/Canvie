@@ -29,29 +29,31 @@ Three placements, one window:
 
 | Placement | When | Parent / order | Input |
 | --- | --- | --- | --- |
-| Lowered wallpaper | Canvas/Locked resting | Child of Progman, ordered right behind `SHELLDLL_DefView` (`wallpaper.rs:92-117`) | None (DefView eats hit-testing) |
-| Raised wallpaper | Canvas + `raised=true` (or one-press unlock+raise) | Still Progman child, ordered `HWND_TOP` within Progman (`wallpaper.rs:121-134`) — still below taskbar and normal windows | Yes, draws |
-| Overlay | Overlay mode | Detached top-level, `alwaysOnTop(true)` + focus (`lib.rs:143-156`) | Yes, above everything |
+| Raised wallpaper (default) | Canvas resting, boot included | Child of Progman, ordered `HWND_TOP` within Progman (`wallpaper.rs:121-134`) — still below taskbar and normal windows | Brush/eraser draw; cursor tool passes clicks through to the desktop |
+| Lowered wallpaper | Locked resting | Child of Progman, ordered right behind `SHELLDLL_DefView` | None (click-through + DefView eats hit-testing) |
+| Overlay | Overlay mode | Detached top-level, `alwaysOnTop(true)` + focus (`lib.rs:apply_mode`) | Yes, above everything |
 
-Primary monitor only. If Explorer restarts, embedding is lost until next mode change or restart (`wallpaper.rs:10-11`).
+Primary monitor only. If Explorer restarts, embedding is lost until the next show/mode change re-embeds and re-raises (`show_existing`, `apply_mode`).
 
 ## 3. The one state machine
 
-`ModeState` (`lib.rs:36-56`): `current: Canvas|Locked|Overlay`, `return_to` (where Overlay returns), `embedded: bool`, `raised: bool` (only meaningful in Canvas; reset on mode change).
+`ModeState` (`lib.rs`): `current: Canvas|Locked|Overlay`, `return_to` (where Overlay returns), `embedded: bool`, `raised: bool` (true by default in Canvas after setup; reset on mode change), `passthrough: bool` (cursor tool active, default true).
 
 Transitions (all in `lib.rs`):
 
-- `toggle_lock_inner` (`224-238`): Canvas↔Locked; no-op in Overlay.
-- `toggle_overlay_inner` (`240-259`): stores `return_to`, enters Overlay; toggling off applies `return_to`.
-- `toggle_draw_inner` (`207-222`): Overlay→no-op; Locked→apply Canvas + raise; Canvas→flip `raised`.
-- `apply_mode` (`122-176`): Canvas/Locked clears topmost, sets click-through for Locked, re-embeds AFTER tao calls, re-raises if flag set; Overlay detaches, clears raised, sets topmost + show + focus. Emits `canvie-mode {mode, raised}`.
-- `set_raised` (`180-205`): Win32 raise/lower + emit.
+- `toggle_lock_inner`: Canvas↔Locked; no-op in Overlay.
+- `toggle_overlay_inner`: stores `return_to`, enters Overlay; toggling off applies `return_to`.
+- `apply_mode`: Canvas/Locked clears topmost, sets click-through (`Locked || (Canvas && passthrough)`), re-embeds AFTER tao calls, re-raises if flag set; Overlay detaches, clears raised, forces interactive, sets topmost + show + focus. Emits `canvie-mode {mode, raised}`.
+- `set_raised`: Win32 raise/lower + emit.
+- `set_passthrough(active)` command: stores the flag, then `apply_input` (ignore + re-embed + re-raise in Canvas). Never call the Tauri JS window API for this from the frontend: it would drop `WS_CHILD` without re-embedding.
+- `show_existing` (second launch + tray Show): Overlay→show+focus; else re-embed, restore raised order in Canvas, show, re-emit mode.
+- Tray tool entries (cursor/brush/eraser) only emit `canvie-tool {tool}`; the frontend owns tool state and calls `set_passthrough` on change.
 
-Frontend never invents mode: `getMode()` on boot + `onModeChanged` subscription (`mode.ts:15-49`, consumed in `Canvas.tsx:133-141`).
+Frontend never invents mode: `getMode()` (now `{mode, raised}`) on boot + `onModeChanged` subscription (`mode.ts`, consumed in `Canvas.tsx`).
 
 ## 4. Frontend/backend bridge
 
-Commands (`build.rs:4` + `capabilities/default.json:10-13` + `invoke_handler` `lib.rs:394-399`): `get_mode`, `toggle_lock`, `toggle_overlay`, `toggle_draw`. Every `mode.ts` wrapper has try/catch fallback to a working canvas when Tauri APIs are absent (browser dev). Same for storage (`persistence.ts:19-28` returns null adapter → in-memory only).
+Commands (`build.rs` + `capabilities/default.json` + `invoke_handler` in `lib.rs`): `get_mode` (returns `{mode, raised}`), `toggle_lock`, `toggle_overlay`, `set_passthrough`. Every `mode.ts` wrapper has try/catch fallback to a working canvas when Tauri APIs are absent (browser dev). Same for storage (`persistence.ts:19-28` returns null adapter → in-memory only).
 
 ## 5. Ownership map (do not duplicate)
 
@@ -59,10 +61,10 @@ Commands (`build.rs:4` + `capabilities/default.json:10-13` + `invoke_handler` `l
 | --- | --- | --- |
 | Win32 layering | `wallpaper.rs` | embed / raise / lower / detach, Progman + DefView lookup |
 | Modes + tray + hotkeys | `lib.rs` | `ModeState`, `apply_mode`, `build_tray`, `register_hotkey`, close→hide |
-| Drawing + camera + tools | `Canvas.tsx` | DPR render, `screenToWorld`/`worldToScreen`, drafts in refs, undo/redo stacks |
-| Doc model + validation | `persistence.ts` + `canvasTypes.ts` | `CanvasDoc v1`, `STORAGE_KEY=canvie.canvas.v1`, `parseDoc`, `createSaver(500)`, `reseedIds` |
-| Mode bridge | `mode.ts` | `inTauri`, `getMode`, `toggleOverlay/toggleDraw`, `onModeChanged` |
-| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds, pill `pointer-events: none` |
+| Drawing + camera + tools | `Canvas.tsx` | DPR render, `screenToWorld`/`worldToScreen`, drafts in refs, undo/redo stacks, Toolbar with hover tooltips |
+| Doc model + validation | `persistence.ts` + `canvasTypes.ts` | `CanvasDoc v1`, `STORAGE_KEY=canvie.canvas.v1`, `parseDoc`, `createSaver(500)`, `reseedIds`, `Tool='cursor'\|'brush'\|'eraser'` |
+| Mode bridge | `mode.ts` | `inTauri`, `getMode`, `toggleLock/toggleOverlay`, `setPassthrough`, `onModeChanged/onToolChanged` |
+| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds except the toolbar itself, which eats clicks only inside its own rect |
 
 ## 6. Data model
 
@@ -72,8 +74,9 @@ Commands (`build.rs:4` + `capabilities/default.json:10-13` + `invoke_handler` `l
 
 - **Progman, not WorkerW.** This Win11 shell has no spare fullscreen WorkerW; Progman hosts `SHELLDLL_DefView` directly. Canvas is a Progman child behind the icon layer (`wallpaper.rs:1-11`).
 - **Embed AFTER tao.** `tao` rewrites `GWL_STYLE` on `set_always_on_top` / `set_ignore_cursor_events`, dropping `WS_CHILD`. Every Canvas/Locked transition re-embeds after those calls (`lib.rs:99-101`, `132`). No exceptions.
-- **Behind means no input.** DefView consumes all hit-testing behind the icon layer. Drawing there is impossible; the raise toggle exists because of this. Not a bug.
-- **`Win+T` belongs to Explorer.** `RegisterHotKey` fails "already registered". MVP-0 uses `Ctrl+Alt+T` (`lib.rs:341-344`) until a product decision changes it — which must update PRD + README + code together.
+- **Behind means no input.** DefView consumes all hit-testing behind the icon layer. That is why Canvas rests raised; the cursor frees the desktop via click-through instead of layer order. Not a bug.
+- **`Win+T` belongs to Explorer.** `RegisterHotKey` fails "already registered". v1 uses `Ctrl+Alt+T` (`lib.rs`) until a product decision changes it — which must update PRD + README + code together.
+- **Bare letters can't be global shortcuts.** `V`/`B`/`E` work when the Canvie window is focused; with click-through on, the way back to the brush is the toolbar, the tray menu, or the app shortcut. A global bare `B` would steal typing system-wide.
 - **Persistence via localStorage is enough for MVP-0.** No dedicated Rust file command; WebView2 profile in `%APPDATA%/com.canvie.app` holds `canvie.canvas.v1`. Never loses data by crashing on corrupt JSON.
 - **Transparency is total or broken.** One opaque layer (`html/body/#root`, window config, shell CSS) kills the wallpaper illusion.
 - **Single instance + close→tray + autostart-to-installed.** Second instance focuses the first; X hides; Run key must point at `%LOCALAPPDATA%\Canvie\canvie.exe`, never a dev binary.

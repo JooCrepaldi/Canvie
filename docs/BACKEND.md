@@ -7,21 +7,22 @@
 | File | Owns |
 | --- | --- |
 | `src/main.rs` | Release `windows_subsystem` guard + `canvie_lib::run()` |
-| `src/lib.rs` | `ModeState`, `apply_mode`, `toggle_*`, commands, hotkeys, tray, close→hide, plugins setup |
+| `src/lib.rs` | `ModeState` (+`passthrough`), `apply_mode`, `set_passthrough`/`apply_input`, `show_existing`, commands, hotkeys, tray, close→hide, plugins setup |
 | `src/wallpaper.rs` | Progman parenting: `embed` / `raise` / `lower` / `detach` |
-| `build.rs` | `AppManifest::commands(["get_mode","toggle_lock","toggle_overlay","toggle_draw"])` — ACL guardrail |
-| `capabilities/default.json` | `allow-get-mode`, `allow-toggle-lock`, `allow-toggle-overlay`, `allow-toggle-draw` on window `main` |
+| `build.rs` | `AppManifest::commands(["get_mode","toggle_lock","toggle_overlay","set_passthrough"])` — ACL guardrail |
+| `capabilities/default.json` | `allow-get-mode`, `allow-toggle-lock`, `allow-toggle-overlay`, `allow-set-passthrough` on window `main` |
 | `tauri.conf.json` | `main` window: fullscreen, transparent, undecorated, `skipTaskbar`; bundle icons |
 | `Cargo.toml` | tauri 2 + plugins (autostart, global-shortcut, log, single-instance) + `windows` crate limited to `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` |
 
 ## 2. State machine
 
-`ModeState { current, return_to, embedded, raised }` (`src/lib.rs:36-56`, `Default` Canvas/false/false). Helpers `current/raised/set_raised/set_embedded` use `try_state` + `Mutex`, defaulting safely (`64-94`).
+`ModeState { current, return_to, embedded, raised, passthrough }` (`src/lib.rs`, `Default` Canvas/false/false/true — cursor is the default tool). Helpers `current/raised/passthrough/set_raised/set_embedded` use `try_state` + `Mutex`, defaulting safely.
 
-- `apply_mode` (`122-176`): Canvas/Locked → clear topmost, click-through iff Locked, **re-embed AFTER tao**, re-raise if flag; Locked zeroes raised; Overlay → detach, clear raised/embedded, clear click-through, topmost + unminimize/show/focus. Persists `current`, logs `canvie mode -> {}`, emits `canvie-mode`.
-- `set_raised` (`180-205`): Win32 raise/lower, error `"layer change failed"`, logs `canvie layer ->`, emits.
-- Toggles: lock Canvas↔Locked (Overlay no-op) `224-238`; overlay with `return_to` `240-259`; draw Overlay no-op / Locked→Canvas+raise / Canvas flip `207-222`.
-- Commands are thin wrappers (`261-283`): `get_mode`, `toggle_lock`, `toggle_overlay`, `toggle_draw`.
+- `apply_mode`: Canvas/Locked → clear topmost, click-through iff `Locked || (Canvas && passthrough)`, **re-embed AFTER tao**, re-raise if flag; Locked zeroes raised; Overlay → detach, clear raised, force interactive, topmost + unminimize/show/focus. Persists `current`, logs `canvie mode -> {}`, emits `canvie-mode`.
+- `set_raised`: Win32 raise/lower, error `"layer change failed"`, logs `canvie layer ->`, emits. Called once at setup (default raised) and by `show_existing`.
+- `set_passthrough(active)` command: stores the cursor-tool flag, then `apply_input` (ignore + re-embed + re-raise in Canvas), logs `passthrough -> on/off`.
+- Toggles: lock Canvas↔Locked (Overlay no-op); overlay with `return_to`.
+- Commands are thin wrappers: `get_mode` (returns `{mode, raised}`), `toggle_lock`, `toggle_overlay`, `set_passthrough`.
 
 ## 3. Win32 layering (`wallpaper.rs`)
 
@@ -34,12 +35,12 @@
 
 ## 4. Shortcuts, tray, lifecycle (`lib.rs:304-439`)
 
-- `register_hotkey` (`285-302`): `ctrl+l`→lock, `ctrl+alt+t`→overlay, `ctrl+d`→draw; registration failure logs warn and keeps running degraded — never crash/block startup.
-- Setup (`320-349`): file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded`, hotkeys.
-- Tray (`405-439`): Show / Lock / Draw / Overlay / Autostart(toggle label) / Quit; `show_menu_on_left_click(true)`.
-- Menu events: show → `show_existing` (re-embed + show + re-emit current mode, never raise/detach), lock/draw/overlay toggles with warn on failure, autostart toggle by current state, quit.
+- `register_hotkey`: `ctrl+l`→lock, `ctrl+alt+t`→overlay; registration failure logs warn and keeps running degraded — never crash/block startup.
+- Setup: file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded` + `set_raised(true)` + `apply_input` (boot raised, cursor passthrough on), hotkeys.
+- Tray: Show / Cursor / Brush / Eraser / Lock / Overlay / Autostart(toggle label) / Quit; `show_menu_on_left_click(true)`. Tool entries emit `canvie-tool`; Show runs `show_existing` (re-embed + restore raised order in Canvas + show + re-emit).
+- Menu events: show_existing, lock/overlay toggles with warn on failure, autostart toggle by current state, quit.
 - `CloseRequested` → `prevent_close` + `hide`: X goes to tray.
-- Plugins: `single_instance` runs `show_existing` on second launch (existing window re-embedded as wallpaper and re-shown, staying behind icons); `autostart` LaunchAgent/none; `global-shortcut` + `log`.
+- Plugins: `single_instance` runs `show_existing` on second launch; `autostart` LaunchAgent/none; `global-shortcut` + `log`.
 
 ## 5. How to add a command (L4 pattern — mandatory)
 

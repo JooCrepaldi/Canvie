@@ -136,8 +136,8 @@ Always:
 ### 10. Technical invariants — never break
 
 - **Embed AFTER tao.** `tao` rewrites `GWL_STYLE` wholesale on `set_always_on_top` / `set_ignore_cursor_events`, silently dropping our `WS_CHILD`. Any layer transition re-embeds (or re-asserts raise) after every tao call. No exceptions.
-- **Progman, not WorkerW.** On this Win11 shell there is no spare fullscreen WorkerW: Progman is the bottom surface and hosts `SHELLDLL_DefView` directly. The canvas is a Progman child ordered behind the icon layer; raised above it only to draw (`Ctrl+D`).
-- **Behind means no input.** A window behind the icon layer never receives clicks (DefView eats all hit-testing) — that is physics, not a bug. Drawing behind icons is impossible; the raise toggle exists because of this.
+- **Progman, not WorkerW.** On this Win11 shell there is no spare fullscreen WorkerW: Progman is the bottom surface and hosts `SHELLDLL_DefView` directly. The canvas is a Progman child resting raised above the icon layer (below taskbar/windows); Locked rests behind it.
+- **Behind means no input.** A window behind the icon layer never receives clicks (DefView eats all hit-testing) — that is physics, not a bug. The desktop stays usable via the cursor tool (window click-through), not layer order.
 - **`Win+T` belongs to Explorer.** `RegisterHotKey` fails with "already registered". MVP-0 uses `Ctrl+Alt+T` until a product decision says otherwise.
 - **Persistence never loses data.** `loadDoc()` validates; corrupted JSON returns null and the app boots empty — never crashes. Id counters reseed past restored ids. Saves are debounced (~500ms).
 - **Transparency is total.** `html/body/#root` transparent, Tauri window `transparent: true`, no opaque backgrounds anywhere in the shell. A single opaque layer breaks the wallpaper illusion.
@@ -149,7 +149,8 @@ Always:
 - UI strings in pt-BR, code/comments in English. Copy lives inline for MVP-0 scale (extract when v1 toolbar lands).
 - Styling: plain CSS next to components (`App.css`, `index.css`). No CSS framework until v1 earns it.
 - Canvas: one `<canvas>` element, DPR-aware, camera transform (`screenToWorld`/`worldToScreen`); strokes/texts as state, drafts in refs (no re-render per pointermove); undo/redo as action stacks in memory.
-- The toolbar hint pill is `pointer-events: none`, centered above the taskbar — it must never eat clicks meant for the desktop.
+- The toolbar is always visible above the taskbar and eats clicks only inside its own rect; with click-through on (cursor/Lock) it is visibly unreachable — tray/keys are the way back.
+- Click-through is owned by Rust (`set_passthrough` + re-embed + re-raise); the frontend never calls the Tauri window API for it. Bare `V`/`B`/`E` are frontend-only (never global — a bare `B` would steal typing system-wide).
 - No dead code, no commented-out code, no forgotten TODOs.
 
 ### 12. Rust standards
@@ -205,4 +206,4 @@ After any meaningful decision, ask: "does this need to enter the documentation?"
 - PowerShell 5.1: no `&&` (use `; if ($?) { }`), `$pid` is reserved, `SendKeys` needs a `WScript.Shell` object, `Set-ExecutionPolicy Bypass -File` for scripts.
 - Window handles lie: `MainWindowHandle` points at the `com.canvie.app-sic` helper, not the canvas. Locate `Tauri Window` by PID; after embedding it is a Progman child, invisible to top-level enumeration — search Progman children first.
 
-**Current state (MVP-0 complete):** L0 scaffold → L1 transparent shell → L2 minimal canvas → L3 local autosave → L4 modes + global shortcuts → L5 tray/autostart/single-instance → L6 installable release → wallpaper embedding (Progman child behind icons) → draw-layer toggle (`Ctrl+D`) + centered pill. Tag `mvp-0-instalavel` marks the pre-wallpaper installer. Manual-only so far: hand drawing feel, tray menu clicks, reboot-with-canvas. Next: v1 (toolbar `Q`, brushes, markdown, backgrounds) per README.
+**Current state (v1 started):** MVP-0 complete through wallpaper embedding + draw-layer toggle + centered pill (tag `mvp-0-instalavel` marks the pre-wallpaper installer) → v1 slice 1: canvas rests raised by default, cursor/brush/eraser toolbar with hover tooltips (`V`/`B`/`E`), click-through cursor frees the desktop, `Ctrl+D` removed. Next: brushes, markdown, backgrounds per README.

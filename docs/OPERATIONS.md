@@ -24,7 +24,7 @@ Sempre `CARGO_BUILD_JOBS=1` nesta máquina (5.9GB RAM). Nunca rode cargo com cwd
 | `scripts/e2e/l4-modes.ps1` | `Ctrl+L` lock/unlock, `Ctrl+Alt+T` overlay, `Esc` volta | log stdout com `hotkey\|canvie mode` |
 | `scripts/e2e/l5-background.ps1` | Run key, close→tray vivo, 2ª instância sai | `AUTOSTART KEY`, `CLOSE->HIDE OK`, `SINGLE-INSTANCE OK`, linhas `autostart\|tray\|second instance\|hidden to tray` |
 | `scripts/e2e/l6-accept.ps1` | Instalado abre < 5s, idle RAM/CPU, overlay TOPMOST on/off via `GetWindowLong`, lock sem crash, close→tray, valor do Run | `OPEN OK`, `IDLE:`, `OVERLAY TOPMOST:`, `OVERLAY EXITED:`, `LOCK TOGGLE NO-CRASH:`, `CLOSE->TRAY:`, `AUTOSTART VALUE:` |
-| `scripts/e2e/wallpaper-layers.ps1` | boot elevado (Progman, acima dos ícones), overlay detach, `Esc` volta elevado | `BOOT/OVERLAY/BACK parent=[...]`, log `wallpaper embedded\|canvie layer\|canvie mode\|passthrough\|show requested\|hotkey registered` |
+| `scripts/e2e/wallpaper-layers.ps1` | boot elevado (Progman, acima dos ícones), overlay detach, `Esc` volta elevado | `BOOT/OVERLAY/BACK parent=[...]`, log `wallpaper embedded\|canvie layer\|canvie mode\|passthrough\|blur\|show requested\|hotkey registered` |
 
 Manual restante (assumir como não-probado até fazer): feel do desenho à mão, cliques no menu do tray, transparência visual, reboot-com-canvas.
 
@@ -53,6 +53,7 @@ Armadilhas dos scripts: `MainWindowHandle` aponta para o helper `com.canvie.app-
 | Com cursor, cliques não desenham | esperado — cursor é click-through de propósito; volte ao pincel com `B` (janela focada), botão da toolbar ou tray |
 | `B` não volta ao pincel | a janela perdeu o foco (cursor passa cliques, inclusive o foco, ao desktop) — use o tray ou clique no atalho; `B` puro nunca será global (roubaria a digitação no Windows inteiro) |
 | Toolbar visível mas não clica | esperado com click-through ligado (cursor/lock): ela indica presença; troque pelo tray |
+| Overlay sem blur (só escurece) | log `blur enable failed` — DWM recusou; reporte com a linha do log |
 | Embed falhou, virou overlay fullscreen | log `wallpaper embed failed`; Explorer reiniciou? reabra o app |
 | Doc sumiu | `localStorage canvie.canvas.v1` corrompido → boot vazio por desenho (nunca crasha); cheque DevTools/botão `window.__canvie.export` em dev |
 | Autostart aponta para dev | apague a chave Run e reinstale pelo setup; E2E `AUTOSTART VALUE` deve mostrar `%LOCALAPPDATA%\Canvie` |

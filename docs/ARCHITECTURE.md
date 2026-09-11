@@ -29,9 +29,8 @@ Three placements, one window:
 
 | Placement | When | Parent / order | Input |
 | --- | --- | --- | --- |
-| Raised wallpaper (default) | Canvas resting, boot included | Child of Progman, ordered `HWND_TOP` within Progman (`wallpaper.rs:121-134`) — still below taskbar and normal windows | Brush/eraser draw; cursor tool passes clicks through to the desktop |
-| Lowered wallpaper | Locked resting | Child of Progman, ordered right behind `SHELLDLL_DefView` | None (click-through + DefView eats hit-testing) |
-| Overlay | Overlay mode | Detached top-level, `alwaysOnTop(true)` + focus (`lib.rs:apply_mode`) | Yes, above everything |
+| Raised wallpaper (default) | Canvas/Locked resting, boot included | Child of Progman, ordered `HWND_TOP` within Progman — still below taskbar and normal windows | Brush/eraser draw; cursor tool and Locked pass clicks through to the desktop (everything stays visible) |
+| Overlay | Overlay mode | Detached top-level, `alwaysOnTop(true)` + focus + DWM blur-behind | Yes, above everything, desktop blurred + dimmed behind the canvas |
 
 Primary monitor only. If Explorer restarts, embedding is lost until the next show/mode change re-embeds and re-raises (`show_existing`, `apply_mode`).
 
@@ -43,8 +42,8 @@ Transitions (all in `lib.rs`):
 
 - `toggle_lock_inner`: Canvas↔Locked; no-op in Overlay.
 - `toggle_overlay_inner`: stores `return_to`, enters Overlay; toggling off applies `return_to`.
-- `apply_mode`: Canvas/Locked clears topmost, sets click-through (`Locked || (Canvas && passthrough)`), re-embeds AFTER tao calls, re-raises if flag set; Overlay detaches, clears raised, forces interactive, sets topmost + show + focus. Emits `canvie-mode {mode, raised}`.
-- `set_raised`: Win32 raise/lower + emit.
+- `apply_mode`: Canvas/Locked clears topmost, sets click-through (`Locked || (Canvas && passthrough)`), re-embeds AFTER tao calls, restores raised order in both, DWM blur off; Overlay detaches, DWM blur on, forces interactive, sets topmost + show + focus. Emits `canvie-mode {mode, raised}`.
+- `raise_canvas`: Win32 raise + emit (setup default).
 - `set_passthrough(active)` command: stores the flag, then `apply_input` (ignore + re-embed + re-raise in Canvas). Never call the Tauri JS window API for this from the frontend: it would drop `WS_CHILD` without re-embedding.
 - `show_existing` (second launch + tray Show): Overlay→show+focus; else re-embed, restore raised order in Canvas, show, re-emit mode.
 - Tray tool entries (cursor/brush/eraser) only emit `canvie-tool {tool}`; the frontend owns tool state and calls `set_passthrough` on change.
@@ -64,7 +63,7 @@ Commands (`build.rs` + `capabilities/default.json` + `invoke_handler` in `lib.rs
 | Drawing + camera + tools | `Canvas.tsx` | DPR render, `screenToWorld`/`worldToScreen`, drafts in refs, undo/redo stacks, Toolbar with hover tooltips |
 | Doc model + validation | `persistence.ts` + `canvasTypes.ts` | `CanvasDoc v1`, `STORAGE_KEY=canvie.canvas.v1`, `parseDoc`, `createSaver(500)`, `reseedIds`, `Tool='cursor'\|'brush'\|'eraser'` |
 | Mode bridge | `mode.ts` | `inTauri`, `getMode`, `toggleLock/toggleOverlay`, `setPassthrough`, `onModeChanged/onToolChanged` |
-| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds in Canvas/Locked except the toolbar itself (clicks only in its own rect); Overlay adds a fullscreen blur+dim backdrop behind canvas content |
+| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds in Canvas/Locked except the toolbar itself (clicks only in its own rect); Overlay adds the DWM blur-behind plus a dim backdrop div behind canvas content |
 
 ## 6. Data model
 

@@ -26,4 +26,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-log = "2"
 tauri-plugin-single-instance = "2"
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+# Win32 surface is deliberately tiny: Foundation + Messaging for Progman
+# parenting, plus Graphics_Dwm for the Overlay blur-behind (CSS
+# backdrop-filter cannot blur the OS desktop behind a transparent WebView).
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Dwm"] }

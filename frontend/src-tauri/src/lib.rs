@@ -136,8 +136,21 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   let window = app
     .get_webview_window("main")
     .ok_or("main window not found")?;
+  let prev = ModeState::current(app);
   match mode {
     Mode::Canvas | Mode::Locked => {
+      // Disable the Overlay blur BEFORE re-embedding: DWM blur-behind only
+      // applies to top-level windows, so leaving Overlay must switch it
+      // off while still detached.
+      if prev == Mode::Overlay {
+        if let Ok(hwnd) = window.hwnd() {
+          if wallpaper::set_blur(hwnd, false) {
+            log::info!("blur -> off");
+          } else {
+            log::warn!("blur disable failed");
+          }
+        }
+      }
       window.set_always_on_top(false).map_err(|e| e.to_string())?;
       // Locked always passes clicks through; Canvas does when the cursor
       // tool is active. Overlay (below) is always interactive.
@@ -147,24 +160,22 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
       // Re-embed AFTER the tao calls above: they rewrite GWL_STYLE wholesale.
       ensure_embedded(app, &window);
-      if mode == Mode::Locked {
-        // A frozen canvas rests behind the icon layer; clicks pass
-        // through regardless of order.
-        ModeState::set_raised(app, false);
-        if let Ok(hwnd) = window.hwnd() {
-          wallpaper::lower(hwnd);
-        }
-      } else {
-        // v1: Canvas rests raised above the icon layer by default.
-        ModeState::set_raised(app, true);
-        if let Ok(hwnd) = window.hwnd() {
-          wallpaper::raise(hwnd);
-        }
+      // v1: wallpaper modes rest raised above the icon layer; Locked frees
+      // the desktop via click-through, so nothing ever disappears behind
+      // the icons when leaving Overlay.
+      ModeState::set_raised(app, true);
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::raise(hwnd);
       }
     }
     Mode::Overlay => {
       if let Ok(hwnd) = window.hwnd() {
         wallpaper::detach(hwnd);
+        if wallpaper::set_blur(hwnd, true) {
+          log::info!("blur -> on");
+        } else {
+          log::warn!("blur enable failed");
+        }
       }
       ModeState::set_embedded(app, false);
       ModeState::set_raised(app, false);
@@ -197,29 +208,24 @@ fn apply_mode(app: &AppHandle, mode: Mode) -> Result<String, String> {
   Ok(mode.as_str().to_string())
 }
 
-/// Raise/lower the canvas inside Progman so the user can draw on the
-/// wallpaper itself (behind icons when lowered). No-op in Overlay Mode.
-fn set_raised(app: &AppHandle, raised: bool) -> Result<(), String> {
+/// Raise the canvas above the icon layer (v1 resting order). Logs and
+/// emits so the frontend and the log file observe the order.
+fn raise_canvas(app: &AppHandle) -> Result<(), String> {
   let window = app
     .get_webview_window("main")
     .ok_or("main window not found")?;
   let hwnd = window.hwnd().map_err(|e| e.to_string())?;
-  let ok = if raised {
-    wallpaper::raise(hwnd)
-  } else {
-    wallpaper::lower(hwnd)
-  };
-  if !ok {
+  if !wallpaper::raise(hwnd) {
     return Err("layer change failed".to_string());
   }
-  ModeState::set_raised(app, raised);
-  log::info!("canvie layer -> {}", if raised { "raised" } else { "lowered" });
+  ModeState::set_raised(app, true);
+  log::info!("canvie layer -> raised");
   app
     .emit(
       "canvie-mode",
       StatePayload {
         mode: ModeState::current(app).as_str(),
-        raised,
+        raised: true,
       },
     )
     .map_err(|e| e.to_string())?;
@@ -376,14 +382,20 @@ fn show_existing(app: &AppHandle) {
   let mode = ModeState::current(app);
   if let Some(window) = app.get_webview_window("main") {
     if mode == Mode::Overlay {
+      if let Ok(hwnd) = window.hwnd() {
+        if !wallpaper::set_blur(hwnd, true) {
+          log::warn!("blur enable failed");
+        }
+      }
       let _ = window.show();
       let _ = window.set_focus();
     } else {
       ensure_embedded(app, &window);
-      if mode == Mode::Canvas && ModeState::raised(app) {
-        if let Ok(hwnd) = window.hwnd() {
-          wallpaper::raise(hwnd);
-        }
+      if let Ok(hwnd) = window.hwnd() {
+        wallpaper::raise(hwnd);
+        // Best-effort drift cleanup (authoritative blur state is set by
+        // apply_mode, which switches it off while still top-level).
+        let _ = wallpaper::set_blur(hwnd, false);
       }
       let _ = window.show();
       if let Err(e) = app.emit(
@@ -438,7 +450,7 @@ pub fn run() {
       build_tray(app.handle())?;
       if let Some(window) = app.get_webview_window("main") {
         ensure_embedded(app.handle(), &window);
-        if let Err(e) = set_raised(app.handle(), true) {
+        if let Err(e) = raise_canvas(app.handle()) {
           log::warn!("default raise failed: {e}");
         }
         if let Err(e) = apply_input(app.handle()) {

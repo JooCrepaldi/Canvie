@@ -136,8 +136,8 @@ Always:
 ### 10. Technical invariants — never break
 
 - **Embed AFTER tao.** `tao` rewrites `GWL_STYLE` wholesale on `set_always_on_top` / `set_ignore_cursor_events`, silently dropping our `WS_CHILD`. Any layer transition re-embeds (or re-asserts raise) after every tao call. No exceptions.
-- **Progman, not WorkerW.** On this Win11 shell there is no spare fullscreen WorkerW: Progman is the bottom surface and hosts `SHELLDLL_DefView` directly. The canvas is a Progman child resting raised above the icon layer (below taskbar/windows); Locked rests behind it.
-- **Behind means no input.** A window behind the icon layer never receives clicks (DefView eats all hit-testing) — that is physics, not a bug. The desktop stays usable via the cursor tool (window click-through), not layer order.
+- **Progman, not WorkerW.** On this Win11 shell there is no spare fullscreen WorkerW: Progman is the bottom surface and hosts `SHELLDLL_DefView` directly. The canvas is a Progman child resting raised above the icon layer (below taskbar/windows) in Canvas and Locked alike; Locked frees the desktop via click-through.
+- **Behind means no input.** A window behind the icon layer never receives clicks (DefView eats all hit-testing) — that is physics, not a bug. Nothing rests behind the icons anymore; the desktop stays usable via the cursor tool (window click-through), not layer order.
 - **`Win+T` belongs to Explorer.** `RegisterHotKey` fails with "already registered". MVP-0 uses `Ctrl+Alt+T` until a product decision says otherwise.
 - **Persistence never loses data.** `loadDoc()` validates; corrupted JSON returns null and the app boots empty — never crashes. Id counters reseed past restored ids. Saves are debounced (~500ms).
 - **Transparency is total.** `html/body/#root` transparent, Tauri window `transparent: true`, no opaque backgrounds anywhere in the shell. A single opaque layer breaks the wallpaper illusion.
@@ -158,7 +158,7 @@ Always:
 - `cargo check` clean with no new warnings. Comments only for constraints the code can't express (Win32 quirks qualify; narrating the next line doesn't).
 - New commands follow the L4 pattern: `#[tauri::command]` + `AppManifest::commands` entry + `allow-*` capability + frontend wrapper in `mode.ts` with try/catch fallback.
 - Log state transitions (`mode ->`, `layer ->`, `hotkey registered`) — in release the log file is the only trace.
-- Keep `windows`-crate usage to `Win32_Foundation` + `Win32_UI_WindowsAndMessaging`. No new Win32 surface without a comment explaining why.
+- Keep `windows`-crate usage to `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` (Dwm is only the Overlay blur-behind). No new Win32 surface without a comment explaining why.
 
 ### 13. Quality bar
 

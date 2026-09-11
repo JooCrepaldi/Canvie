@@ -8,18 +8,18 @@
 | --- | --- |
 | `src/main.rs` | Release `windows_subsystem` guard + `canvie_lib::run()` |
 | `src/lib.rs` | `ModeState` (+`passthrough`), `apply_mode`, `set_passthrough`/`apply_input`, `show_existing`, commands, hotkeys, tray, close→hide, plugins setup |
-| `src/wallpaper.rs` | Progman parenting: `embed` / `raise` / `lower` / `detach` |
+| `src/wallpaper.rs` | Progman parenting: `embed` / `raise` / `detach`, plus `set_blur` (DWM blur-behind for Overlay) |
 | `build.rs` | `AppManifest::commands(["get_mode","toggle_lock","toggle_overlay","set_passthrough"])` — ACL guardrail |
 | `capabilities/default.json` | `allow-get-mode`, `allow-toggle-lock`, `allow-toggle-overlay`, `allow-set-passthrough` on window `main` |
 | `tauri.conf.json` | `main` window: fullscreen, transparent, undecorated, `skipTaskbar`; bundle icons |
-| `Cargo.toml` | tauri 2 + plugins (autostart, global-shortcut, log, single-instance) + `windows` crate limited to `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` |
+| `Cargo.toml` | tauri 2 + plugins (autostart, global-shortcut, log, single-instance) + `windows` crate (`Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` for the Overlay blur) |
 
 ## 2. State machine
 
 `ModeState { current, return_to, embedded, raised, passthrough }` (`src/lib.rs`, `Default` Canvas/false/false/true — cursor is the default tool). Helpers `current/raised/passthrough/set_raised/set_embedded` use `try_state` + `Mutex`, defaulting safely.
 
-- `apply_mode`: Canvas/Locked → clear topmost, click-through iff `Locked || (Canvas && passthrough)`, **re-embed AFTER tao**, re-raise if flag; Locked zeroes raised; Overlay → detach, clear raised, force interactive, topmost + unminimize/show/focus. Persists `current`, logs `canvie mode -> {}`, emits `canvie-mode`.
-- `set_raised`: Win32 raise/lower, error `"layer change failed"`, logs `canvie layer ->`, emits. Called once at setup (default raised) and by `show_existing`.
+- `apply_mode`: Canvas/Locked → clear topmost, click-through iff `Locked || (Canvas && passthrough)`, **re-embed AFTER tao**, restore raised order (both rest raised — Locked frees the desktop via click-through, nothing hides behind the icons), DWM blur off. Overlay → detach, DWM blur on (`blur -> on`), force interactive, topmost + unminimize/show/focus. Persists `current`, logs `canvie mode -> {}`, emits `canvie-mode`.
+- `raise_canvas`: Win32 raise + flag + `canvie layer -> raised` log + emit. Called once at setup (default raised).
 - `set_passthrough(active)` command: stores the cursor-tool flag, then `apply_input` (ignore + re-embed + re-raise in Canvas), logs `passthrough -> on/off`.
 - Toggles: lock Canvas↔Locked (Overlay no-op); overlay with `return_to`.
 - Commands are thin wrappers: `get_mode` (returns `{mode, raised}`), `toggle_lock`, `toggle_overlay`, `set_passthrough`.
@@ -36,7 +36,7 @@
 ## 4. Shortcuts, tray, lifecycle (`lib.rs:304-439`)
 
 - `register_hotkey`: `ctrl+l`→lock, `ctrl+alt+t`→overlay; registration failure logs warn and keeps running degraded — never crash/block startup.
-- Setup: file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded` + `set_raised(true)` + `apply_input` (boot raised, cursor passthrough on), hotkeys.
+- Setup: file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded` + `raise_canvas` + `apply_input` (boot raised, cursor passthrough on), hotkeys.
 - Tray: Show / Cursor / Brush / Eraser / Lock / Overlay / Autostart(toggle label) / Quit; `show_menu_on_left_click(true)`. Tool entries emit `canvie-tool`; Show runs `show_existing` (re-embed + restore raised order in Canvas + show + re-emit).
 - Menu events: show_existing, lock/overlay toggles with warn on failure, autostart toggle by current state, quit.
 - `CloseRequested` → `prevent_close` + `hide`: X goes to tray.
@@ -52,6 +52,6 @@ Missing step 2/3 fails the build — that failure is the guardrail working.
 
 ## 6. Constraints
 
-- `windows`-crate surface stays at `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` (`Cargo.toml:29`); new Win32 surface needs a comment explaining why.
+- `windows`-crate surface stays at `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` (`Cargo.toml`; Dwm is only the Overlay blur-behind — CSS cannot blur the OS desktop); new Win32 surface needs a comment explaining why.
 - Log transitions (`mode ->`, `layer ->`, `hotkey registered`) — in release the log file is the only trace.
 - Never: second instance, Run key to dev binary, elevated execution, writes outside `%APPDATA%/com.canvie.app` + Run key, Explorer patching beyond `SetParent`.

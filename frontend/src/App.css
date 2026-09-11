@@ -54,15 +54,15 @@ body,
   outline: none;
 }
 
-/* Overlay focus backdrop: frosted layer over the whole screen so the
-   canvas content is the focus. Rendered only in Overlay Mode, behind
+/* Overlay focus backdrop: dims the screen behind the canvas content so it
+   is the focus. The real blur comes from the DWM blur-behind (see
+   wallpaper::set_blur): CSS backdrop-filter has no OS-desktop pixels to
+   blur inside a transparent WebView. Rendered only in Overlay Mode, behind
    strokes/texts/toolbar, and never intercepts pointer input. */
 .canvie-overlay-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(8, 8, 10, 0.38);
-  -webkit-backdrop-filter: blur(12px) brightness(0.72);
-  backdrop-filter: blur(12px) brightness(0.72);
   pointer-events: none;
   animation: canvie-backdrop-in 160ms ease;
 }

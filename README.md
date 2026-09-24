@@ -1,4 +1,7 @@
-# 🖼️ Canvie
+# 🐢 Canvie
+
+<img width="2172" height="724" alt="ChatGPT Image 24_09_2026, 14_17_30" src="https://github.com/user-attachments/assets/00da7ccc-951e-43dd-837a-287c0df92763" />
+
 
 **Leave it on the wall.**
 

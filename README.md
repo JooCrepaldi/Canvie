@@ -1,163 +1,269 @@
-<img width="2172" height="724" alt="ChatGPT Image 24_09_2026, 14_17_30" src="https://github.com/user-attachments/assets/00da7ccc-951e-43dd-837a-287c0df92763" />
+# Canvie
 
-# 🐢 Canvie
+Canvie é um app para Windows que coloca canvases persistentes no desktop. Cada canvas tem tamanho definido pelo usuário, pode ficar fixo em uma posição e mantém imagens, post-its, desenhos e textos em Markdown.
 
-**Leave it on the wall.**
+O primeiro lançamento é pequeno de propósito: um espaço visual que aparece no desktop quando você precisa e não exige uma janela de quadro aberta o tempo todo.
 
-> 💻 App desktop para Windows que roda em segundo plano · 🐧 Planos para Linux no futuro
+## Visão do produto
 
-Canvie transforma o desktop do Windows em um espaço visual persistente de pensamento.
+O Canvie transforma o desktop em um conjunto de espaços visuais persistentes. Você cria um canvas, escolhe a largura e a altura, define o fundo e coloca o conteúdo onde ele faz sentido para o seu trabalho.
 
-Em vez de abrir uma janela para anotar algo, você deixa ideias, imagens, setas e referências direto no próprio desktop — como uma lousa que continua ali.
+O canvas continua no desktop depois que você fecha a edição e depois que o Windows reinicia. A posição, o tamanho, o conteúdo e as preferências ficam salvos automaticamente.
 
-> 💭 Pense visualmente, feche o computador e encontre o mesmo pensamento exatamente onde você deixou.
+O app é exclusivo para Windows nesta fase. Não há contas, sincronização ou versão para outro sistema operacional no escopo inicial.
 
----
+## Termos do produto
 
-## ✨ O que é o Canvie?
-
-O Canvie é uma camada visual persistente sobre o desktop.
-
-Você cria um canvas infinito para organizar pensamentos, projetos, referências e tarefas, sem precisar abrir um aplicativo tradicional de whiteboard.
-
-O canvas não é uma janela. Ele é parte do desktop.
-
-O app fica rodando em segundo plano, quieto, sem te interromper — ele só aparece quando você precisa.
-
----
-
-## 💡 Por quê?
-
-Ferramentas de canvas são poderosas, mas normalmente vivem dentro de uma janela.
-
-O desktop, por outro lado, é o espaço que você já vê e usa todos os dias.
-
-O Canvie usa esse espaço como uma superfície de pensamento persistente: deixar ideias no lugar onde você trabalha.
-
----
-
-## 🔄 Como funciona?
-
-O Canvie tem 3 estados:
-
-### 🎨 Canvas Mode (padrão)
-
-Esse é o estado normal do app. Seu desktop é um canvas onde você fica livre para colocar o que quiser — ele fica acima dos ícones, como parte do papel de parede, mas atrás da taskbar e das janelas.
-
-> 🖊️ O app abre pronto para desenhar. Com a ferramenta **cursor** (`V`), os cliques atravessam o Canvie e você usa o desktop normalmente; com o **pincel** (`B`), você desenha no wallpaper.
-
-Aqui você edita, move, desenha e organiza os elementos livremente, direto no desktop.
-
-### 🔒 Lock Mode
-
-Com um atalho (`Ctrl + L`), você fixa o canvas.
-
-Todas as interações deixam de funcionar e os elementos ficam congelados: continuam visíveis, mas não podem ser selecionados, movidos ou editados sem querer.
-
-Lock não é só "somente leitura". É **fixar o pensamento**: você termina uma ideia, trava o canvas e deixa aquela composição no desktop.
-
-### 🪟 Overlay Mode
-
-O terceiro estado, ativado com `Win + T`. A tela do Canvie vem para frente dos outros apps e você usa o canvas em primeiro plano, acima de tudo.
-
-Ideal para anotações rápidas sem perder o contexto do que está aberto: rápido de ativar e desativar, focado em desenhar e anotar sem atrapalhar o trabalho principal.
-
----
-
-## 🖌️ Seu canvas, do seu jeito
-
-O fundo do canvas é personalizável:
-
-- 🎨 **Cor sólida (padrão)** — escolha entre cores diferentes
-- 🖼️ **Transparente** — deixa o fundo ser o seu próprio papel de parede
-
-A ideia é simples: às vezes você quer uma lousa limpa, às vezes quer pensar por cima do seu wallpaper favorito.
-
----
-
-## 🧰 Toolbar
-
-A toolbar do Canvie fica sempre visível acima da taskbar — inspirada na do Excalidraw: simples e flutuante.
-
-Ela reúne cursor, pincel e borracha, além de travar e ir ao Overlay. Passe o mouse sobre um botão para ver o nome e o atalho.
-
-> 💡 Com o cursor ativo, a toolbar continua visível mas não recebe cliques (os cliques vão para o desktop) — volte ao pincel pelo tray ou pela tecla `B`.
-
-Ela reúne tudo que importa para o v1:
-
-| Ferramenta | O que faz |
+| Termo | Significado |
 | --- | --- |
-| 🖊️ Caneta, 🖌️ Pincel e 🖍️ Marcador | 3 brush com traços diferentes |
-| 🎨 Cores | Paleta variada para desenhar e destacar |
-| ➡️ Setas | Conectar ideias e elementos visualmente |
-| 🔤 Textos | Escrever em qualquer lugar, com fontes diferentes |
-| 🗂️ Cards | Blocos para organizar texto e ideias |
-| ⬛ Formas | Retângulos, círculos, linhas e mais |
-| 🪟 Overlay | Botão para ir ao Overlay Mode (também pelo atalho) |
+| **Canvas** | Um espaço retangular independente, com largura X e altura Y definidas pelo usuário. |
+| **Coleção** | O conjunto de canvases criados no app. O usuário pode criar, renomear, ocultar e excluir canvases sem alterar os demais. |
+| **Elemento** | Qualquer item colocado em um canvas, como imagem, post-it, traço ou bloco de texto. |
+| **Desktop fixo** | O canvas permanece associado ao desktop e à posição escolhida, mesmo quando o usuário troca de aplicativo. |
+| **Modo de edição** | Estado em que o canvas recebe seleção, desenho, texto e movimento de elementos. |
+| **Modo bloqueado** | Estado em que o conteúdo fica visível, mas não pode ser alterado até o usuário desbloqueá-lo. |
+| **Toolbar** | Barra compacta de ferramentas. Ela tem um pegador lateral próprio para ser movida e fixada livremente. |
 
-Sem menus complicados. Apertou o atalho, escolheu a ferramenta, usou, sumiu.
+"Formato" significa as dimensões do canvas. O primeiro recorte usa retângulos com largura X e altura Y. Formas geométricas, como círculos e setas, são elementos dentro do canvas.
 
----
+## Escopo do primeiro lançamento
 
-## 📝 Textos em Markdown
+### Criar e organizar canvases
 
-Todos os textos no app — soltos em qualquer lugar do canvas ou dentro de cards — são baseados em Markdown.
+- Criar vários canvases independentes.
+- Definir a largura e a altura em pixels.
+- Escolher uma predefinição de proporção, como 16:9, 4:3 ou quadrado, ou informar valores personalizados.
+- Redimensionar um canvas depois de criado.
+- Mover um canvas no desktop.
+- Renomear, ocultar, duplicar e excluir um canvas.
+- Alternar entre canvases pela toolbar ou pela bandeja do Windows.
+- Salvar a posição e o tamanho de cada canvas por monitor.
 
-Isso significa que você pode usar formatações diferentes como:
+O app trata cada canvas como uma unidade separada. Um canvas pode ser usado para tarefas, outro para referências e outro para anotações pessoais.
 
-- Títulos
-- Listas e checklists
-- Negrito, itálico e mais
+### Fixar o canvas no desktop
 
----
+- Manter o canvas visível na posição escolhida do desktop.
+- Deixar o canvas atrás das janelas comuns e da barra de tarefas.
+- Manter a posição quando o usuário troca de janela.
+- Permitir que o usuário bloqueie o conteúdo para evitar alterações acidentais.
+- Permitir que o usuário edite com um atalho global, sem procurar uma janela do app.
+- Restaurar canvases no mesmo monitor quando o Windows reiniciar.
 
-## ⌨️ Atalhos
+O modo fixo controla onde o canvas fica. O modo bloqueado controla se o conteúdo pode ser alterado. Essas duas configurações são independentes.
 
-Você pode mudar os atalhos como bem entender. Os padrões planejados são:
+### Personalizar o fundo
 
-| Entrada | Ação |
+Cada canvas tem as seguintes opções:
+
+- Cor sólida escolhida por seletor ou por valor hexadecimal.
+- Transparência total para usar o papel de parede como fundo.
+- Opacidade ajustável entre 0% e 100%.
+- Pré-visualização em xadrez quando a transparência estiver ativa.
+- Cor e opacidade salvas por canvas.
+
+O usuário pode aplicar uma configuração a um canvas ou defini-la como padrão para os próximos canvases.
+
+### Adicionar conteúdo
+
+O canvas aceita estes elementos no primeiro lançamento:
+
+| Elemento | Comportamento |
 | --- | --- |
-| `V` / `B` / `E` | Cursor / pincel / borracha |
-| `Ctrl + Alt + T` *(provisório no MVP-0 — `Win + T` é reservado pelo Windows)* | Ativar / desativar o Overlay Mode |
-| `Ctrl + L` | Fixar / descongelar o canvas (Lock Mode) |
-| `Ctrl + Z` / `Ctrl + Shift + Z` | Desfazer / refazer |
-| `Ctrl + V` | Colar texto ou imagem |
+| **Imagem** | Colar da área de transferência ou arrastar um arquivo para o canvas. Redimensionar, mover, girar e excluir. |
+| **Post-it** | Criar um bloco curto com cor, tamanho e texto editáveis. Mover e redimensionar livremente. |
+| **Pincel** | Desenhar à mão livre com espessura, cor e opacidade ajustáveis. Usar borracha por traço ou por área. |
+| **Texto em Markdown** | Escrever títulos, listas, checklists, links, código, negrito e itálico. Alternar entre edição e visualização. |
+| **Fonte** | Escolher a fonte, o tamanho, o peso, o alinhamento e a cor de cada bloco de texto. |
+| **Seleção** | Selecionar, mover, redimensionar, duplicar e apagar elementos. |
+
+O Markdown é a base dos textos do Canvie. Um post-it pode usar Markdown, e um texto solto pode ser editado como Markdown sem abrir outro editor.
+
+Imagens e desenhos não são convertidos em Markdown. Cada tipo de elemento mantém seus próprios dados e pode ser editado no lugar.
+
+### Toolbar com pegador móvel
+
+A toolbar é compacta e fica visível apenas quando o usuário está editando ou quando a opção de permanência está ativa.
+
+- O pegador fica na lateral da toolbar e tem uma área de toque maior que o ícone.
+- Arraste o pegador para mover a toolbar livremente pelo desktop.
+- Solte a toolbar em qualquer ponto para fixar a posição.
+- Use o comando **Alternar orientação** para deixar a barra horizontal ou vertical.
+- O Canvie salva a posição, a orientação e o monitor da toolbar.
+- O botão de restaurar volta para a posição padrão sem mover os canvases.
+- A toolbar nunca confunde o pegador com uma ferramenta de desenho.
+
+Os botões da toolbar cobrem as ações de selecionar, criar post-it, inserir texto, inserir imagem, desenhar, apagar, desfazer, refazer, trocar canvas e bloquear o canvas ativo.
+
+## Modos de interação
+
+O app tem dois modos para o conteúdo e uma configuração de visibilidade:
+
+### Modo de edição
+
+O canvas ativo recebe cliques e atalhos. Você pode selecionar elementos, escrever, desenhar e mover itens.
+
+### Modo bloqueado
+
+O canvas continua visível no desktop, mas não aceita alterações. A toolbar mostra um indicador de bloqueio. Desbloqueie o canvas pelo atalho global ou pela bandeja do Windows.
+
+### Visibilidade da toolbar
+
+Você pode manter a toolbar visível, ocultá-la após um período sem interação ou mostrar a barra apenas ao usar o atalho global. A ocultação não altera o canvas nem o estado de bloqueio.
+
+## Atalhos padrão
+
+Os atalhos de uma tecla funcionam quando o canvas está em modo de edição e tem foco. Os atalhos globais usam `Ctrl + Alt` para evitar conflitos comuns do Windows.
+
+| Atalho | Ação |
+| --- | --- |
+| `V` | Selecionar e mover elementos |
+| `B` | Usar o pincel |
+| `E` | Usar a borracha |
+| `T` | Criar ou editar texto em Markdown |
+| `N` | Criar um post-it |
+| `I` | Inserir uma imagem |
+| `H` | Navegar pelo canvas com a mão |
+| `Ctrl + Z` | Desfazer |
+| `Ctrl + Shift + Z` | Refazer |
+| `Delete` | Excluir os elementos selecionados |
+| `Ctrl + D` | Duplicar os elementos selecionados |
+| `Ctrl + S` | Forçar o salvamento do canvas ativo |
+| `Ctrl + Alt + N` | Criar um canvas |
+| `Ctrl + Alt + PageDown` | Alternar para o próximo canvas |
+| `Ctrl + Alt + PageUp` | Alternar para o canvas anterior |
+| `Ctrl + Alt + L` | Bloquear ou desbloquear o canvas ativo |
+| `Ctrl + Alt + T` | Mostrar ou ocultar a toolbar |
+| `Ctrl + Alt + M` | Alternar a orientação da toolbar |
+| `Ctrl + Alt + 0` | Recolocar a toolbar na posição padrão |
+| `Ctrl + Alt + ,` | Abrir as configurações |
+| `Esc` | Cancelar a ferramenta atual ou fechar o editor de texto |
 | `Space + arrastar` | Navegar pelo canvas |
-| `Scroll` | Zoom do canvas |
-| Arrastar arquivo | Adicionar imagem ao canvas |
+| `Ctrl + Scroll` | Ajustar o zoom do canvas |
 
----
+Todos os atalhos globais são editáveis. O editor de atalhos mostra conflitos antes de salvar, permite desativar um comando e oferece **Restaurar padrões**. O Canvie não usa `Win + T` como atalho padrão porque o Windows reserva essa combinação.
 
-## 📦 O que dá pra fazer no v1?
+## Configurações
 
-O plano para a v1 do Canvie:
+### Canvas
 
-- Navegar pelo canvas com pan e zoom
-- Personalizar o fundo: cores sólidas ou transparente com seu wallpaper
-- Desenhar com caneta, pincel e marcador, em diversas cores
-- Criar setas, formas e cards
-- Escrever textos em Markdown, com fontes e formatações diferentes
-- Arrastar imagens ou colar direto do clipboard
-- Selecionar, mover, redimensionar e apagar elementos
-- Desfazer e refazer
-- Alternar entre Canvas, Lock e Overlay
-- Personalizar os atalhos
-- Manter tudo salvo automaticamente, mesmo após reiniciar o Windows
+- Predefinição inicial de largura e altura.
+- Predefinições de proporção disponíveis.
+- Manter a proporção ao redimensionar o canvas.
+- Unidade de medida: pixels ou porcentagem da área de trabalho.
+- Limites mínimo e máximo para largura e altura.
+- Cor, transparência e opacidade padrão.
+- Zoom inicial e comportamento de ajuste à tela.
+- Exibir ou ocultar uma grade de alinhamento.
+- Ativar ou desativar o encaixe de elementos na grade.
+- Confirmar ou não a exclusão de um canvas.
 
----
+### Desktop e janelas
 
-## 🎨 Visual e identidade
+- Iniciar o Canvie com o Windows.
+- Manter o app na bandeja do Windows.
+- Mostrar ou ocultar o ícone da bandeja.
+- Definir em qual monitor novos canvases aparecem.
+- Restaurar canvases no monitor usado por último ou no monitor principal.
+- Escolher se o canvas fica atrás das janelas comuns.
+- Escolher se o canvas recebe cliques apenas no modo de edição.
+- Escolher se a toolbar fica sempre visível, oculta ou aparece por atalho.
 
-Visual minimalista, caloroso e levemente lúdico.
+### Toolbar
 
-Sem cara de SaaS genérico ou dashboard. A interface aparece só quando precisa — o canvas e o seu conteúdo são os protagonistas.
+- Posição X e Y da toolbar.
+- Monitor da toolbar.
+- Orientação horizontal ou vertical.
+- Tamanho dos ícones.
+- Densidade dos controles.
+- Tempo de ocultação automática.
+- Exibir nomes e atalhos ao passar o mouse.
+- Restaurar posição e aparência padrão.
 
-🖼️ **Canvie — Leave it on the wall.**
+### Texto e Markdown
 
----
+- Fonte e tamanho padrão.
+- Cor e alinhamento padrão.
+- Largura padrão do bloco de texto.
+- Renderizar Markdown enquanto o usuário digita ou ao sair da edição.
+- Mostrar ou ocultar uma prévia do texto.
+- Preservar quebras de linha e espaços em blocos de código.
 
-## 📌 Status
+### Salvamento e arquivos
 
-> 💡 Conceito / início de MVP — App desktop Windows (roda em segundo plano) — Planos para Linux no futuro — Desktop canvas / visual workspace
+- Salvar automaticamente após uma alteração.
+- Definir o intervalo máximo entre salvamentos.
+- Escolher a pasta local dos dados do Canvie.
+- Exportar um canvas como imagem.
+- Exportar e importar uma coleção para criar uma cópia de segurança.
+- Abrir a pasta de dados pelo menu da bandeja.
+- Restaurar o último estado salvo após uma falha.
 
-O MVP será considerado bem-sucedido se você conseguir criar uma composição visual em poucos segundos, reiniciar o Windows e encontrar o canvas intacto, no mesmo estado — alternando rapidamente entre canvas, lock e overlay sem sentir que abriu um aplicativo tradicional.
+O salvamento é local nesta fase. O app não envia conteúdo para um servidor.
+
+### Acessibilidade
+
+- Aumentar o tamanho da toolbar e dos alvos de clique.
+- Usar foco visível em todos os controles.
+- Exibir nomes de ferramentas além dos ícones.
+- Escolher uma paleta com contraste maior.
+- Reduzir animações.
+- Navegar pelas ferramentas com o teclado.
+
+## Direção visual
+
+O Canvie usa um visual moderno, minimalista e integrado ao desktop do Windows.
+
+- O canvas e o conteúdo têm prioridade visual.
+- A toolbar usa poucos controles, ícones reconhecíveis e estados claros.
+- A cor aparece no conteúdo e nas ferramentas que a alteram.
+- O fundo do app não cria um painel pesado sobre o desktop.
+- Os estados de edição, bloqueio e foco têm diferença visual e textual.
+- A interface usa a escala, o contraste e o arredondamento do Windows sem imitar uma janela tradicional.
+
+Evite menus profundos, painéis permanentes e elementos que pareçam um dashboard. A configuração detalhada fica em uma tela separada para não ocupar o canvas.
+
+## Fora do escopo inicial
+
+Estes itens podem entrar depois que a experiência local estiver estável:
+
+- Versões para Linux ou macOS.
+- Sincronização entre computadores.
+- Colaboração em tempo real.
+- Login e contas online.
+- Marketplace de templates.
+- Canvas infinito sem dimensões definidas.
+- Integração com serviços externos.
+- Modo de apresentação em tela cheia.
+
+## Critérios de aceite do MVP
+
+O MVP está pronto quando o usuário consegue:
+
+1. Criar dois canvases com dimensões diferentes.
+2. Fixar cada canvas em uma posição diferente do desktop.
+3. Escolher uma cor, definir transparência e ajustar a opacidade.
+4. Inserir uma imagem e um post-it.
+5. Desenhar com o pincel e apagar um traço.
+6. Criar um texto em Markdown e trocar a fonte.
+7. Mover, redimensionar, duplicar e excluir elementos.
+8. Mover a toolbar pelo pegador e fixá-la em qualquer lugar.
+9. Bloquear um canvas e confirmar que os elementos não mudam por acidente.
+10. Fechar e reiniciar o Windows e encontrar a coleção restaurada.
+11. Alterar um atalho global e receber aviso se a combinação já estiver em uso.
+
+## Estado do projeto
+
+Conceito e início do MVP para Windows. A documentação define o comportamento do primeiro lançamento e os limites conhecidos. A implementação ainda não está descrita neste repositório.
+
+## Skills do projeto
+
+As skills de trabalho ficam em `.agents/skills/`. Elas cobrem arquitetura, modelagem de domínio, diagnóstico de bugs, implementação, revisão, TDD, TypeScript, documentação, verificação de comportamento, comunicação sem ruído e criação de issues.
+
+Para instalar ou atualizar o Impeccable, que orienta decisões de UI e detecta problemas visuais:
+
+```powershell
+npx impeccable install
+```
+
+Depois de instalar, use `/impeccable init` no agente para registrar o contexto visual e de produto do Canvie.

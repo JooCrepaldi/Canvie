@@ -1,3 +1,5 @@
+<img width="2172" height="724" alt="Imagem do ChatGPT 24 de set  de 2026, 23_21_30" src="https://github.com/user-attachments/assets/8f939be0-e968-442b-aa0c-d14d86d41098" />
+
 # Canvie
 
 Canvie é um app para Windows que coloca canvases persistentes no desktop. Cada canvas tem tamanho definido pelo usuário, pode ficar fixo em uma posição e mantém imagens, post-its, desenhos e textos em Markdown.

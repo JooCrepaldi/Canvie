@@ -1,64 +1,77 @@
-# Canvie — Operação (build, E2E, máquina, troubleshooting)
+# Operação
 
-> Como rodar, testar, instalar e debugar sem redescobrir tudo. Comandos partem de `frontend/` salvo indicação contrária. Docs-only pode ir direto para main (AGENTS.md §5/§7); mudança de comportamento exige E2E + review.
+Esta página define a verificação que acompanha cada camada. O scaffold L0 e o canvas em memória L1 já estão no repositório.
 
-## 1. Comandos
+## Comandos
 
-| O quê | Comando |
+Execute na pasta que possui o script:
+
+    Set-Location frontend
+    npm install
+    npm run build
+    npx oxlint
+    Set-Location src-tauri
+    $env:CARGO_BUILD_JOBS = "1"
+    cargo check
+
+Para a build instalada:
+
+    Set-Location frontend
+    npm run tauri build
+
+O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máquina.
+
+## Evidência por camada
+
+| Camada | Evidência |
 | --- | --- |
-| Frontend build (tsc + vite) | `npm run build` |
-| Lint | `npx oxlint` |
-| Rust check | `cargo check` (dentro de `frontend/src-tauri/`) |
-| Bundle debug | `npx tauri build --debug` |
-| Bundle release | `npx tauri build` |
-| E2E real | `powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\<nome>.ps1` (a partir de `frontend/`) |
-| PR | `gh pr create --fill` (da feature branch) |
-| Merge | `gh pr merge --squash --delete-branch` |
+| L0 | build frontend, oxlint, cargo check e janela vazia |
+| L1 | gravação manual de traço e nota no browser e na janela Tauri |
+| L2 | fechar processo e recuperar o mesmo documento; JSON inválido não derruba o app |
+| L3 | parent Progman, click-through, transparência e acesso normal ao desktop |
+| L4 | log Wall → Edit → Wall, atalho real, toolbar, save antes de pin e retorno visual |
+| L5 | tray, close para tray, autostart e segunda instância |
+| L6 | instalador, reinício do Windows, escala DPI, teclado, RAM e CPU |
 
-Sempre `CARGO_BUILD_JOBS=1` nesta máquina (5.9GB RAM). Nunca rode cargo com cwd que desvie do `src-tauri/.cargo/config.toml` (target fora do OneDrive).
+## Evidência registrada em 2026-10-05
 
-## 2. Matriz E2E (teclas e janelas reais, nunca mock)
+- L0: `npm run build`, `npx oxlint` e `cargo check --locked` passaram. A build release com símbolos desligados passou e registrou `Canvie startup`. Uma segunda abertura manteve um único processo `canvie`.
+- L0: `npm run tauri dev` ainda não abre uma janela nesta máquina porque o `rustc` cai ao compilar o crate `windows` no perfil dev com `STATUS_STACK_BUFFER_OVERRUN`. A build release passa; a janela nativa não pôde ser inspecionada visualmente porque o processo iniciado pelo terminal não expõe uma janela na sessão interativa do agente.
+- L1: no browser fallback, a prova manual criou um traço, desfez, refez, criou a nota `Ideia rápida`, apagou o traço, moveu a toolbar pelo pegador e moveu/ampliou a câmera. A prova de 50 traços fica para o fechamento da camada.
 
-| Script | Cobre | Evidência |
-| --- | --- | --- |
-| `scripts/e2e/l4-modes.ps1` | `Ctrl+L` lock/unlock, `Ctrl+Alt+T` overlay, `Esc` volta | log stdout com `hotkey\|canvie mode` |
-| `scripts/e2e/l5-background.ps1` | Run key, close→tray vivo, 2ª instância sai | `AUTOSTART KEY`, `CLOSE->HIDE OK`, `SINGLE-INSTANCE OK`, linhas `autostart\|tray\|second instance\|hidden to tray` |
-| `scripts/e2e/l6-accept.ps1` | Instalado abre < 5s, idle RAM/CPU, overlay TOPMOST on/off via `GetWindowLong`, lock sem crash, close→tray, valor do Run | `OPEN OK`, `IDLE:`, `OVERLAY TOPMOST:`, `OVERLAY EXITED:`, `LOCK TOGGLE NO-CRASH:`, `CLOSE->TRAY:`, `AUTOSTART VALUE:` |
-| `scripts/e2e/wallpaper-layers.ps1` | boot elevado (Progman, acima dos ícones), overlay detach, `Esc` volta elevado | `BOOT/OVERLAY/BACK parent=[...]`, log `wallpaper embedded\|canvie layer\|canvie mode\|passthrough\|blur\|show requested\|hotkey registered` |
+## E2E de transição
 
-Manual restante (assumir como não-probado até fazer): feel do desenho à mão, cliques no menu do tray, transparência visual, reboot-com-canvas.
+O script de L4 precisa:
 
-Armadilhas dos scripts: `MainWindowHandle` aponta para o helper `com.canvie.app-sic`, não o canvas — localize `Tauri Window` por PID; após embedar, ele é filho do Progman e some da enumeração top-level (procure nos filhos do Progman primeiro). `SendKeys` exige `WScript.Shell`; PowerShell 5.1 sem `&&` (use `; if ($?) { }`), `$pid` reservado.
+1. iniciar uma build instalada;
+2. localizar a janela principal pelo PID;
+3. verificar que o parent inicial é Progman;
+4. enviar Ctrl + Alt + T;
+5. verificar top-level, foco e always-on-top;
+6. desenhar ou criar uma nota;
+7. acionar Fixar no desktop;
+8. verificar reparent em Progman, click-through e toolbar oculta;
+9. abrir a aplicação novamente e verificar o documento;
+10. extrair do log as transições Wall → Edit e Edit → Wall.
 
-## 3. Artefatos e logs
+Não use mocks para validar o parent, o foco, o atalho ou o processo.
 
-- Instalado: `%LOCALAPPDATA%\Canvie\canvie.exe` (release `Canvie_0.0.1_x64-setup.exe` já validado).
-- Log: `%LOCALAPPDATA%\com.canvie.app\logs\Canvie.log` (único rastro em release).
-- Target Rust: `%LOCALAPPDATA%\canvie-target` (fora do OneDrive por `src-tauri/.cargo/config.toml`).
-- Instaladores vivem no target local, nunca no git.
-- Skills locais `.opencode/` são gitignored (instaladas via `npx impeccable install --providers=opencode --scope=project`), nunca commitar.
+## Falhas conhecidas
 
-## 4. Quirks desta máquina (respeitar todos)
+- Win + T pertence ao Explorer. Use Ctrl + Alt + T.
+- Atrás de SHELLDLL_DefView não há input. Parede precisa de click-through.
+- tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top e ignore_cursor_events.
+- Uma capacidade negada precisa gerar warn e manter o app iniciado.
+- Um saveNow falho não pode reparentar a janela.
 
-- Sync do OneDrive corrompe build concorrente — target fora dele, sempre.
-- `rustc` 1.98 crasha intermitente (`STATUS_STACK_BUFFER_OVERRUN`) no crate `windows`: retry o comando exato antes de mudar qualquer coisa.
-- Debug instável — valide comportamento em release + log.
-- Disco cheio com frequência: limpe `npm cache` quando necessário; prefira release incremental.
+## Métricas locais
 
-## 5. Troubleshooting rápido
+Registre em cada build instalada:
 
-| Sintoma | Checar |
-| --- | --- |
-| `Ctrl+Alt+T` não entra em overlay | log `hotkey registered`; outra app comeu o atalho; `Win+T` nunca vai funcionar (Explorer) |
-| Com cursor, cliques não desenham | esperado — cursor é click-through de propósito; volte ao pincel com `B` (janela focada), botão da toolbar ou tray |
-| `B` não volta ao pincel | a janela perdeu o foco (cursor passa cliques, inclusive o foco, ao desktop) — use o tray ou clique no atalho; `B` puro nunca será global (roubaria a digitação no Windows inteiro) |
-| Toolbar visível mas não clica | esperado com click-through ligado (cursor/lock): ela indica presença; troque pelo tray |
-| Overlay sem blur (só escurece) | log `blur enable failed` — DWM recusou; reporte com a linha do log |
-| Embed falhou, virou overlay fullscreen | log `wallpaper embed failed`; Explorer reiniciou? reabra o app |
-| Doc sumiu | `localStorage canvie.canvas.v1` corrompido → boot vazio por desenho (nunca crasha); cheque DevTools/botão `window.__canvie.export` em dev |
-| Autostart aponta para dev | apague a chave Run e reinstale pelo setup; E2E `AUTOSTART VALUE` deve mostrar `%LOCALAPPDATA%\Canvie` |
-| Build trava/OOM | `CARGO_BUILD_JOBS=1`, feche apps, retry (rustc flake) |
+- working set depois de 60 segundos na Parede;
+- working set depois de 60 segundos em Edição;
+- CPU média em cada estado;
+- tempo entre o atalho e o evento Edit;
+- tempo entre Fixar no desktop e o evento Wall.
 
-## 6. Fluxo de mudança (resumo)
-
-Branch `feat/<camada>-<slug>` a partir de main → slice vertical pequeno → teste real → self-review do diff → docs na mesma PR se comportamento/atalho/arquitetura mudou → review do assistente (§5b, binário approve/request-changes) → squash merge → tag `mvp-0-*` por milestone. Commits imperativos em inglês (`feat:`/`docs:`/`assets:`/`fix:`) explicando o porquê.
+Não envie essas métricas para fora da máquina.

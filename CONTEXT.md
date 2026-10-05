@@ -4,48 +4,48 @@ Este arquivo define os termos do produto. Ele não descreve implementação.
 
 ## Canvie
 
-App para Windows que mantém espaços visuais persistentes associados ao desktop.
+Aplicativo local para manter um canvas visível no desktop do Windows e abrir uma edição focada quando o usuário chamar.
 
 ## Canvas
 
-Espaço retangular independente. Cada canvas tem largura X, altura Y, fundo, posição e conteúdo próprios.
+O único documento visual do Canvie. Ele tem tamanho, posição e conteúdo persistentes.
 
-O canvas é finito. "Formato" no produto significa a relação entre largura e altura, não um espaço infinito.
+## Parede
 
-## Coleção
+Estado normal do app. O canvas fica integrado ao desktop, sem toolbar e sem receber cliques.
 
-Conjunto de canvases do usuário. A coleção permite separar contextos de trabalho sem misturar o conteúdo.
+## Edição
 
-## Elemento
+Estado temporário em que o canvas fica em primeiro plano, recebe foco e mostra a toolbar. O usuário pode desenhar, escrever, apagar, desfazer, refazer e fixar o documento.
 
-Item colocado em um canvas. Os tipos definidos para o primeiro lançamento são imagem, post-it, traço de pincel e texto em Markdown.
+## Fixar no desktop
 
-## Desktop fixo
+Ação que salva a alteração atual e devolve o canvas de Edição para a Parede.
 
-Estado em que um canvas permanece associado ao desktop e à posição escolhida pelo usuário entre trocas de janela e reinícios do Windows.
+## Nota
 
-Desktop fixo descreve a posição e a persistência. Ele não impede edição.
+Bloco curto de texto simples colocado no canvas. Markdown e edição rica não fazem parte do primeiro ciclo.
 
-## Modo bloqueado
+## Traço
 
-Estado em que o canvas continua visível, mas os elementos não aceitam alteração. O bloqueio é separado da posição fixa.
+Sequência de pontos criada pelo pincel. A borracha cria uma ação que remove traços, sem alterar o documento até a ação ser confirmada.
 
 ## Toolbar
 
-Barra compacta que reúne as ferramentas do app. O pegador lateral move a toolbar. A posição e a orientação podem ser fixadas em qualquer lugar do desktop.
+Barra compacta que aparece em Edição. Ela contém o pegador, as ferramentas do primeiro ciclo, o histórico e o botão **Fixar no desktop**.
 
-## Markdown
+## Pegador
 
-Formato de texto usado para escrever e renderizar conteúdo no canvas. Títulos, listas, checklists, links, código, negrito e itálico fazem parte do primeiro recorte.
+Controle separado usado para mover a toolbar. O pegador não ativa uma ferramenta.
 
-## Fontes
+## Documento
 
-Configuração visual de um bloco de texto. Inclui família, tamanho, peso, alinhamento e cor.
+O conteúdo persistido do canvas: traços, notas, câmera e versão do modelo.
 
 ## Limites atuais
 
 - O produto atende apenas Windows.
 - O armazenamento é local.
-- Cada canvas tem dimensões definidas.
-- A coleção pertence a uma instalação local do app.
-- A toolbar pode ser movida e fixada, mas não é um elemento de conteúdo do canvas.
+- Existe um canvas e um documento.
+- Parede e Edição são os únicos estados de janela.
+- O tray e o atalho global são rotas para entrar ou sair de Edição.

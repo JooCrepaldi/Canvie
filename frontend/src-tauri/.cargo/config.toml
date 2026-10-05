@@ -1,0 +1,3 @@
+# Keep Rust build artifacts outside OneDrive.
+[build]
+target-dir = "C:/Users/joaop/AppData/Local/canvie-target"

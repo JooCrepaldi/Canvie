@@ -1,86 +1,121 @@
-# Canvie — Architecture (MVP-0 as built)
+# Arquitetura de runtime
 
-> Single source for how the system fits together. Product behavior lives in `docs/PRD.md`; process in `AGENTS.md`; build order in `docs/MVP-0-ROADMAP.md`. This doc explains the runtime, the one state machine, and why the Win32 layer looks the way it does. File references are `path:line`.
+Este documento detalha o sistema de transição entre a Parede e a Edição. A visão do produto está em product.md e a ordem de construção está em docs/MVP-0-ROADMAP.md.
 
-## 1. Runtime overview
+## Runtime
 
-- One Tauri 2 process (`frontend/src-tauri/src/main.rs:4-6` → `canvie_lib::run()`).
-- One fullscreen transparent WebviewWindow `main` (`tauri.conf.json:13-22`: `fullscreen`, `transparent`, `decorations: false`, `skipTaskbar`).
-- React 19 + Vite frontend renders one `<canvas>` plus absolutely-positioned text divs (`frontend/src/Canvas.tsx:390-412`).
-- Rust backend owns windowing, modes, tray, autostart, single-instance, global shortcuts, Win32 layering. No domain logic in Rust besides the mode state machine.
+O Canvie usa um processo Tauri, uma janela WebView2 e um frontend React. O backend Rust controla janela, tray, atalhos e ciclo de vida. O frontend controla documento, desenho e toolbar.
 
-```
-              +---------------- Tauri process ----------------+
-              |  lib.rs: ModeState + commands + tray + hotkeys |
-              |  wallpaper.rs: Progman parenting (Win32 only)  |
-              +------+---------------------------^------------+
-                     | canvie-mode event         | invoke
-                     v                           |
-              +------+---------------------------+------------+
-              |  mode.ts (bridge)  persistence.ts (doc model)  |
-              |  Canvas.tsx (draw)  canvasTypes.ts (ids)       |
-              |  transparent shell (index.css, App.css)        |
-              +-----------------------------------------------+
-```
+    Usuário
+      │
+      ├── Ctrl + Alt + T / tray
+      ▼
+    lib.rs: PlacementState
+      │ comandos e eventos
+      ▼
+    placement.ts ── persistence.ts ── Canvas.tsx
+      │
+      ▼
+    wallpaper.rs ── Progman, foco, click-through e Z-order
 
-## 2. Window layering (the core trick)
+## PlacementState
 
-Three placements, one window:
+O backend é a única autoridade sobre a camada da janela:
 
-| Placement | When | Parent / order | Input |
-| --- | --- | --- | --- |
-| Raised wallpaper (default) | Canvas/Locked resting, boot included | Child of Progman, ordered `HWND_TOP` within Progman — still below taskbar and normal windows | Brush/eraser draw; cursor tool and Locked pass clicks through to the desktop (everything stays visible) |
-| Overlay | Overlay mode | Detached top-level, `alwaysOnTop(true)` + focus + DWM blur-behind | Yes, above everything, desktop blurred + dimmed behind the canvas |
+    enum Placement {
+      Wall,
+      Edit
+    }
 
-Primary monitor only. If Explorer restarts, embedding is lost until the next show/mode change re-embeds and re-raises (`show_existing`, `apply_mode`).
+    struct PlacementState {
+      placement: Placement,
+      embedded: bool,
+      focused: bool,
+      toolbar: ToolbarPlacement,
+    }
 
-## 3. The one state machine
+ToolbarPlacement fica persistido como preferência, não como parte do documento.
 
-`ModeState` (`lib.rs`): `current: Canvas|Locked|Overlay`, `return_to` (where Overlay returns), `embedded: bool`, `raised: bool` (true by default in Canvas after setup; reset on mode change), `passthrough: bool` (cursor tool active, default true).
+O frontend recebe canvie-placement e espelha placement. Ele pode mostrar Salvando, mas não pode declarar que a janela está na Parede antes do evento do backend.
 
-Transitions (all in `lib.rs`):
+## Transições
 
-- `toggle_lock_inner`: Canvas↔Locked; no-op in Overlay.
-- `toggle_overlay_inner`: stores `return_to`, enters Overlay; toggling off applies `return_to`.
-- `apply_mode`: Canvas/Locked clears topmost, sets click-through (`Locked || (Canvas && passthrough)`), re-embeds AFTER tao calls, restores raised order in both, DWM blur off; Overlay detaches, DWM blur on, forces interactive, sets topmost + show + focus. Emits `canvie-mode {mode, raised}`.
-- `raise_canvas`: Win32 raise + emit (setup default).
-- `set_passthrough(active)` command: stores the flag, then `apply_input` (ignore + re-embed + re-raise in Canvas). Never call the Tauri JS window API for this from the frontend: it would drop `WS_CHILD` without re-embedding.
-- `show_existing` (second launch + tray Show): Overlay→show+focus; else re-embed, restore raised order in Canvas, show, re-emit mode.
-- Tray tool entries (cursor/brush/eraser) only emit `canvie-tool {tool}`; the frontend owns tool state and calls `set_passthrough` on change.
+### Wall → Edit
 
-Frontend never invents mode: `getMode()` (now `{mode, raised}`) on boot + `onModeChanged` subscription (`mode.ts`, consumed in `Canvas.tsx`).
+Fonte: Ctrl + Alt + T, tray Editar ou Show quando a janela está na Parede.
 
-## 4. Frontend/backend bridge
+1. O backend verifica a janela principal.
+2. O backend muda a propriedade de top-level, sempre no topo e foco.
+3. O backend revalida estilo e relação da janela.
+4. O backend mostra a janela, dá foco e emite Edit.
+5. O frontend exibe dim, toolbar e os controles de edição.
 
-Commands (`build.rs` + `capabilities/default.json` + `invoke_handler` in `lib.rs`): `get_mode` (returns `{mode, raised}`), `toggle_lock`, `toggle_overlay`, `set_passthrough`. Every `mode.ts` wrapper has try/catch fallback to a working canvas when Tauri APIs are absent (browser dev). Same for storage (`persistence.ts:19-28` returns null adapter → in-memory only).
+Não há save nessa transição. O documento já está confirmado pela persistência anterior.
 
-## 5. Ownership map (do not duplicate)
+### Edit → Wall
 
-| Area | Owner | Files |
-| --- | --- | --- |
-| Win32 layering | `wallpaper.rs` | embed / raise / lower / detach, Progman + DefView lookup |
-| Modes + tray + hotkeys | `lib.rs` | `ModeState`, `apply_mode`, `build_tray`, `register_hotkey`, close→hide |
-| Drawing + camera + tools | `Canvas.tsx` | DPR render, `screenToWorld`/`worldToScreen`, drafts in refs, undo/redo stacks, Toolbar with hover tooltips |
-| Doc model + validation | `persistence.ts` + `canvasTypes.ts` | `CanvasDoc v1`, `STORAGE_KEY=canvie.canvas.v1`, `parseDoc`, `createSaver(500)`, `reseedIds`, `Tool='cursor'\|'brush'\|'eraser'` |
-| Mode bridge | `mode.ts` | `inTauri`, `getMode`, `toggleLock/toggleOverlay`, `setPassthrough`, `onModeChanged/onToolChanged` |
-| Transparency | `index.css`, `App.css`, `tauri.conf.json` | `transparent: true`, no opaque backgrounds in Canvas/Locked except the toolbar itself (clicks only in its own rect); Overlay adds the DWM blur-behind plus a dim backdrop div behind canvas content |
+Fonte: **Fixar no desktop**, Esc, Ctrl + Alt + T ou tray Fixar no desktop.
 
-## 6. Data model
+1. O botão e Esc entram direto neste fluxo. O atalho e o tray emitem canvie-pin-requested, que o frontend recebe e transforma neste mesmo fluxo.
+2. O frontend bloqueia a ação duplicada e mostra Salvando.
+3. persistence.ts chama saveNow e recebe sucesso ou erro.
+4. Em caso de erro, o frontend desbloqueia a ação, mantém Edit e mostra Tentar novamente.
+5. Em caso de sucesso, o frontend chama pin_to_wall.
+6. O backend remove always-on-top, ativa click-through e reparenta no Progman.
+7. O backend reaplica WS_CHILD e a ordem Z depois das chamadas tao.
+8. O backend emite Wall.
+9. O frontend esconde dim e toolbar.
 
-`CanvasDoc { version: 1, strokes: Stroke[{id, points[{x,y}], erase}], texts: TextItem[{id, at, content}], camera: {x,y,zoom} }`. `parseDoc` returns null on corrupt input (boot empty, never crash). Id counter reseeded past max restored id. Saves debounced 500ms. Undo/redo stacks are in-memory only (refs in `Canvas.tsx:116-117`), not persisted.
+O backend não aceita pin_to_wall com um payload de documento. O documento é responsabilidade do frontend e precisa estar salvo antes da mudança de camada.
 
-## 7. Hard-won decisions (ADRs, condensed)
+## Janela do Windows
 
-- **Progman, not WorkerW.** This Win11 shell has no spare fullscreen WorkerW; Progman hosts `SHELLDLL_DefView` directly. Canvas is a Progman child behind the icon layer (`wallpaper.rs:1-11`).
-- **Embed AFTER tao.** `tao` rewrites `GWL_STYLE` on `set_always_on_top` / `set_ignore_cursor_events`, dropping `WS_CHILD`. Every Canvas/Locked transition re-embeds after those calls (`lib.rs:99-101`, `132`). No exceptions.
-- **Behind means no input.** DefView consumes all hit-testing behind the icon layer. That is why Canvas rests raised; the cursor frees the desktop via click-through instead of layer order. Not a bug.
-- **`Win+T` belongs to Explorer.** `RegisterHotKey` fails "already registered". v1 uses `Ctrl+Alt+T` (`lib.rs`) until a product decision changes it — which must update PRD + README + code together.
-- **Bare letters can't be global shortcuts.** `V`/`B`/`E` work when the Canvie window is focused; with click-through on, the way back to the brush is the toolbar, the tray menu, or the app shortcut. A global bare `B` would steal typing system-wide.
-- **Persistence via localStorage is enough for MVP-0.** No dedicated Rust file command; WebView2 profile in `%APPDATA%/com.canvie.app` holds `canvie.canvas.v1`. Never loses data by crashing on corrupt JSON.
-- **Transparency is total or broken.** One opaque layer (`html/body/#root`, window config, shell CSS) kills the wallpaper illusion.
-- **Single instance + close→tray + autostart-to-installed.** Second instance focuses the first; X hides; Run key must point at `%LOCALAPPDATA%\Canvie\canvie.exe`, never a dev binary.
-- **Build dir outside OneDrive.** `src-tauri/.cargo/config.toml` sets `target-dir` to `%LOCALAPPDATA%\canvie-target`; file sync corrupts concurrent builds.
+### Parede
 
-## 8. Invariants pointer
+wallpaper.rs localiza Progman e parenta a janela como filha. A janela fica acima de SHELLDLL_DefView para permanecer visível. O click-through permite que os eventos cheguem ao desktop.
 
-The enforceable version lives in `AGENTS.md §10`. Any change breaking embed-after-tao, Progman parenting, input physics, shortcut degradation, persistence-never-crashes, total transparency, or Tauri-absent fallback is a merge blocker.
+### Edição
+
+wallpaper.rs remove o parent, restaura o estilo de top-level e posiciona a janela como primeiro plano. O backend ativa foco e always-on-top somente durante Edição.
+
+### Re-embed
+
+Chamadas tao para always_on_top ou ignore_cursor_events podem alterar GWL_STYLE. Toda chamada desse tipo deve ser seguida por:
+
+1. reaplicar WS_CHILD ou WS_POPUP conforme o destino;
+2. reaplicar SetParent;
+3. revalidar a ordem Z;
+4. registrar o resultado.
+
+Se o re-embed falhar, não emita Wall. Mantenha Edit para que o usuário não perca a rota de recuperação.
+
+## Ponte
+
+placement.ts expõe:
+
+- getPlacement(): Promise<PlacementSnapshot>;
+- enterEdit(): Promise<void>;
+- pinToWall(): Promise<void>;
+- onPlacementChanged(listener): Unsubscribe;
+- onPinRequested(listener): Unsubscribe.
+
+Cada wrapper usa invoke quando existe Tauri e um adapter em memória no navegador. O adapter permite testar desenho e toolbar sem Windows.
+
+O tray e o atalho global nunca chamam pin_to_wall em Edit. Eles emitem canvie-pin-requested. O frontend salva e chama pin_to_wall.
+
+## Capabilities
+
+O primeiro conjunto de permissões cobre apenas os comandos de colocação, eventos e os plugins de global-shortcut, single-instance, autostart e tray. Uma capability não libera comandos não usados pela janela principal.
+
+## Segurança e logs
+
+Logs registram:
+
+- startup e versão;
+- atalho registrado ou recusado;
+- Wall → Edit e Edit → Wall;
+- falha de saveNow;
+- falha de parent, foco, click-through ou re-embed;
+- segunda instância e autostart.
+
+Logs não registram o conteúdo do documento, clipboard, texto de notas ou caminhos pessoais.

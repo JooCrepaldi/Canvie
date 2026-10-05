@@ -1,57 +1,76 @@
-# Canvie — Backend (as built, MVP-0)
+# Backend
 
-> Rust/Tauri shell: windowing, modes, tray, autostart, single-instance, shortcuts, Win32 layering. No domain logic beyond `ModeState`. Paths relative to `frontend/src-tauri/`.
+O backend Tauri inicia o processo, registra o log e mantém a instância única do scaffold L0. Ele não desenha elementos do canvas. Os comandos de placement entram na L3 e na L4.
 
-## 1. Files
+## Arquivos
 
-| File | Owns |
+| Arquivo | Dono |
 | --- | --- |
-| `src/main.rs` | Release `windows_subsystem` guard + `canvie_lib::run()` |
-| `src/lib.rs` | `ModeState` (+`passthrough`), `apply_mode`, `set_passthrough`/`apply_input`, `show_existing`, commands, hotkeys, tray, close→hide, plugins setup |
-| `src/wallpaper.rs` | Progman parenting: `embed` / `raise` / `detach`, plus `set_blur` (DWM blur-behind for Overlay) |
-| `build.rs` | `AppManifest::commands(["get_mode","toggle_lock","toggle_overlay","set_passthrough"])` — ACL guardrail |
-| `capabilities/default.json` | `allow-get-mode`, `allow-toggle-lock`, `allow-toggle-overlay`, `allow-set-passthrough` on window `main` |
-| `tauri.conf.json` | `main` window: fullscreen, transparent, undecorated, `skipTaskbar`; bundle icons |
-| `Cargo.toml` | tauri 2 + plugins (autostart, global-shortcut, log, single-instance) + `windows` crate (`Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` for the Overlay blur) |
+| src/lib.rs | PlacementState, comandos, eventos, tray, atalhos e ciclo de vida |
+| src/wallpaper.rs | Progman, parent, estilos, click-through, foco, transparência e Z-order |
+| src/main.rs | Entrada da aplicação |
+| build.rs | Manifesto de comandos e permissões |
+| capabilities/default.json | Capability mínima da janela principal |
 
-## 2. State machine
+## Comandos
 
-`ModeState { current, return_to, embedded, raised, passthrough }` (`src/lib.rs`, `Default` Canvas/false/false/true — cursor is the default tool). Helpers `current/raised/passthrough/set_raised/set_embedded` use `try_state` + `Mutex`, defaulting safely.
+O conjunto inicial é:
 
-- `apply_mode`: Canvas/Locked → clear topmost, click-through iff `Locked || (Canvas && passthrough)`, **re-embed AFTER tao**, restore raised order (both rest raised — Locked frees the desktop via click-through, nothing hides behind the icons), DWM blur off. Overlay → detach, DWM blur on (`blur -> on`), force interactive, topmost + unminimize/show/focus. Persists `current`, logs `canvie mode -> {}`, emits `canvie-mode`.
-- `raise_canvas`: Win32 raise + flag + `canvie layer -> raised` log + emit. Called once at setup (default raised).
-- `set_passthrough(active)` command: stores the cursor-tool flag, then `apply_input` (ignore + re-embed + re-raise in Canvas), logs `passthrough -> on/off`.
-- Toggles: lock Canvas↔Locked (Overlay no-op); overlay with `return_to`.
-- Commands are thin wrappers: `get_mode` (returns `{mode, raised}`), `toggle_lock`, `toggle_overlay`, `set_passthrough`.
+- get_placement;
+- enter_edit;
+- pin_to_wall.
 
-## 3. Win32 layering (`wallpaper.rs`)
+Cada comando tem retorno tipado e log de falha. pin_to_wall só trata a janela. Ele não grava o documento.
 
-- Find `Progman` by class via `EnumWindows` (`50-54`); icon layer via `FindWindowExW(Progman, SHELLDLL_DefView)` (`56-58`).
-- `embed` (`92-117`): set `WS_CHILD`, `SetParent(Progman)`, `SetWindowPos(defview, fullscreen-primary, SHOWWINDOW|FRAMECHANGED)`. False → caller keeps fullscreen-overlay fallback.
-- `raise` (`121-134`): `SetWindowPos(HWND_TOP, NOMOVE|NOSIZE|NOACTIVATE|SHOWWINDOW)`.
-- `lower` (`137-156`): re-order behind `defview`.
-- `detach` (`159-167`): clear `WS_CHILD` → `WS_POPUP`, `SetParent(None)`, fullscreen primary.
-- `ensure_embedded` (`lib.rs:102-120`) wraps `embed` best-effort with warn logs; runs on setup + every Canvas/Locked transition, always after tao calls.
+## PlacementState
 
-## 4. Shortcuts, tray, lifecycle (`lib.rs:304-439`)
+PlacementState guarda o estado efetivo da janela:
 
-- `register_hotkey`: `ctrl+l`→lock, `ctrl+alt+t`→overlay; registration failure logs warn and keeps running degraded — never crash/block startup.
-- Setup: file+stdout logs (`canvie` in `%LOCALAPPDATA%/com.canvie.app/logs`), `autolaunch().enable()`, `build_tray`, `ensure_embedded` + `raise_canvas` + `apply_input` (boot raised, cursor passthrough on), hotkeys.
-- Tray: Show / Cursor / Brush / Eraser / Lock / Overlay / Autostart(toggle label) / Quit; `show_menu_on_left_click(true)`. Tool entries emit `canvie-tool`; Show runs `show_existing` (re-embed + restore raised order in Canvas + show + re-emit).
-- Menu events: show_existing, lock/overlay toggles with warn on failure, autostart toggle by current state, quit.
-- `CloseRequested` → `prevent_close` + `hide`: X goes to tray.
-- Plugins: `single_instance` runs `show_existing` on second launch; `autostart` LaunchAgent/none; `global-shortcut` + `log`.
+    PlacementState {
+      placement: Wall | Edit,
+      embedded: bool,
+      focused: bool
+    }
 
-## 5. How to add a command (L4 pattern — mandatory)
+O estado nasce em Wall. Toda transição passa por uma função central e emite canvie-placement depois de concluir a operação da janela.
 
-1. `#[tauri::command] fn …` in `lib.rs` + `generate_handler!` entry.
-2. `AppManifest::commands` entry in `build.rs`.
-3. `allow-*` permission (+ TOML if generated) in `capabilities/default.json`.
-4. Frontend wrapper in `frontend/src/mode.ts` with try/catch fallback.
-Missing step 2/3 fails the build — that failure is the guardrail working.
+## Atalho e tray
 
-## 6. Constraints
+O plugin global-shortcut registra Ctrl + Alt + T. Se o registro falhar, o app inicia, registra warn e mantém Editar no tray.
 
-- `windows`-crate surface stays at `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` (`Cargo.toml`; Dwm is only the Overlay blur-behind — CSS cannot blur the OS desktop); new Win32 surface needs a comment explaining why.
-- Log transitions (`mode ->`, `layer ->`, `hotkey registered`) — in release the log file is the only trace.
-- Never: second instance, Run key to dev binary, elevated execution, writes outside `%APPDATA%/com.canvie.app` + Run key, Explorer patching beyond `SetParent`.
+O tray oferece:
+
+- Editar;
+- Fixar no desktop, que emite canvie-pin-requested durante Edit;
+- Mostrar;
+- Sair.
+
+O tray chama enter_edit diretamente em Wall. Em Edit, o tray e o atalho global emitem canvie-pin-requested para o frontend. O frontend salva e chama pin_to_wall. Não existe uma terceira regra de transição.
+
+## wallpaper.rs
+
+Funções previstas:
+
+- find_progman;
+- embed_wall;
+- detach_for_edit;
+- set_click_through;
+- set_foreground;
+- raise_wall;
+- reapply_window_style.
+
+Parede parenta em Progman e usa click-through. Edição desanexa, recebe foco e fica sempre no topo. O retorno aplica estilo, parent e Z-order depois de cada chamada tao que possa reescrever GWL_STYLE.
+
+Não use WorkerW, hooks do Explorer ou DefView patching.
+
+## Ciclo de vida
+
+- single-instance registra primeiro e foca a instância existente;
+- fechar a janela impede close e esconde para o tray;
+- Sair encerra o processo;
+- autostart aponta para o executável instalado;
+- Explorer reiniciado é detectado indiretamente: o próximo comando de janela repete embed_wall.
+
+## Logs
+
+Registre startup, hotkey, tray, mudança de placement, re-embed, foco, click-through, autostart, segunda instância e falha de comando. Não registre conteúdo do canvas.

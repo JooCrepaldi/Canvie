@@ -19,7 +19,8 @@
         "transparent": true,
         "decorations": true,
         "resizable": true,
-        "visible": true
+        "visible": true,
+        "create": false
       }
     ],
     "security": {

@@ -33,6 +33,11 @@ export type CanvasDoc = {
 
 export type Tool = 'cursor' | 'brush' | 'text' | 'eraser'
 
+export const MIN_ZOOM = 0.25
+export const MAX_ZOOM = 4
+export const MAX_NOTE_LENGTH = 2_000
+export const MAX_STROKE_POINTS = 50_000
+
 export const EMPTY_CAMERA: Camera = { x: 0, y: 0, zoom: 1 }
 
 export function createEmptyDocument(): CanvasDoc {

@@ -16,6 +16,8 @@ O visual do Codex inspira hierarquia, espaçamento, foco e estados de ferramenta
 | Edição | Dim leve no desktop e toolbar flutuante | Mostrar foco, ferramenta ativa e ação de fixar. |
 | Salvando | Mesmo layout, label curto Salvando… | Não bloquear o canvas. |
 | Erro de salvamento | Mensagem curta e ação Tentar novamente | Manter Edição até uma gravação passar. |
+| Documento recuperado | Aviso curto e ação Fechar | Informar que o documento salvo era inválido e que uma cópia foi guardada. |
+| Salvamento desativado | Aviso persistente, sem ação | Mostrar enquanto o documento salvo não puder ser lido ou copiado. |
 
 O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 

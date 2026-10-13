@@ -2,7 +2,7 @@
 
 Canvie é um canvas local que fica preso ao desktop do Windows. Quando você precisa anotar algo, use Ctrl + Alt + T. O canvas sobe para a frente, mostra uma toolbar compacta e volta à parede quando você clica em **Fixar no desktop**.
 
-O repositório está no início do projeto. Ele contém a proposta, o contrato de transição, o scaffold Tauri da L0 e o canvas da L1. As camadas seguintes entram depois que cada comportamento tiver evidência própria.
+O repositório está no início do projeto. Ele contém a proposta, o contrato de transição, o scaffold Tauri da L0, o canvas da L1 e o documento persistente da L2. As camadas seguintes entram depois que cada comportamento tiver evidência própria.
 
 ## Proposta atual
 

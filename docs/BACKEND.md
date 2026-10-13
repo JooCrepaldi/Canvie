@@ -1,6 +1,6 @@
 # Backend
 
-O backend Tauri inicia o processo, registra o log e mantém a instância única do scaffold L0. Ele não desenha elementos do canvas. Os comandos de placement entram na L3 e na L4.
+O backend Tauri inicia o processo, registra o log e mantém a instância única do scaffold L0. Desde a L2, ele cria a janela principal no setup a partir da configuração `main` (com `create: false`) para fixar o perfil do WebView2, e com ele o localStorage do documento, em %APPDATA%/com.canvie.app. Se a pasta não puder ser resolvida, o app usa o perfil padrão e registra um aviso. Ele não desenha elementos do canvas. Os comandos de placement entram na L3 e na L4.
 
 ## Arquivos
 

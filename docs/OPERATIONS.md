@@ -1,6 +1,6 @@
 # Operação
 
-Esta página define a verificação que acompanha cada camada. O scaffold L0 e o canvas em memória L1 já estão no repositório.
+Esta página define a verificação que acompanha cada camada. O scaffold L0, o canvas L1 e o documento persistente L2 já estão no repositório.
 
 ## Comandos
 
@@ -21,13 +21,22 @@ Para a build instalada:
 
 O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máquina.
 
+Um rustc que termina com `0xc0000409, STATUS_STACK_BUFFER_OVERRUN` aqui é falta de memória do LLVM: o log mostra `rustc-LLVM ERROR: out of memory` logo antes. A máquina tem 6 GB. Feche outros servidores de desenvolvimento e páginas pesadas e rode o build de novo; o Cargo reaproveita os crates já compilados.
+
+Para o E2E da L2, depois de `npm run tauri build`:
+
+    Set-Location frontend
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l2-persistence.ps1
+
+O script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
+
 ## Evidência por camada
 
 | Camada | Evidência |
 | --- | --- |
 | L0 | build frontend, oxlint, cargo check e janela vazia |
 | L1 | gravação manual de traço e nota no browser e na janela Tauri |
-| L2 | fechar processo e recuperar o mesmo documento; JSON inválido não derruba o app |
+| L2 | `scripts/e2e/l2-persistence.ps1`: fechar processo e recuperar o mesmo documento; JSON inválido não derruba o app; falha de gravação mantém a sessão |
 | L3 | parent Progman, click-through, transparência e acesso normal ao desktop |
 | L4 | log Wall → Edit → Wall, atalho real, toolbar, save antes de pin e retorno visual |
 | L5 | tray, close para tray, autostart e segunda instância |
@@ -36,8 +45,22 @@ O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máqu
 ## Evidência registrada em 2026-10-05
 
 - L0: `npm run build`, `npx oxlint` e `cargo check --locked` passaram. A build release com símbolos desligados passou e registrou `Canvie startup`. Uma segunda abertura manteve um único processo `canvie`.
-- L0: `npm run tauri dev` ainda não abre uma janela nesta máquina porque o `rustc` cai ao compilar o crate `windows` no perfil dev com `STATUS_STACK_BUFFER_OVERRUN`. A build release passa; a janela nativa não pôde ser inspecionada visualmente porque o processo iniciado pelo terminal não expõe uma janela na sessão interativa do agente.
+- L0: `npm run tauri dev` ainda não abre uma janela nesta máquina porque o `rustc` cai ao compilar o crate `windows` no perfil dev com `STATUS_STACK_BUFFER_OVERRUN`, que é falta de memória do LLVM (ver Comandos). A build release passa; a janela nativa não pôde ser inspecionada visualmente porque o processo iniciado pelo terminal não expõe uma janela na sessão interativa do agente.
 - L1: no browser fallback, a prova manual criou um traço, desfez, refez, criou a nota `Ideia rápida`, apagou o traço, moveu a toolbar pelo pegador e moveu/ampliou a câmera. A prova de 50 traços fica para o fechamento da camada.
+
+## Evidência registrada em 2026-10-13
+
+`scripts/e2e/l2-persistence.ps1` passou 39 de 39 verificações na build release, em uma janela de 900 × 600:
+
+- L1: 50 traços, uma nota digitada, borracha, Ctrl + Z, Ctrl + Y, pan pela ferramenta Mover e dois passos de zoom geraram exatamente a revisão 57, com 49 traços, a nota e a câmera salvas. Digitar `teste` na nota não trocou de ferramenta.
+- L2, matar o processo: `taskkill /F` no `canvie.exe` e uma nova abertura recuperaram o documento idêntico, caractere por caractere, e o mesmo desenho. O WebView2 encerrou cerca de 0,6 s depois do processo. O traço seguinte recebeu o id 52, acima do maior id restaurado (51).
+- L2, editar durante um save: com um documento de 600 traços e 2,3 milhões de caracteres, 12 traços desenhados enquanto os saves disparavam foram todos mantidos (revisão 1012), sem nenhuma long task do navegador. Serializar, gravar e reler esse documento custou cerca de 16 ms.
+- L2, JSON inválido: JSON truncado, versão futura com 2 MB, ids duplicados e zoom fora da faixa abriram um canvas vazio com o aviso de recuperação, sem derrubar o processo. A cópia em `canvie.document.invalid.v1` e a chave principal ficaram idênticas ao payload até a primeira edição.
+- L2, falha de gravação: com o localStorage cheio, o save mostrou Não foi possível salvar, manteve o último documento válido gravado e a edição em memória. Tentar novamente gravou as duas edições pendentes depois que o espaço voltou.
+- L2, fechar a janela: um WM_CLOSE enviado logo depois de um traço, antes do debounce, preservou o traço.
+- L2, perfil: sem variáveis de teste, o WebView2 abriu com `--user-data-dir` em `%APPDATA%\com.canvie.app\EBWebView`.
+- O log release registrou um `Canvie startup` por abertura (13) e nenhuma linha de erro.
+- Abertura até o canvas pronto: entre 0,85 s e 1 s com o perfil já criado.
 
 ## E2E de transição
 
@@ -63,6 +86,8 @@ Não use mocks para validar o parent, o foco, o atalho ou o processo.
 - tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top e ignore_cursor_events.
 - Uma capacidade negada precisa gerar warn e manter o app iniciado.
 - Um saveNow falho não pode reparentar a janela.
+- O localStorage do WebView2 aceita cerca de 5,24 milhões de caracteres por origem, somando o documento e a cópia de um payload inválido. Acima disso, o save falha e o aviso Tentar novamente aparece.
+- O WebView2 grava o localStorage em disco alguns segundos depois do save. Matar só o `canvie.exe` preserva o save, porque o WebView2 grava ao encerrar. Matar também os processos do WebView2 (`taskkill /T /F`, falta de energia) perdeu o save feito 0,6 s e 2 s antes; 6 s e 12 s depois, o save estava preservado.
 
 ## Métricas locais
 

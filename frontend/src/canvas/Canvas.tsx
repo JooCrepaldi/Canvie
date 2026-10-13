@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { CanvasDoc, Point, Stroke, Tool } from '../canvasTypes'
+import { MAX_NOTE_LENGTH, MAX_STROKE_POINTS, MAX_ZOOM, MIN_ZOOM, type CanvasDoc, type Point, type Stroke, type Tool } from '../canvasTypes'
 
 type CanvasProps = {
   doc: CanvasDoc
@@ -143,6 +143,7 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
     const position = pointerPosition(event)
 
     if (draft.kind === 'stroke') {
+      if (draft.stroke.points.length >= MAX_STROKE_POINTS) return
       const rect = canvas.getBoundingClientRect()
       draft.stroke.points.push(screenToWorld(position, docRef.current.camera, rect.width, rect.height))
     } else {
@@ -166,18 +167,18 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
     draftRef.current = null
 
     if (draft.kind === 'pan') {
-      const nextDoc = { ...docRef.current, revision: docRef.current.revision + 1 }
-      docRef.current = nextDoc
-      onChange(nextDoc)
+      if (docRef.current.camera !== draft.camera) onChange(docRef.current)
     } else if (tool === 'eraser') {
       const strokes = docRef.current.strokes.filter((stroke) =>
         !draft.stroke.points.some((cursor) => stroke.points.some((point) => Math.hypot(point.x - cursor.x, point.y - cursor.y) <= ERASER_RADIUS)),
       )
-      const nextDoc = { ...docRef.current, strokes, revision: docRef.current.revision + 1 }
-      docRef.current = nextDoc
-      onChange(nextDoc)
+      if (strokes.length !== docRef.current.strokes.length) {
+        const nextDoc = { ...docRef.current, strokes }
+        docRef.current = nextDoc
+        onChange(nextDoc)
+      }
     } else if (draft.stroke.points.length > 1) {
-      const nextDoc = { ...docRef.current, strokes: [...docRef.current.strokes, draft.stroke], revision: docRef.current.revision + 1 }
+      const nextDoc = { ...docRef.current, strokes: [...docRef.current.strokes, draft.stroke] }
       docRef.current = nextDoc
       onChange(nextDoc)
     }
@@ -207,11 +208,17 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
     }
   }
 
+  // The note input takes focus during pointerdown. Without this, the
+  // compatibility mousedown that follows moves focus back to the body.
+  const keepNoteFocus = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'text') event.preventDefault()
+  }
+
   const zoom = (event: React.WheelEvent<HTMLCanvasElement>) => {
     event.preventDefault()
-    const nextZoom = Math.min(4, Math.max(0.25, docRef.current.camera.zoom * (event.deltaY < 0 ? 1.1 : 0.9)))
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, docRef.current.camera.zoom * (event.deltaY < 0 ? 1.1 : 0.9)))
     if (nextZoom === docRef.current.camera.zoom) return
-    const nextDoc = { ...docRef.current, camera: { ...docRef.current.camera, zoom: nextZoom }, revision: docRef.current.revision + 1 }
+    const nextDoc = { ...docRef.current, camera: { ...docRef.current.camera, zoom: nextZoom } }
     docRef.current = nextDoc
     onChange(nextDoc)
   }
@@ -222,7 +229,7 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
     if (text) {
       const ids = [...docRef.current.strokes.map((stroke) => stroke.id), ...docRef.current.notes.map((note) => note.id)]
       const id = ids.length === 0 ? 1 : Math.max(...ids) + 1
-      const nextDoc = { ...docRef.current, notes: [...docRef.current.notes, { id, x: pendingNote.world.x, y: pendingNote.world.y, text }], revision: docRef.current.revision + 1 }
+      const nextDoc = { ...docRef.current, notes: [...docRef.current.notes, { id, x: pendingNote.world.x, y: pendingNote.world.y, text }] }
       docRef.current = nextDoc
       onChange(nextDoc)
     }
@@ -237,6 +244,7 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
         className="canvas-surface"
         aria-label="Canvas de desenho"
         onPointerDown={startPointer}
+        onMouseDown={keepNoteFocus}
         onPointerMove={updateDraft}
         onPointerUp={finishPointer}
         onPointerCancel={finishPointer}
@@ -249,6 +257,7 @@ export function Canvas({ doc, tool, onChange }: CanvasProps) {
           style={{ left: pendingNote.point.x, top: pendingNote.point.y }}
           aria-label="Texto da nota"
           placeholder="Escreva uma nota"
+          maxLength={MAX_NOTE_LENGTH}
           value={noteText}
           onChange={(event) => setNoteText(event.target.value)}
           onKeyDown={(event) => {

@@ -1,6 +1,6 @@
 # Canvie: PRD do primeiro ciclo
 
-Este documento congela o comportamento que a primeira implementação precisa entregar. O scaffold Tauri e o canvas de edição já existem nas camadas L0 e L1; persistência e integração com o desktop entram nas camadas seguintes.
+Este documento congela o comportamento que a primeira implementação precisa entregar. O scaffold Tauri, o canvas de edição e o documento persistente já existem nas camadas L0, L1 e L2; a integração com o desktop entra nas camadas seguintes.
 
 ## 1. Problema
 
@@ -91,6 +91,8 @@ O documento não guarda o estado da janela. Parede e Edição são estado de run
 | Falha | Resultado |
 | --- | --- |
 | JSON inválido | Abrir um documento vazio, guardar o payload inválido para diagnóstico e registrar aviso |
+| documento salvo ilegível ou sem cópia possível | Abrir um documento vazio, não salvar na sessão e avisar o usuário |
+| save automático falha | Manter o último documento válido no armazenamento e a edição em memória, mostrar Tentar novamente |
 | saveNow falha | Permanecer em Edição, preservar o documento em memória e mostrar Tentar novamente |
 | atalho ocupado | Iniciar o app, registrar aviso e manter Editar no tray |
 | capacidade negada | Iniciar com o recurso afetado desativado e registrar a causa |

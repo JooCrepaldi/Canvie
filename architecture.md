@@ -1,6 +1,6 @@
 # Arquitetura
 
-Este documento descreve a solução mínima para o Canvie. A implementação entra por camadas. L0 cria o processo Tauri e L1 cria o canvas em memória; os nomes de arquivo abaixo continuam sendo o contrato para as próximas camadas.
+Este documento descreve a solução mínima para o Canvie. A implementação entra por camadas. L0 cria o processo Tauri, L1 cria o canvas e L2 persiste o documento; os nomes de arquivo abaixo continuam sendo o contrato para as próximas camadas.
 
 ## Escolha da stack
 
@@ -94,12 +94,13 @@ O documento local usa a forma:
       camera: { x: number, y: number, zoom: number }
     }
 
-O WebView2 localStorage é suficiente para o primeiro ciclo e evita uma API Rust de arquivo. persistence.ts:
+O WebView2 localStorage é suficiente para o primeiro ciclo e evita uma API Rust de arquivo. lib.rs cria a janela principal com o perfil do WebView2 em %APPDATA%/com.canvie.app, ao lado do resto dos dados do usuário. O padrão do Tauri e o dataDirectory relativo resolvem para %LOCALAPPDATA%. persistence.ts:
 
-- valida a versão e cada campo antes de renderizar;
+- valida a versão e cada campo antes de renderizar e antes de gravar;
 - carrega um documento vazio quando o conteúdo é inválido;
 - guarda uma cópia do texto inválido para diagnóstico local;
-- salva depois de uma pausa de 350 ms;
+- desliga o save da sessão quando não consegue ler o documento salvo ou guardar essa cópia;
+- salva depois de uma pausa de 350 ms e grava o save pendente quando a página fica oculta;
 - oferece saveNow para Fixar no desktop;
 - nunca substitui um documento válido por um payload que não passou pela validação.
 

@@ -17,9 +17,12 @@
         "width": 900,
         "height": 600,
         "transparent": true,
-        "decorations": true,
-        "resizable": true,
-        "visible": true,
+        "decorations": false,
+        "resizable": false,
+        "visible": false,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
         "create": false
       }
     ],

@@ -102,7 +102,7 @@ Tauri capabilities are a security boundary, not a convenience list. Grant only t
 
 These invariants are blockers during review:
 
-1. **Re-embed after `tao`.** Calls that change `always_on_top` or `ignore_cursor_events` can rewrite window styles. Reapply the parent, `WS_CHILD`, and Z-order after every such call.
+1. **Re-embed after `tao`.** Calls that change `always_on_top`, `ignore_cursor_events`, or visibility rewrite window styles. Reapply the parent, `WS_CHILD`, and Z-order after every such call. A window with `WS_EX_LAYERED` also needs `SetLayeredWindowAttributes`, or Windows does not draw it.
 2. **Use the tested desktop parent.** Wall uses the `Progman` relationship defined in the architecture docs. Do not introduce Explorer hooks, `WorkerW` surgery, or DefView patching.
 3. **Treat Wall as non-interactive.** A window behind the icon layer cannot receive desktop input. Use backend click-through for the Wall path.
 4. **Keep `Win + T` reserved.** Use `Ctrl + Alt + T` for Edit until a recorded product decision changes it.

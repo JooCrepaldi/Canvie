@@ -23,12 +23,14 @@ O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máqu
 
 Um rustc que termina com `0xc0000409, STATUS_STACK_BUFFER_OVERRUN` aqui é falta de memória do LLVM: o log mostra `rustc-LLVM ERROR: out of memory` logo antes. A máquina tem 6 GB. Feche outros servidores de desenvolvimento e páginas pesadas e rode o build de novo; o Cargo reaproveita os crates já compilados.
 
-Para o E2E da L2, depois de `npm run tauri build`:
+Os E2E das camadas rodam depois de `npm run tauri build`, um de cada vez, porque usam a mesma porta de DevTools e a instância única:
 
     Set-Location frontend
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l2-persistence.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l3-area-content.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l4-fixed-area.ps1
 
-O script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
+Cada script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
 
 ## Evidência por camada
 
@@ -78,6 +80,18 @@ O script abre o executável release com o perfil do WebView2 redirecionado para 
 
 `scripts/e2e/l2-persistence.ps1`, adaptado à área, passou 41 de 41 verificações na mesma build, incluindo um documento salvo antes da L3, sem área, que caiu no fluxo de documento inválido. O markdown-it aumentou o bundle em 105 KB minificado (43 KB com gzip).
 
+## Evidência registrada em 2026-10-13: L4
+
+`scripts/e2e/l4-fixed-area.ps1` passou 16 de 16 verificações na build release, num monitor de 1920 × 1080 a 100%:
+
+- O backend respondeu `get_placement` com Wall e `embedded: true`, e o log registrou `placement -> wall (embedded in Progman)`.
+- A janela é filha de Progman, com WS_CHILD, a primeira entre os filhos de Progman (acima da camada de ícones), WS_EX_LAYERED e WS_EX_TRANSPARENT, sem WS_EX_TOPMOST, cobrindo 1920 × 1080.
+- O estado Fixo desenhou a área salva sem toolbar, borda, dim ou aviso; html, body, #root e main ficaram transparentes.
+- O hit-test dentro e fora da área caiu na janela de outro app que estava por cima, e não no Canvie; a área não ficou com o foreground.
+- Em repouso por 20 s: 356 MB de working set somando o `canvie.exe` e os 6 processos do WebView2, e 0,15 s de CPU por minuto.
+
+A primeira execução com o desktop à mostra encontrou um defeito: a área não aparecia no desktop, embora o hit-test chegasse à camada de ícones. O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes, e o Windows não desenha uma janela layered sem atributos. Aplicar alfa 255 por fora fez a área bege e o post-it aparecerem sobre o wallpaper, transparentes em volta, e o clique continuou chegando a SHELLDLL_DefView; tirar WS_EX_LAYERED mostrou a área, mas quebrou o click-through. `wallpaper::embed` passou a aplicar os atributos. O E2E só confere o pixel bege quando encontra uma região de pelo menos 240 × 160 do desktop sem janelas por cima, para não mexer nas janelas do usuário; nesta execução, a tela estava toda coberta.
+
 ## E2E de transição
 
 O script de L5 precisa:
@@ -99,7 +113,10 @@ Não use mocks para validar o parent, o foco, o atalho ou o processo.
 
 - Win + T pertence ao Explorer. Use Ctrl + Alt + T.
 - Atrás de SHELLDLL_DefView não há input. Parede precisa de click-through.
-- tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top e ignore_cursor_events.
+- tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top, ignore_cursor_events e show.
+- O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes. Sem os atributos, a janela não aparece no desktop, embora o hit-test funcione.
+- Uma janela filha de Progman pode ser destruída quando o Explorer reinicia. A recriação está prevista na L6.
+- No PowerShell, `$null` passado a um parâmetro string vira texto vazio. Use `[NullString]::Value` em chamadas como FindWindow.
 - Uma capacidade negada precisa gerar warn e manter o app iniciado.
 - Um saveNow falho não pode reparentar a janela.
 - O localStorage do WebView2 aceita cerca de 5,24 milhões de caracteres por origem, somando o documento e a cópia de um payload inválido. Acima disso, o save falha e o aviso Tentar novamente aparece.

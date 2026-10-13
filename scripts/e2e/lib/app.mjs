@@ -6,7 +6,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { DevTools, withTimeout } from './devtools.mjs'
 
 const WEBVIEW2_DEFAULT_ARGS = '--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection'
-const READY = "document.querySelector('.toolbar') !== null && (document.querySelector('.canvas-area') === null || (document.querySelector('canvas')?.width ?? 0) > 1)"
+const READY = "document.querySelector('.canvie-shell') !== null && (document.querySelector('.canvas-area') === null || (document.querySelector('canvas')?.width ?? 0) > 1)"
 
 export function webviewCommandLines() {
   const script = "Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | ForEach-Object { $_.CommandLine }"

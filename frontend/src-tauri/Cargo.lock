@@ -369,10 +369,12 @@ name = "canvie"
 version = "0.0.1"
 dependencies = [
  "log",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
  "tauri-plugin-single-instance",
+ "windows",
 ]
 
 [[package]]

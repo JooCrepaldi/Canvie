@@ -16,8 +16,8 @@ O app usa um processo Tauri e uma janela principal. A janela muda de relação c
 
 | Estado | Relação da janela | Entrada |
 | --- | --- | --- |
-| Parede | Janela filha de Progman, transparente, acima da camada de ícones e abaixo da taskbar e das janelas comuns | Click-through em toda a área |
-| Edição | Janela top-level, transparente, em primeiro plano, com foco e sempre no topo | Interativa |
+| Parede (Fixo) | Janela do tamanho do monitor principal, filha de Progman, transparente fora da área, acima da camada de ícones e abaixo da taskbar e das janelas comuns | Click-through em toda a janela |
+| Edição | A mesma janela, top-level, em primeiro plano, com foco e sempre no topo; o dim cobre o resto da tela | Interativa |
 
 O Canvie não cria uma segunda janela para editar. A mesma janela é desanexada e reanexada. Isso reduz memória e evita dois documentos com estados diferentes.
 
@@ -126,7 +126,8 @@ Uma falha de permissão ou de registro deixa o app iniciado. O log explica a deg
 
 ## Invariantes do Windows
 
-- Depois de qualquer chamada tao que mude always_on_top ou ignore_cursor_events, reaplique parent, WS_CHILD e Z-order.
+- Depois de qualquer chamada tao que mude always_on_top, ignore_cursor_events ou a visibilidade, reaplique parent, WS_CHILD e Z-order.
+- Toda janela com WS_EX_LAYERED recebe SetLayeredWindowAttributes; sem os atributos, o Windows não a desenha.
 - Parede usa a relação Progman testada. Não use WorkerW, hooks do Explorer ou alterações em DefView.
 - Parede é click-through. Não tente receber edição atrás da camada de ícones.
 - Edição é top-level e focada. Ao sair, ela volta para Progman antes de emitir Wall.

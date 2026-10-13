@@ -6,66 +6,268 @@
   background: transparent;
 }
 
-.canvas-layer,
+.canvas-area {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.canvas-area.background-paper {
+  background: #f4ecdc;
+}
+
+.canvas-area.background-transparent {
+  background: transparent;
+}
+
 .canvas-surface {
   position: absolute;
   inset: 0;
-}
-
-.canvas-layer {
-  z-index: 1;
-}
-
-.canvas-surface {
   width: 100%;
   height: 100%;
   cursor: crosshair;
   touch-action: none;
 }
 
-.note-input {
-  position: absolute;
-  z-index: 2;
-  width: 170px;
-  padding: 8px 10px;
-  border: 1px solid #60a5fa;
-  border-radius: 6px;
-  outline: 0;
-  background: #202123;
-  color: #f3f4f6;
-  font: inherit;
-  font-size: 14px;
-  transform: translate(-10px, -28px);
+.canvas-surface.tool-cursor {
+  cursor: grab;
 }
 
-.canvas-status {
+.canvas-surface.tool-text,
+.canvas-surface.tool-postit {
+  cursor: text;
+}
+
+.canvas-surface.tool-eraser {
+  cursor: cell;
+}
+
+.notes-layer {
   position: absolute;
-  z-index: 2;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: rgba(32, 33, 35, 0.82);
-  color: #a7a9b0;
-  font-size: 12px;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
   pointer-events: none;
 }
 
-.canvas-status h1 {
+.note {
+  position: absolute;
+  box-sizing: border-box;
+  max-width: 480px;
   margin: 0;
-  color: #f3f4f6;
+  padding: 4px 6px;
+  color: #1f2328;
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+}
+
+.note-text {
+  width: max-content;
+}
+
+.note-postit {
+  width: 240px;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  background: #fde68a;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.note-small {
   font-size: 14px;
-  font-weight: 600;
+}
+
+.note-medium {
+  font-size: 18px;
+}
+
+.note-large {
+  font-size: 24px;
+}
+
+.note.is-interactive {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.note:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.note > :first-child {
+  margin-top: 0;
+}
+
+.note > :last-child {
+  margin-bottom: 0;
+}
+
+.note p,
+.note ul,
+.note ol,
+.note blockquote,
+.note pre,
+.note table {
+  margin: 0.35em 0;
+}
+
+.note h1,
+.note h2,
+.note h3,
+.note h4,
+.note h5,
+.note h6 {
+  margin: 0.3em 0;
+  line-height: 1.2;
+}
+
+.note h1 {
+  font-size: 1.6em;
+}
+
+.note h2 {
+  font-size: 1.35em;
+}
+
+.note h3 {
+  font-size: 1.15em;
+}
+
+.note h4,
+.note h5,
+.note h6 {
+  font-size: 1em;
+}
+
+.note ul,
+.note ol {
+  padding-left: 1.3em;
+}
+
+.note table {
+  border-collapse: collapse;
+}
+
+.note th,
+.note td {
+  padding: 2px 8px;
+  border: 1px solid rgba(31, 35, 40, 0.35);
+  text-align: left;
+}
+
+.note code {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(31, 35, 40, 0.08);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.9em;
+}
+
+.note pre {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(31, 35, 40, 0.08);
+  white-space: pre-wrap;
+}
+
+.note pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.note blockquote {
+  padding-left: 0.7em;
+  border-left: 3px solid rgba(31, 35, 40, 0.3);
+}
+
+.note a {
+  color: #2563eb;
+}
+
+.note-editor {
+  min-width: 220px;
+  min-height: 2.6em;
+  border: 1px solid #60a5fa;
+  border-radius: 4px;
+  outline: 0;
+  background: rgba(255, 255, 255, 0.94);
+  field-sizing: content;
+  line-height: 1.4;
+  pointer-events: auto;
+  resize: none;
+  user-select: text;
+}
+
+.note-editor.note-postit {
+  background: #fde68a;
+}
+
+.area-frame {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.32);
+  pointer-events: none;
+}
+
+.area-selector {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.32);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.area-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(32, 33, 35, 0.94);
+  color: #f3f4f6;
+  font-size: 13px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.area-draft {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed #f3f4f6;
+  background: rgba(244, 236, 220, 0.25);
+}
+
+.area-draft[hidden] {
+  display: none;
+}
+
+.area-size {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(32, 33, 35, 0.9);
+  color: #f3f4f6;
+  font-size: 12px;
 }
 
 .canvas-notice {
   position: absolute;
-  z-index: 2;
-  top: 64px;
+  z-index: 6;
+  top: 16px;
   left: 16px;
   display: flex;
   align-items: center;
@@ -108,12 +310,15 @@
 
 .toolbar {
   position: absolute;
-  z-index: 3;
+  z-index: 5;
   top: 16px;
   left: 50%;
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 6px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
   padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -144,9 +349,17 @@
 .toolbar-group {
   display: flex;
   gap: 4px;
+  padding-right: 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-group:last-child {
+  padding-right: 0;
+  border-right: 0;
 }
 
 .toolbar-button {
+  min-width: 32px;
   min-height: 32px;
   padding: 0 9px;
   border: 0;
@@ -163,7 +376,8 @@
   color: #f3f4f6;
 }
 
-.toolbar-button:focus-visible {
+.toolbar-button:focus-visible,
+.toolbar-swatch:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 1px;
 }
@@ -176,4 +390,33 @@
 .toolbar-button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.toolbar-swatch {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+}
+
+.toolbar-swatch::before {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+  content: "";
+}
+
+.toolbar-swatch:hover {
+  background: #2b2d31;
+}
+
+.toolbar-swatch.is-active::before {
+  box-shadow: 0 0 0 2px #202123, 0 0 0 4px #f3f4f6;
 }

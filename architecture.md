@@ -72,13 +72,13 @@ Se o Explorer reiniciar, o próximo enter_edit, pin_to_wall ou comando do tray c
 
 | Área | Dono | Responsabilidade |
 | --- | --- | --- |
-| Documento e histórico | frontend/src/canvas | Desenho, notas, câmera, ações, undo e redo |
+| Documento e histórico | frontend/src/canvas e frontend/src/App.tsx | Área, desenho, notas em Markdown, post-its, câmera, ações, undo e redo |
 | Persistência | frontend/src/persistence.ts | Validação, load, save com debounce, saveNow e backup de documento inválido |
 | Ponte de colocação | frontend/src/placement.ts | Wrappers tipados, eventos e fallback para o navegador |
 | Estado de janela | frontend/src-tauri/src/lib.rs | PlacementState, comandos, eventos, tray, ciclo de vida e atalhos |
 | Windows | frontend/src-tauri/src/wallpaper.rs | Progman, estilos, transparência, click-through, foco, Z-order e re-embed |
 | Permissões | frontend/src-tauri/capabilities | Exposição mínima de comandos e plugins |
-| Aparência | frontend/src/App.css e frontend/src/index.css | Canvas transparente, dim, toolbar e estados de foco |
+| Aparência | frontend/src/App.css e frontend/src/index.css | Página transparente, fundo da área, notas, dim, toolbar e estados de foco |
 
 Nenhum componente React chama diretamente a API de janela. Nenhuma função de Win32 interpreta traços ou notas.
 
@@ -89,10 +89,14 @@ O documento local usa a forma:
     CanvasDoc {
       version: 1,
       revision: number,
+      area: { x, y, width, height } | null,
+      background: 'paper' | 'transparent',
       strokes: Stroke[],
       notes: Note[],
       camera: { x: number, y: number, zoom: number }
     }
+
+Notas e post-its guardam Markdown, tamanho e tipo. A área usa pixels CSS da janela, que cobre o monitor principal a partir da L4.
 
 O WebView2 localStorage é suficiente para o primeiro ciclo e evita uma API Rust de arquivo. lib.rs cria a janela principal com o perfil do WebView2 em %APPDATA%/com.canvie.app, ao lado do resto dos dados do usuário. O padrão do Tauri e o dataDirectory relativo resolvem para %LOCALAPPDATA%. persistence.ts:
 

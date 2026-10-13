@@ -37,10 +37,11 @@ O script abre o executável release com o perfil do WebView2 redirecionado para 
 | L0 | build frontend, oxlint, cargo check e janela vazia |
 | L1 | gravação manual de traço e nota no browser e na janela Tauri |
 | L2 | `scripts/e2e/l2-persistence.ps1`: fechar processo e recuperar o mesmo documento; JSON inválido não derruba o app; falha de gravação mantém a sessão |
-| L3 | parent Progman, click-through, transparência e acesso normal ao desktop |
-| L4 | log Wall → Edit → Wall, atalho real, toolbar, save antes de pin e retorno visual |
-| L5 | tray, close para tray, autostart e segunda instância |
-| L6 | instalador, reinício do Windows, escala DPI, teclado, RAM e CPU |
+| L3 | `scripts/e2e/l3-area-content.ps1`: área por arraste, três tintas, Markdown, post-it, mover, apagar, fundo e reabertura |
+| L4 | parent Progman, click-through, transparência fora da área, acesso normal ao desktop e memória em repouso |
+| L5 | log Wall → Edit → Wall, atalho real, toolbar, save antes de pin, tray e retorno visual |
+| L6 | Alt + F4 sem encerrar, segunda instância e logs de persistência |
+| L7 | instalador, reinício do Windows, escala DPI, teclado, RAM e CPU |
 
 ## Evidência registrada em 2026-10-05
 
@@ -62,9 +63,24 @@ O script abre o executável release com o perfil do WebView2 redirecionado para 
 - O log release registrou um `Canvie startup` por abertura (13) e nenhuma linha de erro.
 - Abertura até o canvas pronto: entre 0,85 s e 1 s com o perfil já criado.
 
+## Evidência registrada em 2026-10-13: L3
+
+`scripts/e2e/l3-area-content.ps1` passou 27 de 27 verificações na build release, em uma janela comum de 900 × 600:
+
+- A primeira abertura mostrou o seletor de área; um arraste de 50 × 50 foi recusado com o aviso de tamanho mínimo; o arraste de 720 × 440 virou a área salva e desenhada.
+- Um traço em cada tinta salvou as cores preta, azul e vermelha, e a tinta ativa ficou marcada como pressionada.
+- Uma nota em Markdown guardou o texto bruto e renderizou título e tabela. `<img onerror>` e um link `javascript:` apareceram como texto, sem elemento de imagem ou link.
+- Um post-it grande foi criado sem perder o foco ao trocar o tamanho, editado por duplo clique, e a borracha o removeu; Ctrl + Z o trouxe de volta.
+- A ferramenta Mover arrastou uma nota exatamente pela distância do ponteiro.
+- O fundo trocou para transparente e voltou para bege, com a cor calculada da área conferida.
+- A ação Área foi cancelada com Esc e depois redefiniu o retângulo sem perder conteúdo.
+- Matar o processo e abrir de novo trouxe o mesmo documento, a mesma área, as duas notas, a tabela e os traços.
+
+`scripts/e2e/l2-persistence.ps1`, adaptado à área, passou 41 de 41 verificações na mesma build, incluindo um documento salvo antes da L3, sem área, que caiu no fluxo de documento inválido. O markdown-it aumentou o bundle em 105 KB minificado (43 KB com gzip).
+
 ## E2E de transição
 
-O script de L4 precisa:
+O script de L5 precisa:
 
 1. iniciar uma build instalada;
 2. localizar a janela principal pelo PID;

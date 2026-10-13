@@ -4,6 +4,7 @@ import {
   MAX_STROKE_POINTS,
   MAX_ZOOM,
   MIN_ZOOM,
+  type Area,
   type Camera,
   type CanvasDoc,
   type Note,
@@ -17,8 +18,12 @@ export const SAVE_DEBOUNCE_MS = 350
 
 const MAX_STROKES = 10_000
 const MAX_NOTES = 10_000
-const MAX_COLOR_LENGTH = 64
 const MAX_STROKE_WIDTH = 100
+const MAX_AREA_SIDE = 100_000
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+const NOTE_SIZES = new Set(['small', 'medium', 'large'])
+const NOTE_KINDS = new Set(['text', 'postit'])
+const BACKGROUNDS = new Set(['paper', 'transparent'])
 
 type DocumentStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
@@ -57,8 +62,7 @@ function isStroke(value: unknown): value is Stroke {
     value.points.length <= MAX_STROKE_POINTS &&
     value.points.every(isPoint) &&
     typeof value.color === 'string' &&
-    value.color.length > 0 &&
-    value.color.length <= MAX_COLOR_LENGTH &&
+    HEX_COLOR.test(value.color) &&
     isFiniteNumber(value.width) &&
     value.width > 0 &&
     value.width <= MAX_STROKE_WIDTH
@@ -73,7 +77,25 @@ function isNote(value: unknown): value is Note {
     isFiniteNumber(value.y) &&
     typeof value.text === 'string' &&
     value.text.trim().length > 0 &&
-    value.text.length <= MAX_NOTE_LENGTH
+    value.text.length <= MAX_NOTE_LENGTH &&
+    typeof value.size === 'string' &&
+    NOTE_SIZES.has(value.size) &&
+    typeof value.kind === 'string' &&
+    NOTE_KINDS.has(value.kind)
+  )
+}
+
+function isArea(value: unknown): value is Area {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.x) &&
+    isFiniteNumber(value.y) &&
+    isFiniteNumber(value.width) &&
+    isFiniteNumber(value.height) &&
+    value.width > 0 &&
+    value.height > 0 &&
+    value.width <= MAX_AREA_SIDE &&
+    value.height <= MAX_AREA_SIDE
   )
 }
 
@@ -95,6 +117,9 @@ export function isCanvasDocument(value: unknown): value is CanvasDoc {
     typeof value.revision === 'number' &&
     Number.isSafeInteger(value.revision) &&
     value.revision >= 0 &&
+    (value.area === null || isArea(value.area)) &&
+    typeof value.background === 'string' &&
+    BACKGROUNDS.has(value.background) &&
     Array.isArray(value.strokes) &&
     value.strokes.length <= MAX_STROKES &&
     value.strokes.every(isStroke) &&

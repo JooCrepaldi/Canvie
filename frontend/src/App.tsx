@@ -1,8 +1,27 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { fitArea, type Viewport } from './canvas/area'
+import { AreaSelector } from './canvas/AreaSelector'
 import { Canvas } from './canvas/Canvas'
-import type { CanvasDoc, Tool } from './canvasTypes'
+import { INK_COLORS, type Area, type CanvasDoc, type NoteSize, type Tool } from './canvasTypes'
 import type { DocumentPersistence, LoadResult } from './persistence'
 import { Toolbar } from './Toolbar'
+
+const TOOL_SHORTCUTS: Record<string, Tool | undefined> = {
+  b: 'brush',
+  t: 'text',
+  p: 'postit',
+  e: 'eraser',
+}
+
+function useViewport(): Viewport {
+  const [viewport, setViewport] = useState<Viewport>(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return viewport
+}
 
 type AppProps = {
   persistence: DocumentPersistence
@@ -55,6 +74,10 @@ function SaveNotice({ blocked, saveFailed, recovered, onRetry, onDismissRecovery
 export default function App({ persistence, initialLoad }: AppProps) {
   const [doc, setDoc] = useState<CanvasDoc>(initialLoad.document)
   const [tool, setTool] = useState<Tool>('brush')
+  const [ink, setInk] = useState<string>(INK_COLORS[0].value)
+  const [noteSize, setNoteSize] = useState<NoteSize>('medium')
+  const [selectingArea, setSelectingArea] = useState(initialLoad.document.area === null)
+  const viewport = useViewport()
   const [past, setPast] = useState<CanvasDoc[]>([])
   const [future, setFuture] = useState<CanvasDoc[]>([])
   const [recovered, setRecovered] = useState(initialLoad.status === 'recovered')
@@ -110,18 +133,34 @@ export default function App({ persistence, initialLoad }: AppProps) {
     persistence.saveNow(docRef.current).catch(() => undefined)
   }, [persistence])
 
+  const selectArea = useCallback(
+    (area: Area) => {
+      commit({ ...docRef.current, area })
+      setSelectingArea(false)
+    },
+    [commit],
+  )
+
+  const cancelAreaSelection = useCallback(() => setSelectingArea(false), [])
+
+  const toggleBackground = useCallback(() => {
+    commit({ ...docRef.current, background: docRef.current.background === 'paper' ? 'transparent' : 'paper' })
+  }, [commit])
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
-      if (event.key.toLowerCase() === 'b') setTool('brush')
-      if (event.key.toLowerCase() === 't') setTool('text')
-      if (event.key.toLowerCase() === 'e') setTool('eraser')
-      if (event.ctrlKey && event.key.toLowerCase() === 'z') {
+      const key = event.key.toLowerCase()
+      if (!event.ctrlKey && !event.altKey && !event.metaKey) {
+        const shortcutTool = TOOL_SHORTCUTS[key]
+        if (shortcutTool) setTool(shortcutTool)
+      }
+      if (event.ctrlKey && key === 'z') {
         event.preventDefault()
         if (event.shiftKey) redo()
         else undo()
       }
-      if (event.ctrlKey && event.key.toLowerCase() === 'y') {
+      if (event.ctrlKey && key === 'y') {
         event.preventDefault()
         redo()
       }
@@ -130,12 +169,19 @@ export default function App({ persistence, initialLoad }: AppProps) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [redo, undo])
 
+  // Undoing the first area selection leaves no area, so the selector returns.
+  const showAreaSelector = selectingArea || doc.area === null
+  const area = doc.area && fitArea(doc.area, viewport)
+
   return (
-    <main className="canvie-shell" aria-labelledby="canvie-title">
-      <header className="canvas-status" aria-live="polite">
-        <h1 id="canvie-title">Canvie</h1>
-        <span>Edição local</span>
-      </header>
+    <main className="canvie-shell" aria-label="Canvie">
+      {area && (
+        <>
+          <Canvas doc={doc} area={area} tool={tool} ink={ink} noteSize={noteSize} onChange={commit} onNoteSizeChange={setNoteSize} />
+          {!showAreaSelector && <div className="area-frame" style={{ left: area.x, top: area.y, width: area.width, height: area.height }} aria-hidden="true" />}
+        </>
+      )}
+      {showAreaSelector && <AreaSelector cancelable={doc.area !== null} onSelect={selectArea} onCancel={cancelAreaSelection} />}
       <SaveNotice
         blocked={initialLoad.status === 'blocked'}
         saveFailed={saveFailed}
@@ -143,8 +189,21 @@ export default function App({ persistence, initialLoad }: AppProps) {
         onRetry={retrySave}
         onDismissRecovery={() => setRecovered(false)}
       />
-      <Canvas doc={doc} tool={tool} onChange={commit} />
-      <Toolbar tool={tool} canUndo={past.length > 0} canRedo={future.length > 0} onToolChange={setTool} onUndo={undo} onRedo={redo} />
+      <Toolbar
+        tool={tool}
+        ink={ink}
+        noteSize={noteSize}
+        background={doc.background}
+        canUndo={past.length > 0}
+        canRedo={future.length > 0}
+        onToolChange={setTool}
+        onInkChange={setInk}
+        onNoteSizeChange={setNoteSize}
+        onBackgroundToggle={toggleBackground}
+        onSelectArea={() => setSelectingArea(true)}
+        onUndo={undo}
+        onRedo={redo}
+      />
     </main>
   )
 }

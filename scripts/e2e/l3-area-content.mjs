@@ -1,6 +1,6 @@
 // L3 E2E driver: canvas area and MVP content on the real release build,
 // with real input over the DevTools protocol and a throwaway WebView2 profile.
-import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -60,7 +60,7 @@ const hint = (page) => page.evaluate("document.querySelector('.area-hint')?.text
 const editorOpen = "document.activeElement?.classList.contains('note-editor') === true"
 
 async function firstRun() {
-  const page = await app.launch('fresh profile')
+  const page = await app.launch('fresh profile', { edit: true })
   const isolated = app.isolated()
   report.check('WebView2 uses the throwaway E2E profile', isolated)
   if (!isolated) throw new Error('WEBVIEW2_USER_DATA_FOLDER was ignored; refusing to write to the real profile')
@@ -189,7 +189,7 @@ async function redefineArea() {
 async function killAndReopen() {
   const before = await readRaw(app.page, DOC_KEY)
   await app.stop('kill')
-  const page = await app.launch('after kill')
+  const page = await app.launch('after kill', { edit: true })
   const rect = await areaRect(page)
   const doc = JSON.parse(await readRaw(page, DOC_KEY))
   report.check('reopened app has the same document', (await readRaw(page, DOC_KEY)) === before)
@@ -211,7 +211,7 @@ try {
   report.check('E2E run completed', false, error instanceof Error ? error.message : String(error))
 } finally {
   if (app.current) await app.stop('kill').catch(() => undefined)
-  rmSync(profileDir, { recursive: true, force: true })
+  app.removeProfile()
 }
 
 report.checkLog(app.launches)

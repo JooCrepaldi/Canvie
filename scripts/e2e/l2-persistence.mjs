@@ -4,13 +4,13 @@
 // sends real input events. WEBVIEW2_USER_DATA_FOLDER moves the WebView2
 // profile to a throwaway folder, so the user's canvas is never read or
 // written. The run stops before any write when that redirect is not in effect.
-import { execFileSync, spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
-import { CanvieApp, webviewCommandLines } from './lib/app.mjs'
+import { CanvieApp, closeWindow, webviewCommandLines } from './lib/app.mjs'
 import {
   areaRect,
   canvasDigest,
@@ -18,6 +18,8 @@ import {
   clickElement,
   defineArea,
   drag,
+  FILLER_KEY,
+  fillStorage,
   notice,
   pressEnter,
   pressLetter,
@@ -33,7 +35,6 @@ import { Report } from './lib/report.mjs'
 
 const DOC_KEY = 'canvie.document.v1'
 const BACKUP_KEY = 'canvie.document.invalid.v1'
-const FILLER_KEY = 'canvie.e2e.filler'
 const SETTLE_MS = 350 + 400
 const AREA_START = { x: 20, y: 70 }
 const AREA_END = { x: 880, y: 590 }
@@ -96,35 +97,8 @@ function largeDocument(strokeCount, pointsPerStroke, revision) {
   return { version: 1, revision, area, background: 'paper', strokes, notes: [], camera: { x: 0, y: 0, zoom: 1 } }
 }
 
-async function fillStorage(page, headroom) {
-  return page.evaluate(`(() => {
-    const key = ${JSON.stringify(FILLER_KEY)}
-    const fits = (length) => {
-      try {
-        localStorage.setItem(key, 'x'.repeat(length))
-        return true
-      } catch {
-        return false
-      }
-    }
-    let low = 0
-    let high = 1 << 20
-    while (high <= 1 << 25 && fits(high)) {
-      low = high
-      high *= 2
-    }
-    while (high - low > 256) {
-      const middle = Math.floor((low + high) / 2)
-      if (fits(middle)) low = middle
-      else high = middle
-    }
-    localStorage.setItem(key, 'x'.repeat(low - ${headroom}))
-    return low
-  })()`)
-}
-
 async function freshBoot() {
-  const page = await app.launch('fresh profile')
+  const page = await app.launch('fresh profile', { edit: true })
   // Safety: prove WebView2 runs on the throwaway profile before any write.
   const isolated = app.isolated()
   report.check('WebView2 uses the throwaway E2E profile', isolated)
@@ -186,7 +160,7 @@ async function killAndRestore() {
   const before = await readRaw(app.page, DOC_KEY)
   const digestBefore = await canvasDigest(app.page)
   report.measure('WebView2 exit after canvie.exe was killed ms', await app.stop('kill'))
-  const page = await app.launch('after kill')
+  const page = await app.launch('after kill', { edit: true })
   const after = await readRaw(page, DOC_KEY)
   const digestAfter = await canvasDigest(page)
   report.check('killed process reopens with the same stored document', after === before, `${after?.length ?? 0} chars`)
@@ -244,7 +218,7 @@ async function invalidPayloads() {
   for (const [index, [name, payload]] of payloads.entries()) {
     await writeRaw(app.page, DOC_KEY, payload)
     await app.stop('kill')
-    const page = await app.launch(`invalid: ${name}`)
+    const page = await app.launch(`invalid: ${name}`, { edit: true })
     await sleep(2_000)
     const shown = await notice(page)
     const empty = await page.evaluate("document.querySelector('.canvas-area') === null && document.querySelector('.area-selector') !== null")
@@ -269,7 +243,7 @@ async function closeRightAfterEdit() {
   const saved = await readDoc(page)
   await drag(page, longStroke(rect, rect.y + 190, 8))
   await app.stop('close')
-  const reopened = await readDoc(await app.launch('after close'))
+  const reopened = await readDoc(await app.launch('after close', { edit: true }))
   report.check('closing the window right after an edit keeps that edit', reopened.revision === saved.revision + 1, `stored revision=${reopened.revision}, edit was revision ${saved.revision + 1}`)
 }
 
@@ -283,7 +257,7 @@ async function treeKillDurability() {
     const expected = (await readDoc(page)).revision
     await sleep(Math.max(0, delayMs - SETTLE_MS))
     await app.stop('tree')
-    const stored = (await readDoc(await app.launch(`after tree kill ${delayMs} ms`))).revision
+    const stored = (await readDoc(await app.launch(`after tree kill ${delayMs} ms`, { edit: true }))).revision
     outcomes.push({ msAfterEdit: delayMs, kept: stored === expected, stored, expected })
   }
   report.measure('process tree killed N ms after the last edit', outcomes)
@@ -292,7 +266,7 @@ async function treeKillDurability() {
 async function editDuringSave() {
   await writeRaw(app.page, DOC_KEY, JSON.stringify(largeDocument(600, 80, 1_000)))
   await app.stop('kill')
-  const page = await app.launch('large document')
+  const page = await app.launch('large document', { edit: true })
   const loaded = await readDoc(page)
   report.check('large document loads', loaded.strokes.length === 600 && (await canvasDigest(page)).ink > 0)
   report.measure('large document chars', (await readRaw(page, DOC_KEY)).length)
@@ -345,7 +319,7 @@ async function realProfileLocation() {
   }
   app.launches += 1
   report.check('default launch keeps the WebView2 profile under %APPDATA%\\com.canvie.app', found)
-  execFileSync('taskkill', ['/PID', String(child.pid)], { stdio: 'ignore' })
+  closeWindow(child.pid)
   await withTimeout(exited, 20_000, 'Canvie did not exit after close')
 }
 
@@ -362,7 +336,7 @@ try {
   report.check('E2E run completed', false, error instanceof Error ? error.message : String(error))
 } finally {
   if (app.current) await app.stop('kill').catch(() => undefined)
-  rmSync(profileDir, { recursive: true, force: true })
+  app.removeProfile()
 }
 
 report.checkLog(app.launches)

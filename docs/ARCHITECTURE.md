@@ -1,6 +1,6 @@
 # Arquitetura de runtime
 
-Este documento detalha o sistema de transição entre a Parede e a Edição. A visão do produto está em product.md e a ordem de construção está em docs/MVP-0-ROADMAP.md.
+Este documento detalha o sistema de transição entre o estado Fixo (Wall) e a Edição. A visão do produto está em product.md e a ordem de construção está em docs/MVP-0-ROADMAP.md.
 
 ## Runtime
 
@@ -27,14 +27,12 @@ O backend é a única autoridade sobre a camada da janela:
       Edit
     }
 
-    struct PlacementState {
+    struct PlacementSnapshot {
       placement: Placement,
       embedded: bool,
-      focused: bool,
-      toolbar: ToolbarPlacement,
     }
 
-ToolbarPlacement fica persistido como preferência, não como parte do documento.
+PlacementState guarda o snapshot e uma flag `moving` que recusa um segundo pedido durante uma transição. A posição da toolbar não faz parte do placement; salvar a posição, como pede a decisão 0004, ainda não foi entregue.
 
 O frontend recebe canvie-placement e espelha placement. Ele pode mostrar Salvando, mas não pode declarar que a janela está na Parede antes do evento do backend.
 
@@ -42,13 +40,13 @@ O frontend recebe canvie-placement e espelha placement. Ele pode mostrar Salvand
 
 ### Wall → Edit
 
-Fonte: Ctrl + Alt + T, tray Editar ou Show quando a janela está na Parede.
+Fonte: Ctrl + Alt + T, Editar ou clique no ícone do tray, segunda abertura do app ou primeira abertura sem área.
 
-1. O backend verifica a janela principal.
-2. O backend muda a propriedade de top-level, sempre no topo e foco.
-3. O backend revalida estilo e relação da janela.
-4. O backend mostra a janela, dá foco e emite Edit.
-5. O frontend exibe dim, toolbar e os controles de edição.
+1. O backend tira o parent Progman e restaura WS_POPUP (`wallpaper::detach`).
+2. O tao desliga o click-through e liga always-on-top.
+3. `wallpaper::bring_to_front` cobre o monitor principal como HWND_TOPMOST e pede o foreground, depois das chamadas tao.
+4. O backend foca a janela e emite Edit.
+5. O frontend exibe dim, borda, toolbar e os controles de edição.
 
 Não há save nessa transição. O documento já está confirmado pela persistência anterior.
 
@@ -57,13 +55,13 @@ Não há save nessa transição. O documento já está confirmado pela persistê
 Fonte: **Fixar no desktop**, Esc, Ctrl + Alt + T ou tray Fixar no desktop.
 
 1. O botão e Esc entram direto neste fluxo. O atalho e o tray emitem canvie-pin-requested, que o frontend recebe e transforma neste mesmo fluxo.
-2. O frontend bloqueia a ação duplicada e mostra Salvando.
+2. O frontend bloqueia a ação duplicada, conclui a nota em edição pelo blur e mostra Salvando.
 3. persistence.ts chama saveNow e recebe sucesso ou erro.
 4. Em caso de erro, o frontend desbloqueia a ação, mantém Edit e mostra Tentar novamente.
 5. Em caso de sucesso, o frontend chama pin_to_wall.
-6. O backend remove always-on-top, ativa click-through e reparenta no Progman.
-7. O backend reaplica WS_CHILD e a ordem Z depois das chamadas tao.
-8. O backend emite Wall.
+6. O backend remove always-on-top, ativa click-through e mostra a janela pelo tao.
+7. `wallpaper::embed` aplica os atributos de layer, WS_CHILD, o parent Progman e a ordem Z depois das chamadas tao.
+8. O backend emite Wall. Se o embed falhar, a janela volta para Edit e pin_to_wall devolve erro.
 9. O frontend esconde dim e toolbar.
 
 O backend não aceita pin_to_wall com um payload de documento. O documento é responsabilidade do frontend e precisa estar salvo antes da mudança de camada.
@@ -72,7 +70,7 @@ O backend não aceita pin_to_wall com um payload de documento. O documento é re
 
 ### Parede
 
-wallpaper.rs localiza Progman e parenta a janela como filha. A janela fica acima de SHELLDLL_DefView para permanecer visível. O click-through permite que os eventos cheguem ao desktop.
+wallpaper.rs localiza Progman e parenta a janela como filha, cobrindo o monitor principal. A janela fica à frente de SHELLDLL_DefView para permanecer visível sobre os ícones, e só a área é pintada. O click-through (WS_EX_LAYERED e WS_EX_TRANSPARENT) deixa os cliques chegarem ao desktop; os atributos de layer fazem o Windows desenhar a janela.
 
 ### Edição
 
@@ -93,19 +91,19 @@ Se o re-embed falhar, não emita Wall. Mantenha Edit para que o usuário não pe
 
 placement.ts expõe:
 
-- getPlacement(): Promise<PlacementSnapshot>;
+- getPlacement(): Promise<PlacementSnapshot | null>;
 - enterEdit(): Promise<void>;
 - pinToWall(): Promise<void>;
-- onPlacementChanged(listener): Unsubscribe;
+- onPlacementChanged(listener): Subscription, com `ready` e `unsubscribe`;
 - onPinRequested(listener): Unsubscribe.
 
-Cada wrapper usa invoke quando existe Tauri e um adapter em memória no navegador. O adapter permite testar desenho e toolbar sem Windows.
+Cada wrapper usa invoke quando existe Tauri e um adapter em memória no navegador. O adapter permite testar desenho e toolbar sem Windows. O App lê getPlacement só depois de `ready`: um evento emitido antes de o listener existir se perde, e a primeira abertura pede enter_edit logo no boot.
 
 O tray e o atalho global nunca chamam pin_to_wall em Edit. Eles emitem canvie-pin-requested. O frontend salva e chama pin_to_wall.
 
 ## Capabilities
 
-O primeiro conjunto de permissões cobre apenas os comandos de colocação, eventos e os plugins de global-shortcut, single-instance, autostart e tray. Uma capability não libera comandos não usados pela janela principal.
+A capability da janela principal concede só allow-get-placement, allow-enter-edit, allow-pin-to-wall, core:event:allow-listen e core:event:allow-unlisten. Global-shortcut, single-instance e tray rodam no Rust e não expõem comandos à WebView. O AppManifest em build.rs faz cada comando do app depender de permissão explícita.
 
 ## Segurança e logs
 
@@ -114,8 +112,8 @@ Logs registram:
 - startup e versão;
 - atalho registrado ou recusado;
 - Wall → Edit e Edit → Wall;
-- falha de saveNow;
+- falha de saveNow, hoje no console da WebView; o log do backend recebe essas falhas na L6;
 - falha de parent, foco, click-through ou re-embed;
-- segunda instância e autostart.
+- segunda instância.
 
 Logs não registram o conteúdo do documento, clipboard, texto de notas ou caminhos pessoais.

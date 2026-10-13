@@ -12,8 +12,9 @@ use windows::{
     Foundation::{COLORREF, HWND, POINT, RECT},
     Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, ScreenToClient, MONITORINFO, MONITOR_DEFAULTTOPRIMARY},
     UI::WindowsAndMessaging::{
-      FindWindowW, GetAncestor, GetWindowLongPtrW, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW, SetWindowPos, GA_PARENT,
-      GWL_STYLE, HWND_TOP, LWA_ALPHA, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_SHOWWINDOW, WS_CHILD, WS_POPUP,
+      FindWindowW, GetAncestor, GetWindowLongPtrW, SetForegroundWindow, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW,
+      SetWindowPos, GA_PARENT, GWL_STYLE, HWND_TOP, HWND_TOPMOST, LWA_ALPHA, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_SHOWWINDOW,
+      WS_CHILD, WS_POPUP,
     },
   },
 };
@@ -78,6 +79,39 @@ pub fn embed(window: HWND) -> Result<(), String> {
     )
     .map_err(|error| format!("SetWindowPos in Progman failed: {error}"))
   }
+}
+
+/// Makes the window top-level again, so tao applies the Edit flags to a
+/// top-level window. The caller brings it to front after those tao calls.
+pub fn detach(window: HWND) -> Result<(), String> {
+  unsafe {
+    SetParent(window, None).map_err(|error| format!("SetParent to the desktop failed: {error}"))?;
+  }
+  // Without a parent, WS_CHILD has to go and WS_POPUP comes back.
+  set_child_style(window, false);
+  Ok(())
+}
+
+/// Covers the primary monitor above every window and takes the foreground.
+/// Runs after the tao calls of Edit, which rewrite the window styles.
+pub fn bring_to_front(window: HWND) -> Result<(), String> {
+  let monitor = primary_monitor()?;
+  unsafe {
+    SetWindowPos(
+      window,
+      Some(HWND_TOPMOST),
+      monitor.left,
+      monitor.top,
+      monitor.right - monitor.left,
+      monitor.bottom - monitor.top,
+      SWP_SHOWWINDOW | SWP_FRAMECHANGED,
+    )
+    .map_err(|error| format!("SetWindowPos for Edit failed: {error}"))?;
+    if !SetForegroundWindow(window).as_bool() {
+      log::warn!("Edit window did not get the foreground");
+    }
+  }
+  Ok(())
 }
 
 /// True when the window's parent is the current Progman.

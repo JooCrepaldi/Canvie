@@ -1,6 +1,6 @@
 // L4 E2E driver: the canvas area fixed on the desktop. The release build
 // runs on a throwaway WebView2 profile; Win32 state comes from win32-probe.ps1.
-import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -52,11 +52,18 @@ const chrome = (page) =>
     notice: document.querySelector('.canvas-notice') !== null,
   })`)
 
+// A launch without an area opens Edit to drag one, so the area is stored
+// first and the app opens again on the desktop.
 async function wallOnBoot() {
-  const page = await app.launch('fresh profile')
+  const first = await app.launch('fresh profile')
   const isolated = app.isolated()
   report.check('WebView2 uses the throwaway E2E profile', isolated)
   if (!isolated) throw new Error('WEBVIEW2_USER_DATA_FOLDER was ignored; refusing to write to the real profile')
+  await writeRaw(first, DOC_KEY, JSON.stringify(DOCUMENT))
+  await app.stop('kill')
+  const page = await app.launch('with an area')
+  await page.waitFor("document.querySelectorAll('.note').length === 2")
+  await sleep(300)
 
   const state = await placement(page)
   report.check('backend reports Wall, embedded', state?.placement === 'wall' && state.embedded === true, JSON.stringify(state))
@@ -70,20 +77,14 @@ async function wallOnBoot() {
   const width = window.rect.right - window.rect.left
   const height = window.rect.bottom - window.rect.top
   report.check('window covers the primary monitor', Math.abs(width - view.width * dpr) <= 1 && Math.abs(height - view.height * dpr) <= 1, `${width}x${height} at dpr ${dpr}`)
-  const shown = await chrome(page)
-  report.check('Wall shows no toolbar, selector or notice without an area', !shown.toolbar && !shown.selector && !shown.notice, JSON.stringify(shown))
 }
 
 async function areaOnDesktop() {
   const page = app.page
-  await writeRaw(page, DOC_KEY, JSON.stringify(DOCUMENT))
-  await page.evaluate('location.reload(); true')
-  await page.waitFor("(document.querySelector('canvas')?.width ?? 0) > 1 && document.querySelectorAll('.note').length === 2")
-  await sleep(300)
   const rect = await areaRect(page)
   report.check('Wall draws the stored area', rect.x === AREA.x && rect.y === AREA.y && rect.width === AREA.width && rect.height === AREA.height, JSON.stringify(rect))
   const shown = await chrome(page)
-  report.check('Wall shows the area without toolbar, border or dim', !shown.toolbar && !shown.frame && !shown.selector, JSON.stringify(shown))
+  report.check('Wall shows the area without toolbar, border, dim or notice', !shown.toolbar && !shown.frame && !shown.selector && !shown.notice, JSON.stringify(shown))
   const backgrounds = await page.evaluate(`['html', 'body', '#root', 'main'].map((selector) => getComputedStyle(document.querySelector(selector)).backgroundColor)`)
   report.check('everything outside the area is transparent', backgrounds.every((color) => color === 'rgba(0, 0, 0, 0)'), JSON.stringify(backgrounds))
   await screenshot(page, report.file('l4-01-wall-page.png'))
@@ -165,7 +166,7 @@ try {
   report.check('E2E run completed', false, error instanceof Error ? error.message : String(error))
 } finally {
   if (app.current) await app.stop('kill').catch(() => undefined)
-  rmSync(profileDir, { recursive: true, force: true })
+  app.removeProfile()
 }
 
 const lines = report.checkLog(app.launches)

@@ -16,6 +16,9 @@ type ToolbarProps = {
   onSelectArea: () => void
   onUndo: () => void
   onRedo: () => void
+  pinning: boolean
+  canPin: boolean
+  onPin: () => void
 }
 
 const tools: Array<{ id: Tool; label: string; shortcut: string }> = [
@@ -127,6 +130,18 @@ export function Toolbar(props: ToolbarProps) {
         </button>
         <button className="toolbar-button" type="button" aria-label="Refazer" disabled={!canRedo} onClick={props.onRedo}>
           Refazer
+        </button>
+      </div>
+      <div className="toolbar-group" role="group" aria-label="Fixar">
+        <button
+          className="toolbar-button toolbar-pin"
+          type="button"
+          aria-label="Fixar no desktop, atalho Ctrl + Alt + T"
+          title="Salva e devolve o canvas ao desktop (Ctrl + Alt + T ou Esc)"
+          disabled={props.pinning || !props.canPin}
+          onClick={props.onPin}
+        >
+          {props.pinning ? 'Salvando…' : 'Fixar no desktop'}
         </button>
       </div>
     </section>

@@ -108,6 +108,7 @@ Fixo é o nome do produto para o placement Wall. A direção atual está em [pro
 - evento canvie-placement e canvie-pin-requested;
 - retorno por Esc, pelo atalho e pelo tray;
 - tray com Editar, Fixar no desktop e Sair;
+- single-instance que traz a área da instância aberta para Edição;
 - primeira abertura em Edição quando ainda não existe área.
 
 **Falha tratada:** se saveNow falhar, o backend não recebe pin_to_wall. A janela permanece em Edição e mostra Tentar novamente. Se o atalho falhar, o tray continua funcionando.
@@ -121,13 +122,12 @@ Fixo é o nome do produto para o placement Wall. A direção atual está em [pro
 **Inclui:**
 
 - Alt + F4 em Edição fixa a área em vez de encerrar;
-- single-instance que traz a área para Edição;
 - recriar e fixar de novo a janela quando um reinício do Explorer destruir o Progman;
 - logs de startup, atalho, transição, falha de save e re-embed, incluindo as falhas de persistência do frontend.
 
 **Falha tratada:** uma ação do tray que falhar mantém o processo ativo e mostra um aviso no log.
 
-**Done:** fechar sem encerrar, abrir de novo e confirmar que a segunda abertura traz a primeira para Edição.
+**Done:** Alt + F4 em Edição fixa a área sem encerrar; reiniciar o Explorer devolve a área ao desktop; o log registra uma falha de save do frontend.
 
 ## L7 — Pacote e prova na máquina
 

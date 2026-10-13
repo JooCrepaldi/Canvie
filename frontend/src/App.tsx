@@ -4,7 +4,7 @@ import { AreaSelector } from './canvas/AreaSelector'
 import { Canvas } from './canvas/Canvas'
 import { INK_COLORS, type Area, type CanvasDoc, type NoteSize, type Tool } from './canvasTypes'
 import type { DocumentPersistence, LoadResult } from './persistence'
-import { getPlacement, initialPlacement, onPlacementChanged, type Placement } from './placement'
+import { enterEdit, getPlacement, initialPlacement, onPinRequested, onPlacementChanged, pinToWall, type Placement } from './placement'
 import { Toolbar } from './Toolbar'
 
 const TOOL_SHORTCUTS: Record<string, Tool | undefined> = {
@@ -24,22 +24,26 @@ function useViewport(): Viewport {
   return viewport
 }
 
-// Mirrors the backend placement. An event wins over a slower initial query.
+// Mirrors the backend placement. The current placement is read only after
+// the event listener is live, so a transition in between is never lost; an
+// event wins over a slower query.
 function usePlacement(): Placement {
   const [placement, setPlacement] = useState<Placement>(initialPlacement)
   useEffect(() => {
     let eventSeen = false
     let active = true
-    const unsubscribe = onPlacementChanged((snapshot) => {
+    const subscription = onPlacementChanged((snapshot) => {
       eventSeen = true
       setPlacement(snapshot.placement)
     })
-    getPlacement().then((snapshot) => {
-      if (active && snapshot && !eventSeen) setPlacement(snapshot.placement)
-    })
+    subscription.ready
+      .then(getPlacement)
+      .then((snapshot) => {
+        if (active && snapshot && !eventSeen) setPlacement(snapshot.placement)
+      })
     return () => {
       active = false
-      unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
   return placement
@@ -53,8 +57,10 @@ type AppProps = {
 type SaveNoticeProps = {
   blocked: boolean
   saveFailed: boolean
+  pinFailed: boolean
   recovered: boolean
   onRetry: () => void
+  onRetryPin: () => void
   onDismissRecovery: () => void
 }
 
@@ -62,7 +68,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || target.matches('input, textarea, select'))
 }
 
-function SaveNotice({ blocked, saveFailed, recovered, onRetry, onDismissRecovery }: SaveNoticeProps) {
+function SaveNotice({ blocked, saveFailed, pinFailed, recovered, onRetry, onRetryPin, onDismissRecovery }: SaveNoticeProps) {
   if (blocked) {
     return (
       <p className="canvas-notice is-error" role="alert">
@@ -75,6 +81,16 @@ function SaveNotice({ blocked, saveFailed, recovered, onRetry, onDismissRecovery
       <div className="canvas-notice is-error" role="alert">
         <span>Não foi possível salvar. O canvas continua aberto.</span>
         <button className="notice-action" type="button" onClick={onRetry}>
+          Tentar novamente
+        </button>
+      </div>
+    )
+  }
+  if (pinFailed) {
+    return (
+      <div className="canvas-notice is-error" role="alert">
+        <span>O canvas foi salvo, mas não voltou ao desktop.</span>
+        <button className="notice-action" type="button" onClick={onRetryPin}>
           Tentar novamente
         </button>
       </div>
@@ -100,14 +116,19 @@ export default function App({ persistence, initialLoad }: AppProps) {
   const [noteSize, setNoteSize] = useState<NoteSize>('medium')
   const [selectingArea, setSelectingArea] = useState(initialLoad.document.area === null)
   const viewport = useViewport()
-  const editing = usePlacement() === 'edit'
+  const placement = usePlacement()
+  const editing = placement === 'edit'
   const [past, setPast] = useState<CanvasDoc[]>([])
   const [future, setFuture] = useState<CanvasDoc[]>([])
   const [recovered, setRecovered] = useState(initialLoad.status === 'recovered')
+  const [pinning, setPinning] = useState(false)
+  const [pinFailed, setPinFailed] = useState(false)
   const saveFailed = useSyncExternalStore(persistence.subscribe, persistence.hasFailed)
   const docRef = useRef(doc)
   const pastRef = useRef<CanvasDoc[]>([])
   const futureRef = useRef<CanvasDoc[]>([])
+  const pinningRef = useRef(false)
+  const firstRunRef = useRef(false)
 
   // Every document change gets the next revision here, then goes to the saver.
   const applyDocument = useCallback(
@@ -166,15 +187,56 @@ export default function App({ persistence, initialLoad }: AppProps) {
 
   const cancelAreaSelection = useCallback(() => setSelectingArea(false), [])
 
+  // Undoing the first area selection leaves no area, so the selector returns.
+  const showAreaSelector = editing && (selectingArea || doc.area === null)
+
   const toggleBackground = useCallback(() => {
     commit({ ...docRef.current, background: docRef.current.background === 'paper' ? 'transparent' : 'paper' })
   }, [commit])
+
+  // Fixar no desktop: close the note editor, save, and only then ask the
+  // backend to move the window. A failed save keeps Edit and the notice.
+  const requestPin = useCallback(async () => {
+    if (pinningRef.current || docRef.current.area === null) return
+    pinningRef.current = true
+    setPinning(true)
+    setPinFailed(false)
+    // Blurring an open note editor commits it before the save.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    setSelectingArea(false)
+    try {
+      await persistence.saveNow(docRef.current)
+      await pinToWall().catch((error: unknown) => {
+        console.warn('Canvie: pin_to_wall failed; staying in Edit', error)
+        setPinFailed(true)
+      })
+    } catch {
+      // saveNow already logged the failure and raised the save notice.
+    } finally {
+      pinningRef.current = false
+      setPinning(false)
+    }
+  }, [persistence])
+
+  useEffect(() => onPinRequested(() => void requestPin()), [requestPin])
+
+  // The first launch has no area, so it opens Edit to drag one.
+  useEffect(() => {
+    if (placement !== 'wall' || docRef.current.area !== null || firstRunRef.current) return
+    firstRunRef.current = true
+    enterEdit().catch((error: unknown) => console.warn('Canvie: enter_edit failed on first run', error))
+  }, [placement])
 
   useEffect(() => {
     if (!editing) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
       const key = event.key.toLowerCase()
+      if (key === 'escape' && !showAreaSelector) {
+        event.preventDefault()
+        void requestPin()
+        return
+      }
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         const shortcutTool = TOOL_SHORTCUTS[key]
         if (shortcutTool) setTool(shortcutTool)
@@ -191,10 +253,8 @@ export default function App({ persistence, initialLoad }: AppProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [editing, redo, undo])
+  }, [editing, redo, requestPin, showAreaSelector, undo])
 
-  // Undoing the first area selection leaves no area, so the selector returns.
-  const showAreaSelector = editing && (selectingArea || doc.area === null)
   const area = doc.area && fitArea(doc.area, viewport)
 
   // On the desktop only the area is painted; the edit chrome exists in Edit.
@@ -212,8 +272,10 @@ export default function App({ persistence, initialLoad }: AppProps) {
           <SaveNotice
             blocked={initialLoad.status === 'blocked'}
             saveFailed={saveFailed}
+            pinFailed={pinFailed}
             recovered={recovered}
             onRetry={retrySave}
+            onRetryPin={() => void requestPin()}
             onDismissRecovery={() => setRecovered(false)}
           />
           <Toolbar
@@ -230,6 +292,9 @@ export default function App({ persistence, initialLoad }: AppProps) {
             onSelectArea={() => setSelectingArea(true)}
             onUndo={undo}
             onRedo={redo}
+            pinning={pinning}
+            canPin={doc.area !== null}
+            onPin={() => void requestPin()}
           />
         </>
       )}

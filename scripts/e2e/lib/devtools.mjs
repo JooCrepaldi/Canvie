@@ -191,3 +191,34 @@ export const canvasDigest = (page) =>
     }
     return { ink, hash: (hash >>> 0).toString(16) }
   })()`)
+
+export const FILLER_KEY = 'canvie.e2e.filler'
+
+// Fills localStorage up to its quota, minus headroom characters, so the next
+// larger save fails for real. Returns the free characters measured.
+export async function fillStorage(page, headroom) {
+  return page.evaluate(`(() => {
+    const key = ${JSON.stringify(FILLER_KEY)}
+    const fits = (length) => {
+      try {
+        localStorage.setItem(key, 'x'.repeat(length))
+        return true
+      } catch {
+        return false
+      }
+    }
+    let low = 0
+    let high = 1 << 20
+    while (high <= 1 << 25 && fits(high)) {
+      low = high
+      high *= 2
+    }
+    while (high - low > 256) {
+      const middle = Math.floor((low + high) / 2)
+      if (fits(middle)) low = middle
+      else high = middle
+    }
+    localStorage.setItem(key, 'x'.repeat(low - ${headroom}))
+    return low
+  })()`)
+}

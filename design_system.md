@@ -17,6 +17,7 @@ O visual do Codex inspira hierarquia, espaçamento, foco e estados de ferramenta
 | Definindo a área | Dim na tela inteira, instrução curta e o retângulo arrastado | Mostrar o tamanho em pixels durante o arraste. |
 | Salvando | Mesmo layout, label curto Salvando… | Não bloquear o canvas. |
 | Erro de salvamento | Mensagem curta e ação Tentar novamente | Manter Edição até uma gravação passar. |
+| Fixar falhou | Aviso O canvas foi salvo, mas não voltou ao desktop, com Tentar novamente | O documento já está salvo; a área continua em Edição. |
 | Documento recuperado | Aviso curto e ação Fechar | Informar que o documento salvo era inválido e que uma cópia foi guardada. |
 | Salvamento desativado | Aviso persistente, sem ação | Mostrar enquanto o documento salvo não puder ser lido ou copiado. |
 
@@ -78,7 +79,7 @@ Ordem padrão:
 
     [pegador] [mover] [pincel] [nota] [post-it] [borracha] | [preto] [azul] [vermelho] | [P] [M] [G] | [fundo] [área] | [desfazer] [refazer] | [Fixar no desktop]
 
-O botão de fixar usa texto, não apenas um ícone. A ação é a saída principal da Edição. As cores mostram a amostra e têm nome acessível; a cor ativa também ganha contorno, não só destaque de cor.
+O botão de fixar usa texto, não apenas um ícone, com contorno color.accent que preenche no hover. Ele mostra Salvando… enquanto a transição salva, e fica desativado enquanto não existe área. A ação é a saída principal da Edição. As cores mostram a amostra e têm nome acessível; a cor ativa também ganha contorno, não só destaque de cor.
 
 ## Canvas
 

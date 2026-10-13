@@ -17,7 +17,8 @@ tauri-build = { version = "2.6.3", features = [] }
 [dependencies]
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "2.11.3", default-features = false, features = ["wry"] }
+tauri = { version = "2.11.3", default-features = false, features = ["wry", "tray-icon"] }
+tauri-plugin-global-shortcut = "2"
 tauri-plugin-log = "2"
 tauri-plugin-single-instance = "2"
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }

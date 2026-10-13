@@ -1,6 +1,6 @@
 # Frontend
 
-Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, and L3 the area and the MVP content; placement remains a later layer.
+Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, and L5 the transition between Fixo and Edição.
 
 ## Files
 
@@ -62,32 +62,39 @@ Toda mudança atualiza a ref do documento antes de chegar ao App, para que um tr
 
 ## Toolbar
 
-Toolbar só renderiza quando placement é Edit. Ela chama placement.ts ao executar Fixar no desktop. Enquanto saveNow está pendente, desative apenas a ação de fixar e mostre Salvando. Até a L5, a janela comum mostra a toolbar sempre.
+Toolbar, dim, borda da área, seletor de área e avisos só existem quando placement é Edit. **Fixar no desktop** fica sempre visível na toolbar; enquanto o save da transição corre, o botão mostra Salvando… e fica desativado, e o canvas continua editável. Sem área, o botão fica desativado e o seletor pede o arraste.
 
-Os atalhos B, T, P e E trocam de ferramenta apenas sem Ctrl, Alt ou Meta e fora de campos de texto.
+Os atalhos B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou Meta e fora de campos de texto.
 
-O pegador tem um ponteiro separado. Arrastar qualquer botão não move a toolbar. A posição é normalizada pelo monitor e salva em uma preferência independente do documento.
+O pegador tem um ponteiro separado. Arrastar qualquer botão não move a toolbar. A posição dura a sessão; salvar posição e monitor, como pede a decisão [0004](../decisions/0004-toolbar-movable-and-persistent.md), ainda não foi entregue.
 
 ## Ponte de estado
 
-No boot:
+placement.ts expõe getPlacement, enterEdit, pinToWall, onPlacementChanged e onPinRequested. No boot:
 
-1. chame getPlacement;
-2. assine onPlacementChanged;
-3. renderize Wall até o evento confirmar Edit;
-4. carregue o documento em paralelo.
+1. o App assina canvie-placement e chama getPlacement; um evento vence uma resposta mais lenta;
+2. em Tauri, o App mostra Wall até o backend confirmar Edit;
+3. sem área no documento, o App chama enterEdit uma vez, para a primeira abertura pedir o arraste.
 
-O frontend não chama set_always_on_top, set_ignore_cursor_events ou SetParent. Essas operações pertencem a wallpaper.rs.
+Fixar no desktop, Esc fora do editor e do seletor, e canvie-pin-requested (enviado pelo atalho e pelo tray durante Edit) chamam a mesma função:
+
+1. ignora o pedido se já existe uma transição ou se não há área;
+2. tira o foco do elemento ativo, o que conclui uma nota em edição pelo blur;
+3. chama saveNow com o documento atual; se falhar, fica em Edit e o aviso de save oferece Tentar novamente;
+4. chama pinToWall; se o backend recusar, fica em Edit e mostra O canvas foi salvo, mas não voltou ao desktop, com Tentar novamente.
+
+O frontend não chama set_always_on_top, set_ignore_cursor_events ou SetParent. Essas operações pertencem ao backend e a wallpaper.rs.
 
 ## Fallback de navegador
 
-Sem Tauri, placement.ts usa um adapter em memória. O botão Fixar no desktop troca a visualização entre Wall e Edit no navegador. A persistência usa localStorage. O fallback não tenta simular Progman, click-through ou foco real.
+Sem Tauri, placement.ts usa um adapter em memória que começa em Edit. Fixar no desktop troca a visualização para Wall e Ctrl + Alt + T, capturado pela página, volta para Edit ou pede o pin, como o atalho global. A persistência usa localStorage. O fallback não tenta simular Progman, click-through ou foco real.
 
 ## Estados de erro
 
 - documento inválido: canvas vazio e aviso curto com Fechar;
 - documento ilegível ou sem cópia possível: aviso persistente de que nada será salvo na sessão;
 - save automático falha: aviso Não foi possível salvar com Tentar novamente, que chama saveNow;
-- saveNow falha: toolbar em Edit com Tentar novamente;
-- evento de colocação atrasado: manter a camada visual anterior e mostrar uma mensagem de sincronização;
+- saveNow falha na transição: Edit continua e o aviso de save oferece Tentar novamente;
+- pin_to_wall falha depois do save: Edit continua com o aviso de fixar e Tentar novamente;
+- evento de colocação atrasado: manter a camada visual anterior até o evento chegar;
 - atalho indisponível: não bloquear a toolbar nem o adapter de navegador.

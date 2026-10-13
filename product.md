@@ -55,6 +55,7 @@ Estas ideias fazem parte da direção do produto e entram depois que a troca ent
 - entrada de voz para texto em anotações rápidas;
 - imagens dentro do Markdown, em uma estrutura de texto parecida com a do Obsidian;
 - um atalho para mostrar e esconder a toolbar, com animação curta;
+- lembrar a posição da toolbar entre sessões;
 - mais cores de fundo, como branco, preto e amarelo;
 - mais pincéis, cores de tinta e fontes;
 - iniciar com o Windows;

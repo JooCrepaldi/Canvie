@@ -29,6 +29,7 @@ Os E2E das camadas rodam depois de `npm run tauri build`, um de cada vez, porque
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l2-persistence.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l3-area-content.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l4-fixed-area.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l5-transition.ps1
 
 Cada script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
 
@@ -41,7 +42,7 @@ Cada script abre o executável release com o perfil do WebView2 redirecionado pa
 | L2 | `scripts/e2e/l2-persistence.ps1`: fechar processo e recuperar o mesmo documento; JSON inválido não derruba o app; falha de gravação mantém a sessão |
 | L3 | `scripts/e2e/l3-area-content.ps1`: área por arraste, três tintas, Markdown, post-it, mover, apagar, fundo e reabertura |
 | L4 | parent Progman, click-through, transparência fora da área, acesso normal ao desktop e memória em repouso |
-| L5 | log Wall → Edit → Wall, atalho real, toolbar, save antes de pin, tray e retorno visual |
+| L5 | `scripts/e2e/l5-transition.ps1`: atalho real, Wall → Edit → Wall no log, save antes de pin, Esc, falha de save e segunda instância |
 | L6 | Alt + F4 sem encerrar, segunda instância e logs de persistência |
 | L7 | instalador, reinício do Windows, escala DPI, teclado, RAM e CPU |
 
@@ -92,27 +93,29 @@ Cada script abre o executável release com o perfil do WebView2 redirecionado pa
 
 A primeira execução com o desktop à mostra encontrou um defeito: a área não aparecia no desktop, embora o hit-test chegasse à camada de ícones. O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes, e o Windows não desenha uma janela layered sem atributos. Aplicar alfa 255 por fora fez a área bege e o post-it aparecerem sobre o wallpaper, transparentes em volta, e o clique continuou chegando a SHELLDLL_DefView; tirar WS_EX_LAYERED mostrou a área, mas quebrou o click-through. `wallpaper::embed` passou a aplicar os atributos. O E2E só confere o pixel bege quando encontra uma região de pelo menos 240 × 160 do desktop sem janelas por cima, para não mexer nas janelas do usuário; nesta execução, a tela estava toda coberta.
 
-## E2E de transição
+## Evidência registrada em 2026-10-13: L5
 
-O script de L5 precisa:
+`scripts/e2e/l5-transition.ps1` passou 24 de 24 verificações na build release, com o atalho global real enviado pela fila de entrada do Windows:
 
-1. iniciar uma build instalada;
-2. localizar a janela principal pelo PID;
-3. verificar que o parent inicial é Progman;
-4. enviar Ctrl + Alt + T;
-5. verificar top-level, foco e always-on-top;
-6. desenhar ou criar uma nota;
-7. acionar Fixar no desktop;
-8. verificar reparent em Progman, click-through e toolbar oculta;
-9. abrir a aplicação novamente e verificar o documento;
-10. extrair do log as transições Wall → Edit e Edit → Wall.
+- A primeira abertura, sem área, foi para Edição: janela top-level, sempre no topo, sem click-through, com o foreground, o seletor de área e a toolbar. Uma tecla `e` enviada pelo Windows trocou a ferramenta para Borracha, então a WebView recebeu o teclado de verdade.
+- **Fixar no desktop** salvou a área e o traço e devolveu a janela a Progman, click-through e fora do topo, com a toolbar oculta, cerca de 30 ms depois do clique.
+- Ctrl + Alt + T levou o mesmo documento para Edição e, apertado de novo, salvou o traço novo antes de fixar. Cada transição terminou menos de 10 ms depois de o atalho chegar.
+- Esc fora do editor salvou e fixou.
+- Com o localStorage cheio, Fixar no desktop manteve a Edição e o aviso Tentar novamente; o documento salvo continuou na revisão anterior. Com espaço de volta, o pin funcionou.
+- Uma segunda abertura encerrou com código 0 e trouxe a área da primeira instância para Edição.
+- O log registrou o atalho, o pedido de pin vindo do atalho, a segunda instância e a sequência Wall → Edit → Wall cinco vezes.
 
-Não use mocks para validar o parent, o foco, o atalho ou o processo.
+Na mesma build, as suítes anteriores continuaram passando: L2 com 41 de 41, L3 com 27 de 27 e L4 com 15 de 15. `cargo check` terminou sem warnings.
+
+O tray usa as mesmas funções do atalho e de enter_edit, mas não foi acionado pelo E2E: clicar no ícone da área de notificação exigiria mexer na barra de tarefas do usuário.
+
+As suítes que abrem a Edição em tela cheia (L2, L3 e L5) mostram o canvas sobre as janelas abertas e recebem o mouse e o teclado de quem estiver usando a máquina. Uma execução enquanto o usuário trabalhava perdeu o foco do editor de nota e um pin; com a máquina ociosa, as mesmas suítes passaram. Rode-as sem usar o computador.
 
 ## Falhas conhecidas
 
 - Win + T pertence ao Explorer. Use Ctrl + Alt + T.
 - Atrás de SHELLDLL_DefView não há input. Parede precisa de click-through.
+- Na primeira abertura, o evento de placement pode chegar antes de o listener do frontend existir. O App só lê o placement atual depois de a assinatura estar confirmada.
 - tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top, ignore_cursor_events e show.
 - O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes. Sem os atributos, a janela não aparece no desktop, embora o hit-test funcione.
 - Uma janela filha de Progman pode ser destruída quando o Explorer reinicia. A recriação está prevista na L6.

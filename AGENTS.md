@@ -4,7 +4,7 @@ This file is the working contract for agents in this repository. Read it before 
 
 ## Product identity
 
-Canvie keeps one local canvas on the Windows desktop. The user calls a focused editing layer with a shortcut, writes or draws, and fixes the canvas back to the desktop.
+Canvie keeps one local canvas in a rectangle of the Windows desktop that the user drags to define. The user calls a focused editing layer with a shortcut, draws or writes Markdown notes and post-its, and fixes the area back to the desktop.
 
 The MVP proves one claim: a canvas on the desktop is useful and pleasant. Choose the smallest change that tests that claim. Keep the app local-first, quiet, friendly, and light while it runs in the background.
 
@@ -15,7 +15,8 @@ Product constraints:
 - The desktop is the product. A normal app window is a support surface for focused editing.
 - Persistent state includes content, canvas position, size, monitor, and user preferences.
 - The toolbar has a separate side handle. Dragging the handle moves the toolbar; clicking a tool never moves it.
-- Wall and Edit are the only window placements in the first cycle. The transition must save before returning to Wall.
+- Wall and Edit are the only window placements in the first cycle. The product calls Wall **Fixo**. The transition must save before returning to Wall.
+- The first cycle offers one choice of each kind: a paper or transparent background, one brush in three colors, and one font in three sizes. More options wait for the cycle to prove the transition.
 
 ## Read the right document first
 
@@ -79,7 +80,7 @@ The review returns **approve** or **request changes** with file, line, reason, a
 
 The target stack is Tauri 2, Vite, React 19, strict TypeScript, Rust, and Canvas 2D. Keep the public ownership split below:
 
-- `Canvas.tsx` owns drawing, camera transforms, notes, and element interaction.
+- `frontend/src/canvas/` owns drawing, camera transforms, notes, post-its, the area rectangle, and element interaction.
 - `persistence.ts` owns document validation, loading, saving, debounce, and saveNow.
 - `placement.ts` owns the frontend wrapper around backend placement commands and events.
 - `frontend/src-tauri/src/lib.rs` owns the single `PlacementState`, commands, events, tray, lifecycle, and global shortcuts.
@@ -106,7 +107,7 @@ These invariants are blockers during review:
 3. **Treat Wall as non-interactive.** A window behind the icon layer cannot receive desktop input. Use backend click-through for the Wall path.
 4. **Keep `Win + T` reserved.** Use `Ctrl + Alt + T` for Edit until a recorded product decision changes it.
 5. **Preserve data.** Validate loaded JSON, boot empty on corruption without crashing, reseed ids beyond restored ids, and debounce saves without deleting the last valid document.
-6. **Keep transparency total.** `html`, `body`, `#root`, and the Tauri shell remain transparent where the wallpaper effect requires it.
+6. **Keep transparency outside the area.** `html`, `body`, `#root`, and the Tauri shell stay transparent. Only the area paints its chosen background, and Edit adds the dim around it.
 7. **Keep fallbacks usable.** Missing Tauri APIs in browser development must leave a working canvas. A denied capability must degrade with a warning, not prevent startup.
 8. **Keep startup installed.** Autostart must target the installed executable and never a development binary.
 9. **Keep one instance.** A second launch focuses the running instance and exits.

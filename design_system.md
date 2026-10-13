@@ -1,6 +1,6 @@
 # Design system
 
-O Canvie usa uma interface pequena, escura e calma, próxima da linguagem visual do Codex e do ChatGPT para desktop. A interface aparece para editar e desaparece quando o canvas volta à parede.
+O Canvie usa uma interface pequena, escura e calma, próxima da linguagem visual do Codex e do ChatGPT para desktop. A interface aparece para editar e desaparece quando a área volta a ficar fixa no desktop.
 
 ## Direção
 
@@ -12,8 +12,9 @@ O visual do Codex inspira hierarquia, espaçamento, foco e estados de ferramenta
 
 | Estado | Tratamento visual | Regra |
 | --- | --- | --- |
-| Parede | Canvas transparente, sem chrome de edição | Não mostrar toolbar nem dim. |
-| Edição | Dim leve no desktop e toolbar flutuante | Mostrar foco, ferramenta ativa e ação de fixar. |
+| Fixo | Só a área, com o fundo escolhido e o conteúdo | Não mostrar toolbar, borda nem dim. Fora da área, nada é pintado. |
+| Edição | Dim fora da área, borda fina na área e toolbar flutuante | Mostrar foco, ferramenta ativa e ação de fixar. |
+| Definindo a área | Dim na tela inteira, instrução curta e o retângulo arrastado | Mostrar o tamanho em pixels durante o arraste. |
 | Salvando | Mesmo layout, label curto Salvando… | Não bloquear o canvas. |
 | Erro de salvamento | Mensagem curta e ação Tentar novamente | Manter Edição até uma gravação passar. |
 | Documento recuperado | Aviso curto e ação Fechar | Informar que o documento salvo era inválido e que uma cópia foi guardada. |
@@ -48,6 +49,15 @@ O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 | radius.sm | 6 px | Botões |
 | shadow.toolbar | 0 8 px 24 px rgba(0,0,0,0.24) | Toolbar sobre o desktop |
 | motion.fast | 120 ms | Hover e foco |
+| color.paper | #F4ECDC | Fundo bege da área |
+| color.inkBlack | #1F2328 | Tinta preta e texto das notas |
+| color.inkBlue | #2563EB | Tinta azul |
+| color.inkRed | #DC2626 | Tinta vermelha |
+| color.postit | #FDE68A | Cartão do post-it |
+| color.dim | rgba(0,0,0,0.32) | Escurecimento fora da área em Edição |
+| note.small | 14 px | Nota pequena |
+| note.medium | 18 px | Nota média |
+| note.large | 24 px | Nota grande |
 
 Use a fonte e a escala do Windows. Respeite alto contraste e redução de movimento.
 
@@ -66,15 +76,15 @@ A toolbar:
 
 Ordem padrão:
 
-    [pegador] [cursor] [pincel] [texto] [borracha] [desfazer] [refazer] [Fixar no desktop]
+    [pegador] [mover] [pincel] [nota] [post-it] [borracha] | [preto] [azul] [vermelho] | [P] [M] [G] | [fundo] [área] | [desfazer] [refazer] | [Fixar no desktop]
 
-O botão de fixar usa texto, não apenas um ícone. A ação é a saída principal da Edição.
+O botão de fixar usa texto, não apenas um ícone. A ação é a saída principal da Edição. As cores mostram a amostra e têm nome acessível; a cor ativa também ganha contorno, não só destaque de cor.
 
 ## Canvas
 
-Na Parede, não desenhe uma moldura ou painel atrás do conteúdo. Em Edição, use uma borda fina e um dim de baixa opacidade para marcar a área ativa sem cobrir os traços.
+A área é o único lugar pintado. No estado Fixo, ela mostra o fundo escolhido e o conteúdo, sem moldura. Em Edição, ganha uma borda fina, e o resto da tela recebe o dim.
 
-Notas usam uma superfície discreta e texto legível. O canvas não usa cartões coloridos nem efeitos de papel no primeiro ciclo.
+Notas usam a fonte de conteúdo, texto em color.inkBlack e um dos três tamanhos. Títulos do Markdown crescem a partir desse tamanho. Tabelas têm bordas finas. Post-its são cartões color.postit com sombra curta e texto em color.inkBlack. Sobre o fundo transparente, a legibilidade depende do wallpaper; o post-it é a opção para texto sempre legível.
 
 ## Interação
 

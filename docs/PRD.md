@@ -1,6 +1,6 @@
 # Canvie: PRD do primeiro ciclo
 
-Este documento congela o comportamento que a primeira implementação precisa entregar. O scaffold Tauri, o canvas de edição e o documento persistente já existem nas camadas L0, L1 e L2; a integração com o desktop entra nas camadas seguintes.
+Este documento congela o comportamento que a primeira implementação precisa entregar, na direção registrada em [product.md](../product.md) e na decisão [0006](../decisions/0006-delimited-desktop-area.md). O scaffold Tauri, o canvas de edição e o documento persistente já existem nas camadas L0, L1 e L2. A área, o conteúdo em Markdown e a integração com o desktop entram nas camadas seguintes do [roadmap](MVP-0-ROADMAP.md).
 
 ## 1. Problema
 
@@ -8,67 +8,86 @@ O usuário tem uma ideia enquanto trabalha em outro aplicativo. Abrir um whitebo
 
 ## 2. Resultado esperado
 
-O usuário chama o Canvie com um atalho, edita o mesmo canvas em primeiro plano e clica em **Fixar no desktop**. O canvas volta ao desktop com o conteúdo salvo.
+O usuário mantém uma área de anotação fixa em um canto do desktop que ele escolheu. Ele chama o Canvie com um atalho, edita a mesma área à frente das janelas e usa o atalho de novo, ou o botão **Fixar no desktop**. A área volta ao desktop com o conteúdo salvo.
 
 ## 3. Escopo
 
-O produto tem um canvas único e local. O primeiro ciclo inclui:
+O produto tem uma área, um canvas e um documento, locais e no monitor principal. O primeiro ciclo inclui:
 
-- traço livre;
-- nota de texto simples;
+- área definida ao arrastar um retângulo, salva e redefinível;
+- fundo bege ou transparente;
+- um pincel em preto, azul ou vermelho;
+- notas em Markdown com uma fonte em três tamanhos;
+- post-its;
+- editar, mover e apagar notas;
 - borracha;
 - undo e redo;
-- câmera com pan e zoom;
+- câmera com pan e zoom dentro da área;
 - persistência local;
-- Parede e Edição;
-- toolbar compacta, móvel pelo pegador e persistente;
-- tray, autostart e instância única.
+- Fixo e Edição;
+- toolbar compacta e móvel pelo pegador;
+- tray com Editar, Fixar no desktop e Sair, e instância única.
 
-Imagens, Markdown, múltiplos documentos e formas ficam fora deste PRD.
+Imagens, voz para texto, múltiplos documentos, formas e outras cores ficam fora deste PRD.
 
 ## 4. Comportamento
 
-### Parede
+### Definir a área
 
-No boot, o canvas é filho de Progman, transparente e click-through. Ele permanece visível no desktop e não recebe foco ou clique. A toolbar não aparece.
+Quando não existe área salva, o app abre em Edição com a tela escurecida e a instrução para arrastar. O usuário pressiona o botão esquerdo, arrasta e solta. O retângulo vira a área do canvas e é salvo no documento. A ação **Área** da toolbar repete esse passo e mantém o conteúdo. Uma área menor que 160 × 120 pixels é recusada e o app pede outro arraste.
+
+### Fixo
+
+A janela cobre o monitor principal, é filha de Progman, transparente fora da área e click-through em toda a superfície. A área mostra o fundo escolhido e o conteúdo. Ela fica acima dos ícones do desktop e abaixo das janelas comuns e da taskbar. A toolbar não aparece.
 
 ### Edição
 
-Ctrl + Alt + T, o tray ou outra rota de retorno chama Edição. A mesma janela:
+Ctrl + Alt + T ou o tray chamam Edição. A mesma janela:
 
 1. deixa de ser filha de Progman;
 2. vira top-level e fica sempre no topo;
 3. recebe foco;
-4. mostra a toolbar e o dim leve;
-5. libera desenho e texto.
+4. escurece a tela fora da área e mostra a toolbar;
+5. libera desenho, notas, post-its e a ação Área.
 
 O frontend recebe o evento de estado do backend. Ele não inventa Edição em React.
 
+### Conteúdo
+
+- O pincel desenha na cor selecionada. A borracha remove os traços e as notas que tocar.
+- A ferramenta Nota cria uma nota no ponto clicado e abre o editor de texto. A ferramenta Post-it faz o mesmo sobre um cartão amarelo.
+- O editor mostra o Markdown bruto. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
+- Fora do editor, a nota mostra o Markdown renderizado: títulos, listas, ênfase, código, citações e tabelas. HTML escrito pelo usuário aparece como texto, e links não navegam.
+- Duplo clique edita uma nota. A ferramenta Mover arrasta uma nota quando o clique começa nela e move a câmera quando começa no fundo.
+- O tamanho selecionado na toolbar vale para a próxima nota e para a nota em edição.
+
 ### Fixar no desktop
 
-O botão **Fixar no desktop**, Esc e Ctrl + Alt + T iniciam a mesma transição:
+O botão **Fixar no desktop**, Esc fora do editor e Ctrl + Alt + T iniciam a mesma transição:
 
-1. o frontend mostra Salvando;
+1. o frontend conclui a nota em edição e mostra Salvando;
 2. persistence.ts conclui saveNow;
 3. se falhar, o app permanece em Edição e mostra Tentar novamente;
 4. se passar, o backend reparenta a janela no Progman;
 5. o backend reativa click-through e remove always-on-top;
-6. o backend emite Parede;
-7. o frontend esconde a toolbar.
+6. o backend emite Wall;
+7. o frontend esconde a toolbar e o escurecimento.
 
-O app não confirma a troca antes de salvar.
+O app não confirma a troca antes de salvar. Sem área definida, a transição pede o arraste antes de fixar.
 
 ## 5. Atalhos
 
 | Atalho | Ação | Escopo |
 | --- | --- | --- |
-| Ctrl + Alt + T | Chama ou fixa o canvas | Global |
-| Esc | Salva e fixa | Edição |
+| Ctrl + Alt + T | Chama ou fixa a área | Global |
+| Esc | Salva e fixa; cancela a nota em edição | Edição |
 | B | Pincel | Edição |
-| T | Nota de texto | Edição |
+| T | Nota | Edição |
+| P | Post-it | Edição |
 | E | Borracha | Edição |
 | Ctrl + Z | Desfazer | Edição |
 | Ctrl + Shift + Z ou Ctrl + Y | Refazer | Edição |
+| Ctrl + Enter | Concluir a nota | Editor de nota |
 | Space + arrastar | Pan | Edição |
 | Scroll | Zoom | Edição |
 
@@ -79,12 +98,17 @@ O produto não usa Win + T porque o Explorer reserva a combinação.
     CanvasDoc {
       version: 1,
       revision: number,
+      area: { x, y, width, height } | null,
+      background: 'paper' | 'transparent',
       strokes: Stroke[],
       notes: Note[],
       camera: Camera
     }
 
-O documento não guarda o estado da janela. Parede e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
+    Stroke { id, points, color, width }
+    Note { id, x, y, text, size: 'small' | 'medium' | 'large', kind: 'text' | 'postit' }
+
+A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
 
 ## 7. Falhas
 
@@ -94,21 +118,23 @@ O documento não guarda o estado da janela. Parede e Edição são estado de run
 | documento salvo ilegível ou sem cópia possível | Abrir um documento vazio, não salvar na sessão e avisar o usuário |
 | save automático falha | Manter o último documento válido no armazenamento e a edição em memória, mostrar Tentar novamente |
 | saveNow falha | Permanecer em Edição, preservar o documento em memória e mostrar Tentar novamente |
+| área fora da tela depois de mudar a resolução | Limitar a área ao monitor principal |
 | atalho ocupado | Iniciar o app, registrar aviso e manter Editar no tray |
 | capacidade negada | Iniciar com o recurso afetado desativado e registrar a causa |
-| Explorer reinicia | Reparentar no próximo show, enter_edit ou pin_to_wall |
+| Explorer reinicia | Reparentar no próximo enter_edit ou pin_to_wall |
 | API Tauri ausente | Usar fallback de navegador para editar e testar o canvas |
 
 ## 8. Critérios de aceite
 
 O PRD passa quando uma build instalada demonstra:
 
-1. canvas visível na Parede após o boot;
-2. cliques do desktop livres enquanto o Canvie está na Parede;
-3. Ctrl + Alt + T trazendo o mesmo documento para Edição;
-4. toolbar visível, focável e movível pelo pegador;
-5. traço, nota, borracha, undo e redo funcionais;
-6. Fixar no desktop salvando antes de reparentar;
-7. conteúdo restaurado depois de fechar e abrir;
-8. tray, autostart e single-instance funcionais;
-9. RAM em repouso e CPU registrados em docs/OPERATIONS.md.
+1. primeira abertura em Edição pedindo o arraste da área;
+2. área visível no desktop depois de fixar, com fundo bege e com fundo transparente;
+3. cliques do desktop e das janelas livres enquanto a área está Fixa;
+4. Ctrl + Alt + T trazendo o mesmo documento para Edição com outro app aberto;
+5. toolbar visível, focável e movível pelo pegador;
+6. traço nas três cores, nota com tabela, post-it, borracha, undo e redo funcionais;
+7. Fixar no desktop e o atalho salvando antes de reparentar;
+8. área e conteúdo restaurados depois de fechar e abrir;
+9. tray e single-instance funcionais;
+10. RAM em repouso e CPU registrados em docs/OPERATIONS.md.

@@ -1,20 +1,21 @@
 # Canvie
 
-Canvie é um canvas local que fica preso ao desktop do Windows. Quando você precisa anotar algo, use Ctrl + Alt + T. O canvas sobe para a frente, mostra uma toolbar compacta e volta à parede quando você clica em **Fixar no desktop**.
+Canvie é uma área de anotação fixa no desktop do Windows. Você arrasta um retângulo no desktop e ele vira um canvas para desenhos, notas em Markdown e post-its. Quando precisa anotar algo, use Ctrl + Alt + T: a área vem para a frente com uma toolbar compacta e volta ao desktop, salva, quando você usa o atalho de novo ou clica em **Fixar no desktop**.
 
 O repositório está no início do projeto. Ele contém a proposta, o contrato de transição, o scaffold Tauri da L0, o canvas da L1 e o documento persistente da L2. As camadas seguintes entram depois que cada comportamento tiver evidência própria.
 
 ## Proposta atual
 
-- um canvas e um documento;
-- Parede como estado normal;
-- Edição em primeiro plano quando o usuário chama;
-- traços, notas de texto simples, borracha, undo e redo;
+- uma área retangular escolhida pelo usuário e um documento;
+- fundo bege ou transparente;
+- um pincel em preto, azul ou vermelho;
+- notas e post-its em Markdown, com três tamanhos de texto;
+- Fixo como estado normal e Edição em primeiro plano quando o usuário chama;
 - salvamento local;
-- tray, autostart e instância única;
+- tray e instância única;
 - Windows como único alvo.
 
-A transição Parede → Edição → Parede é o critério principal. Imagens, Markdown, múltiplos canvases e formas ficam fora do primeiro ciclo.
+A transição Fixo → Edição → Fixo é o critério principal. Voz para texto, imagens no Markdown, múltiplos canvases e formas ficam para depois do MVP.
 
 ## Stack escolhida
 

@@ -57,3 +57,7 @@ Verificações:
     cargo check
 
 Consulte docs/OPERATIONS.md antes de testar a integração com o desktop.
+
+## Licença
+
+O Canvie é open source sob a [licença MIT](LICENSE).

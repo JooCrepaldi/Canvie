@@ -1,52 +1,100 @@
-# Canvie — Frontend (as built, MVP-0)
+# Frontend
 
-> Stack: Vite + React 19 + TypeScript strict + raw Canvas 2D. No canvas library, no CSS framework. UI strings pt-BR, code/comments English. Paths relative to `frontend/src/`.
+Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, and L5 the transition between Fixo and Edição.
 
-## 1. Files
+## Files
 
-| File | Owns |
+| File | Dono |
 | --- | --- |
-| `App.tsx:1-12` | Transparent shell div, renders `<Canvas />` only |
-| `Canvas.tsx` | All drawing, camera, tools, undo/redo, text creation, mode mirror, Toolbar |
-| `canvasTypes.ts` | `Point`, `Stroke{id,points,erase}`, `TextItem{id,at,content}`, `Camera{x,y,zoom}`, `Tool='cursor'\|'brush'\|'eraser'`, `PEN_WIDTH=3`, `ERASER_WIDTH=24`, id counter + `reseedIds` |
-| `persistence.ts` | Doc model, validation, load/save/clear, debounced saver |
-| `mode.ts` | Tauri bridge with fallbacks: `getMode` (`{mode, raised}`), `toggleLock/toggleOverlay`, `setPassthrough`, `onModeChanged/onToolChanged` |
-| `index.css`, `App.css` | Total transparency + canvas/text/pill styling |
-| `main.tsx` | StrictMode root |
+| App.tsx | Shell transparente, histórico, ferramenta, tinta, tamanho, fundo e composição da tela |
+| canvas/Canvas.tsx | Área, Canvas 2D dos traços, camada de notas, câmera e interação com elementos |
+| canvas/NoteView.tsx e canvas/NoteEditor.tsx | Nota e post-it renderizados e o editor de Markdown |
+| canvas/AreaSelector.tsx e canvas/area.ts | Arraste da área, tamanho mínimo e ajuste ao viewport |
+| canvas/markdown.ts | markdown-it sem HTML bruto nem imagens |
+| canvasTypes.ts | Tipos e limites do documento, paleta de tinta e tamanhos de texto |
+| persistence.ts | load, save, saveNow, validação e backup local |
+| placement.ts | Ponte Tauri para Wall e Edit |
+| Toolbar.tsx | Pegador, ferramentas, cores, tamanhos, fundo, área, histórico e Fixar no desktop |
+| index.css e App.css | Transparência, área, notas, dim, toolbar, foco e escala |
 
-## 2. Rendering
+## Documento
 
-- One `<canvas>` (`Canvas.tsx:398`), sized to `window.innerWidth/Height × devicePixelRatio` per frame (`192-204`).
-- Per-frame: `setTransform(dpr,...)`, `clearRect`, `lineCap/Join=round`; pen strokes white with subtle shadow, eraser uses `destination-out` (`209-236`).
-- Committed strokes live in state (render), the in-progress draft lives in `draftRef` (no re-render per pointermove), plus `strokesRef`/`toolRef`/`cameraRef` mirrors for hot reads (`145-157`).
-- Redraw triggers: `strokes`, `camera`, `tool` change + explicit `draw()` during pointer events + window resize (`247-255`).
-- Single-click dots: a 0.01px segment is added so clicks are visible (`230-233`).
-- Texts are HTML divs positioned via `worldToScreen` (`28-38`); the editor is a positioned `<input>` committing on Enter/blur, cancelling on Escape (`40-68`).
+CanvasDoc v1 contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper` ou `transparent`. Cada traço guarda a cor em hexadecimal; cada nota guarda o Markdown, o tamanho (`small`, `medium` ou `large`) e o tipo (`text` ou `postit`). O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
 
-## 3. Camera
+App.tsx é o único lugar que muda a revisão: cada traço, nota, borracha, pan, zoom, área, fundo, undo e redo recebe a revisão seguinte e vai para o saver. Pan, borracha e edição sem efeito não criam entrada no histórico nem save.
 
-`screenToWorld = (screen - cam) / zoom`, `worldToScreen = world*zoom + cam` (`18-24`). Pan: `Space` or middle-button drag (`323-327`, `337-346`). Zoom: non-passive wheel listener, `factor = exp(-deltaY*0.0015)`, clamped `0.2–4`, anchored at cursor (`297-315`). Camera persists via doc model.
+main.tsx cria a persistência e carrega o documento antes do primeiro render. O carregador:
 
-## 4. Tools + toolbar (v1 inicial)
+1. lê `canvie.document.v1` do localStorage;
+2. valida a versão, a revisão, cada traço, nota e câmera, os limites e a unicidade dos ids;
+3. retorna um documento vazio quando o payload é inválido;
+4. guarda o payload inválido em `canvie.document.invalid.v1` e só o substitui na primeira edição;
+5. bloqueia o save da sessão quando não consegue ler o payload ou guardar a cópia, para nunca sobrescrever o que não foi preservado.
 
-- Tools: cursor (`V`, default — never paints, clicks pass through to the desktop), brush (`B`), eraser (`E`). Single-letter shortcuts work when the Canvie window is focused; they can't be global (a bare `B` would steal typing system-wide). Tray entries and toolbar buttons cover the unfocused case.
-- `Toolbar` (`Canvas.tsx`): floating dark bar above the taskbar with cursor/brush/eraser + lock/overlay buttons, active highlight, CSS-only shortcut tooltip above on hover. The bar eats clicks inside its own rect only (`App.css`); with click-through on (cursor/lock) it is visible but unreachable — switch back via tray or keys.
-- Pointer down with cursor never starts a draft; pan (Space/middle-drag) still works wherever the window receives mouse.
-- Undo/redo are `useRef` stacks (StrictMode-safe: updaters stay pure, nothing renders from stacks — `114-115`). Undo pops to redo + filters by id; redo re-appends. Stacks are memory-only.
-- `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` handled locally.
+Os novos ids são sempre o maior id do documento atual mais um, então continuam além dos ids restaurados.
 
-## 5. Persistence wiring
+O saver recebe cada revisão, espera 350 ms sem novas alterações e grava. Antes de gravar, ele valida o documento; depois, relê o valor para confirmar a gravação. Uma falha mantém o último documento válido no localStorage e o documento atual em memória, registra um aviso no console e aparece pelo `hasFailed()`. `flush()` grava o save pendente quando a página fica oculta ou é descartada. saveNow cancela o debounce, grava o documento atual e só resolve depois da confirmação.
 
-Boot: `loadDoc()` once via `useMemo`, state initialized from it (`90-93`). Every change calls `createSaver(500)` (`94-99`). Dev-only `window.__canvie.export/clear` (`101-113`). Validation/null-on-corrupt + `reseedIds(maxId)` live in `persistence.ts:31-62`. Storage key `canvie.canvas.v1`. No Rust file command in MVP-0.
+Os limites de nota (20 000 caracteres), pontos por traço (50 000), zoom (0,25 a 4) e área mínima (160 × 120) ficam em canvasTypes.ts e valem para o editor e para o validador. Um documento salvo antes da L3, sem area e background, cai no fluxo de documento inválido.
 
-## 6. Mode mirror (never invent mode)
+## Área
 
-Boot `getMode().then(setStateBoth)` + `onModeChanged(setStateBoth)` + `onToolChanged(setTool)`; `modeRef` mirror for hot-key handlers. `Escape` in overlay calls `toggleOverlay()`. Tool/mode changes call `setPassthrough(tool === 'cursor')` — the backend owns the OS flag (frontend must never call the Tauri window API for this: tao would drop `WS_CHILD` without re-embedding).
+Sem área no documento, App.tsx mostra o AreaSelector: a tela escurece e o arraste com o botão esquerdo desenha o retângulo. Ao soltar, um retângulo de pelo menos 160 × 120 vira a área e entra no histórico. Um retângulo menor mostra o aviso e espera outro arraste. A ação Área abre o mesmo seletor, que Esc cancela quando já existe uma área. Desfazer até antes da primeira área volta ao seletor.
 
-## 7. Transparency + fallback rules
+fitArea limita a área à janela na hora de desenhar, sem mudar o documento. Em Edição, a área ganha borda fina e um box-shadow escurece o resto da tela.
 
-`html/body/#root` transparent (`index.css:6-12`), shell transparent, no opaque backgrounds in Canvas/Locked (`App.css:1-19`). Overlay renders `.canvie-overlay-backdrop` first: fullscreen `rgba(8,8,10,0.38)` dim with a 160ms fade-in, `pointer-events: none`, behind strokes/texts/toolbar. The blur itself is the DWM blur-behind (`wallpaper::set_blur`) — CSS `backdrop-filter` cannot blur the OS desktop behind a transparent WebView. Every `mode.ts`/`persistence.ts` bridge degrades without Tauri (`inTauri` check, try/catch, null adapter) so `npm run dev` in a browser still draws.
+## Canvas
 
-## 8. How to add a tool (v1 pattern, not yet built)
+Use um canvas DPR-aware do tamanho da área. Converta pontos com screenToWorld e worldToScreen, com a origem do mundo no centro da área. Mantenha o draft do ponteiro em refs para não renderizar React a cada movimento.
 
-Add to `Tool` union + width const in `canvasTypes.ts`, switch key in the `keydown` handler, paint branch in `draw()`, pill label. Keep drafts in refs. Do not add a canvas library before raw Canvas 2D proves insufficient (AGENTS.md §9).
+O ciclo tem cinco ferramentas:
+
+- Mover: pan quando o arraste começa no fundo, e arrasta a nota quando começa nela;
+- Pincel: traço na tinta selecionada (preto, azul ou vermelho);
+- Nota e Post-it: um clique no fundo abre o editor de uma nova nota, e um clique em uma nota abre a nota;
+- Borracha: remove os traços e as notas que o caminho toca.
+
+Os traços ficam no Canvas 2D. As notas são HTML em uma camada com um único transform CSS da câmera, atualizado junto com o redraw; por isso pan e zoom não renderizam React. O Markdown passa pelo markdown-it com `html: false` e sem a regra de imagem ([0007](../decisions/0007-markdown-notes.md)). Um clique em link não navega.
+
+O editor é um textarea com `field-sizing: content`. Ctrl + Enter ou um clique fora conclui, Esc cancela e um texto vazio remove a nota. Duplo clique ou Enter com a nota focada abre o editor. Os botões de tamanho não tiram o foco do editor, então o tamanho escolhido vale para a nota em edição.
+
+Toda mudança atualiza a ref do documento antes de chegar ao App, para que um traço ou nota iniciado pelo mesmo evento receba um id além dela.
+
+## Toolbar
+
+Toolbar, dim, borda da área, seletor de área e avisos só existem quando placement é Edit. **Fixar no desktop** fica sempre visível na toolbar; enquanto o save da transição corre, o botão mostra Salvando… e fica desativado, e o canvas continua editável. Sem área, o botão fica desativado e o seletor pede o arraste.
+
+Os atalhos B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou Meta e fora de campos de texto.
+
+O pegador tem um ponteiro separado. Arrastar qualquer botão não move a toolbar. A posição dura a sessão; salvar posição e monitor, como pede a decisão [0004](../decisions/0004-toolbar-movable-and-persistent.md), ainda não foi entregue.
+
+## Ponte de estado
+
+placement.ts expõe getPlacement, enterEdit, pinToWall, onPlacementChanged e onPinRequested. No boot:
+
+1. o App assina canvie-placement e chama getPlacement; um evento vence uma resposta mais lenta;
+2. em Tauri, o App mostra Wall até o backend confirmar Edit;
+3. sem área no documento, o App chama enterEdit uma vez, para a primeira abertura pedir o arraste.
+
+Fixar no desktop, Esc fora do editor e do seletor, e canvie-pin-requested (enviado pelo atalho e pelo tray durante Edit) chamam a mesma função:
+
+1. ignora o pedido se já existe uma transição ou se não há área;
+2. tira o foco do elemento ativo, o que conclui uma nota em edição pelo blur;
+3. chama saveNow com o documento atual; se falhar, fica em Edit e o aviso de save oferece Tentar novamente;
+4. chama pinToWall; se o backend recusar, fica em Edit e mostra O canvas foi salvo, mas não voltou ao desktop, com Tentar novamente.
+
+O frontend não chama set_always_on_top, set_ignore_cursor_events ou SetParent. Essas operações pertencem ao backend e a wallpaper.rs.
+
+## Fallback de navegador
+
+Sem Tauri, placement.ts usa um adapter em memória que começa em Edit. Fixar no desktop troca a visualização para Wall e Ctrl + Alt + T, capturado pela página, volta para Edit ou pede o pin, como o atalho global. A persistência usa localStorage. O fallback não tenta simular Progman, click-through ou foco real.
+
+## Estados de erro
+
+- documento inválido: canvas vazio e aviso curto com Fechar;
+- documento ilegível ou sem cópia possível: aviso persistente de que nada será salvo na sessão;
+- save automático falha: aviso Não foi possível salvar com Tentar novamente, que chama saveNow;
+- saveNow falha na transição: Edit continua e o aviso de save oferece Tentar novamente;
+- pin_to_wall falha depois do save: Edit continua com o aviso de fixar e Tentar novamente;
+- evento de colocação atrasado: manter a camada visual anterior até o evento chegar;
+- atalho indisponível: não bloquear a toolbar nem o adapter de navegador.

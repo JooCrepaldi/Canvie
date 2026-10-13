@@ -1,0 +1,36 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Canvie",
+  "version": "0.0.1",
+  "identifier": "com.canvie.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Canvie",
+        "width": 900,
+        "height": 600,
+        "transparent": true,
+        "decorations": false,
+        "resizable": false,
+        "visible": false,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "create": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}

@@ -1,91 +1,140 @@
-# Canvie — PRD (MVP-0 fechado + esboço v1)
+# Canvie: PRD do primeiro ciclo
 
-> Fonte-da-verdade de produto buildável. O `README.md` é a visão user-facing (pt-BR, não-técnica); este PRD congela o que o MVP-0 entrega de fato e esboça a v1. Em caso de conflito com o código, o código + este PRD vencem e o README é atualizado em seguida (decisão do founder, nunca efeito colateral silencioso — AGENTS.md §3).
+Este documento congela o comportamento que a primeira implementação precisa entregar, na direção registrada em [product.md](../product.md) e na decisão [0006](../decisions/0006-delimited-desktop-area.md). O scaffold Tauri, o canvas de edição e o documento persistente já existem nas camadas L0, L1 e L2. A área, o conteúdo em Markdown e a integração com o desktop entram nas camadas seguintes do [roadmap](MVP-0-ROADMAP.md).
 
-## 1. Tese
+## 1. Problema
 
-Um canvas no desktop é útil e agradável. Prova mínima: criar uma composição visual em segundos, reiniciar o Windows e reencontrar o canvas intacto, alternando entre canvas/lock/overlay sem sentir que abriu um app tradicional.
+O usuário tem uma ideia enquanto trabalha em outro aplicativo. Abrir um whiteboard, encontrar o documento e voltar ao trabalho demora mais do que a anotação.
 
-Fora de escopo moral: virar mais um whiteboard dentro de janela, dashboard corporativo, cloud/contas/sync (MVP-0 é local-first).
+## 2. Resultado esperado
 
-## 2. Usuário
+O usuário mantém uma área de anotação fixa em um canto do desktop que ele escolheu. Ele chama o Canvie com um atalho, edita a mesma área à frente das janelas e usa o atalho de novo, ou o botão **Fixar no desktop**. A área volta ao desktop com o conteúdo salvo.
 
-Quem vive no desktop e pensa visualmente. Nunca pediu um whiteboard; ganha uma parede.
+## 3. Escopo
 
-## 3. Modos (comportamento real entregue)
+O produto tem uma área, um canvas e um documento, locais e no monitor principal. O primeiro ciclo inclui:
 
-| Modo | Como entra/sai | Comportamento real |
+- área definida ao arrastar um retângulo, salva e redefinível;
+- fundo bege ou transparente;
+- um pincel em preto, azul ou vermelho;
+- notas em Markdown com uma fonte em três tamanhos;
+- post-its;
+- editar, mover e apagar notas;
+- borracha;
+- undo e redo;
+- câmera com pan e zoom dentro da área;
+- persistência local;
+- Fixo e Edição;
+- toolbar compacta e móvel pelo pegador;
+- tray com Editar, Fixar no desktop e Sair, e instância única.
+
+Imagens, voz para texto, múltiplos documentos, formas e outras cores ficam fora deste PRD.
+
+## 4. Comportamento
+
+### Definir a área
+
+Quando não existe área salva, o app abre em Edição com a tela escurecida e a instrução para arrastar. O usuário pressiona o botão esquerdo, arrasta e solta. O retângulo vira a área do canvas e é salvo no documento. A ação **Área** da toolbar repete esse passo e mantém o conteúdo. Uma área menor que 160 × 120 pixels é recusada e o app pede outro arraste.
+
+### Fixo
+
+A janela cobre o monitor principal, é filha de Progman, transparente fora da área e click-through em toda a superfície. A área mostra o fundo escolhido e o conteúdo. Ela fica acima dos ícones do desktop e abaixo das janelas comuns e da taskbar. A toolbar não aparece.
+
+### Edição
+
+Ctrl + Alt + T ou o tray chamam Edição. A mesma janela:
+
+1. deixa de ser filha de Progman;
+2. vira top-level e fica sempre no topo;
+3. recebe foco;
+4. escurece a tela fora da área e mostra a toolbar;
+5. libera desenho, notas, post-its e a ação Área.
+
+O frontend recebe o evento de estado do backend. Ele não inventa Edição em React.
+
+### Conteúdo
+
+- O pincel desenha na cor selecionada. A borracha remove os traços e as notas que tocar.
+- A ferramenta Nota cria uma nota no ponto clicado e abre o editor de texto. A ferramenta Post-it faz o mesmo sobre um cartão amarelo.
+- O editor mostra o Markdown bruto. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
+- Fora do editor, a nota mostra o Markdown renderizado: títulos, listas, ênfase, código, citações e tabelas. HTML escrito pelo usuário aparece como texto, e links não navegam.
+- Duplo clique edita uma nota. A ferramenta Mover arrasta uma nota quando o clique começa nela e move a câmera quando começa no fundo.
+- O tamanho selecionado na toolbar vale para a próxima nota e para a nota em edição.
+
+### Fixar no desktop
+
+O botão **Fixar no desktop**, Esc fora do editor e Ctrl + Alt + T iniciam a mesma transição:
+
+1. o frontend conclui a nota em edição e mostra Salvando;
+2. persistence.ts conclui saveNow;
+3. se falhar, o app permanece em Edição e mostra Tentar novamente;
+4. se passar, o backend reparenta a janela no Progman;
+5. o backend reativa click-through e remove always-on-top;
+6. o backend emite Wall;
+7. o frontend esconde a toolbar e o escurecimento.
+
+O app não confirma a troca antes de salvar. Sem área definida, a transição pede o arraste antes de fixar.
+
+## 5. Atalhos
+
+| Atalho | Ação | Escopo |
 | --- | --- | --- |
-| Canvas (padrão) | boot, ou `Ctrl+L` / `Ctrl+Alt+T` / `Esc` de volta | Janela parentada no Progman, elevada acima dos ícones por padrão (atrás de taskbar e janelas). Com a ferramenta cursor ativa, cliques atravessam para o desktop; com pincel/borracha, desenha. |
-| Cursor (ferramenta default) | `V`, botão da toolbar ou tray | Click-through na janela: usa o desktop normalmente (ícones, janelas). Voltar ao pincel: `B` com a janela focada, botão da toolbar ou tray. `B` puro não pode ser global (sequestraria a letra no Windows inteiro). |
-| Lock | `Ctrl+L` alterna (no-op dentro do Overlay), botão da toolbar ou tray | `setIgnoreCursorEvents(true)`, canvas congelado e clicável-através, mas tudo continua visível elevado acima dos ícones — nada some ao travar ou ao sair do Overlay para o lock. |
-| Overlay | `Ctrl+Alt+T` alterna; `Esc` volta; botão da toolbar ou tray | Desanexa do Progman, `alwaysOnTop(true)` + foco + blur real do Windows (DWM) atrás do canvas, sempre interativo; um dim leve cobre a tela para focar o canvas; ao sair, volta para `return_to` (Canvas ou Locked, ambos elevados) e re-embebe. |
+| Ctrl + Alt + T | Chama ou fixa a área | Global |
+| Esc | Salva e fixa; cancela a nota em edição | Edição |
+| B | Pincel | Edição |
+| T | Nota | Edição |
+| P | Post-it | Edição |
+| E | Borracha | Edição |
+| Ctrl + Z | Desfazer | Edição |
+| Ctrl + Shift + Z ou Ctrl + Y | Refazer | Edição |
+| Ctrl + Enter | Concluir a nota | Editor de nota |
+| Space + arrastar | Pan | Edição |
+| Scroll | Zoom | Edição |
 
-Detalhe de implementação: `ModeState` em `frontend/src-tauri/src/lib.rs:36-56`, transições em `apply_mode` / `toggle_*_inner`, evento `canvie-mode` para o frontend. Ver `docs/ARCHITECTURE.md`.
+O produto não usa Win + T porque o Explorer reserva a combinação.
 
-### Divergência conhecida README vs. real
+## 6. Modelo do documento
 
-O README cita `Win+T` para Overlay. `Win+T` pertence ao Explorer (`RegisterHotKey` falha com "already registered"). O MVP-0 usa `Ctrl+Alt+T` até decisão de produto. Não mudar atalho sem atualizar README + este PRD + `lib.rs:340-344`.
+    CanvasDoc {
+      version: 1,
+      revision: number,
+      area: { x, y, width, height } | null,
+      background: 'paper' | 'transparent',
+      strokes: Stroke[],
+      notes: Note[],
+      camera: Camera
+    }
 
-## 4. Atalhos (real MVP-0)
+    Stroke { id, points, color, width }
+    Note { id, x, y, text, size: 'small' | 'medium' | 'large', kind: 'text' | 'postit' }
 
-| Entrada | Ação real |
+A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
+
+## 7. Falhas
+
+| Falha | Resultado |
 | --- | --- |
-| `V` / `B` / `E` | cursor / pincel / borracha (toolbar, tray ou teclas com a janela focada) |
-| `Ctrl+L` | travar/destravar (Lock) |
-| `Ctrl+Alt+T` ou `Esc` (no Overlay) | Overlay on/off |
-| `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` | desfazer/refazer (pilha em memória) |
-| `Space+arrastar` | pan |
-| `Scroll` | zoom centrado no cursor |
-| Duplo-clique | criar texto simples (Enter confirma, Esc cancela) |
+| JSON inválido | Abrir um documento vazio, guardar o payload inválido para diagnóstico e registrar aviso |
+| documento salvo ilegível ou sem cópia possível | Abrir um documento vazio, não salvar na sessão e avisar o usuário |
+| save automático falha | Manter o último documento válido no armazenamento e a edição em memória, mostrar Tentar novamente |
+| saveNow falha | Permanecer em Edição, preservar o documento em memória e mostrar Tentar novamente |
+| área fora da tela depois de mudar a resolução | Limitar a área ao monitor principal |
+| atalho ocupado | Iniciar o app, registrar aviso e manter Editar no tray |
+| capacidade negada | Iniciar com o recurso afetado desativado e registrar a causa |
+| Explorer reinicia | Reparentar no próximo enter_edit ou pin_to_wall |
+| API Tauri ausente | Usar fallback de navegador para editar e testar o canvas |
 
-Sem `Ctrl+D`: elevar/afundar deixou de existir como conceito — o canvas nasce elevado e o cursor libera o desktop via click-through.
+## 8. Critérios de aceite
 
-Planejado (não existe ainda): paleta, atalhos editáveis, `Ctrl+V` imagem/clipboard, arrastar arquivo.
+O PRD passa quando uma build instalada demonstra:
 
-## 5. Canvas (v1 inicial)
-
-- Um `<canvas>` fullscreen, DPR-aware, transform de câmera (`screenToWorld`/`worldToScreen`).
-- Ferramentas na toolbar sempre visível (acima da taskbar, tooltip com atalho no hover): cursor (`V`, default, libera o desktop), pincel (`B`), borracha (`E`, `ERASER_WIDTH=24`).
-- Texto simples sem markdown, uma fonte do sistema, sem edição após confirmar (só mover via recarga? na prática: cria/apaga via undo, sem select/move/resize).
-- Undo/redo só em memória (perde histórico ao reiniciar; o documento persiste, o histórico não).
-- Pan/zoom com câmera restaurada no boot.
-
-## 6. Persistência (congelada)
-
-- Modelo: `{ version: 1, strokes: [{id, points, erase}], texts: [{id, at, content}], camera: {x, y, zoom} }` (`frontend/src/persistence.ts:4-9`, `frontend/src/canvasTypes.ts`).
-- Onde: `localStorage` do perfil WebView2 (`canvie.canvas.v1`), que vive em `%APPDATA%/com.canvie.app`. Sem comando Rust dedicado — suficiente para o MVP-0.
-- Como: save com debounce ~500ms (`createSaver`), load no boot, valida e retorna null se corrompido (boota vazio, nunca crasha), `reseedIds` além do maior id restaurado.
-- Done: matar no Gerenciador de Tarefas e reabrir volta idêntico.
-
-## 7. Segundo plano (congelado)
-
-- Tray com Show / Cursor / Brush / Eraser / Lock / Overlay / Autostart / Quit; fechar (X) esconde para o tray, só Quit sai. As entradas de ferramenta emitem `canvie-tool` (o frontend aplica).
-- Single-instance: 2ª instância sai e foca a 1ª.
-- Autostart habilitado no setup, apontando para o build instalado (`%LOCALAPPDATA%\Canvie\canvie.exe`), nunca dev binary.
-- Global shortcuts registradas com falha degradada (log warn, app continua).
-
-## 8. Wallpaper embedding (congelado)
-
-- Canvas é filho do Progman elevado acima do `SHELLDLL_DefView` por padrão (acima dos ícones, abaixo de taskbar e janelas normais). Só monitor primário. Se o Explorer reiniciar, o próximo show/mode-change re-embebe e re-eleva.
-- Atrás do DefView = sem input (o DefView consome todo hit-test) — por isso o default é elevado; quem libera o desktop é o cursor (click-through), não mais uma ordem de camada.
-- Overlay desanexa para janela top-level normal e re-anexa ao sair.
-
-## 9. Critérios de aceite MVP-0
-
-- Instala sem erro, abre em < 5s, idle < 150MB RAM e ~0% CPU.
-- Desenha/apaga/pan/zoom/texto funcionam; `Ctrl+L` congela; `Ctrl+Alt+T` traz para frente e `Esc` devolve.
-- Kill + reboot: canvas intacto, tray ativo, autostart aponta para o instalado.
-- E2E real (não mock): `scripts/e2e/l4-modes.ps1`, `l5-background.ps1`, `l6-accept.ps1`, `wallpaper-layers.ps1`. Ver `docs/OPERATIONS.md`.
-
-## 10. Não-metas (ir para próximos passos v1)
-
-3 brushes, paleta, setas/formas/cards, markdown com fontes, fundo sólido/transparente configurável, imagens/clipboard/arrastar-arquivo, seleção/mover/redimensionar/apagar individual, atalhos editáveis, multi-monitor real, Linux.
-
-## 11. Esboço v1 (intenção, sem detalhar)
-
-Conforme README: navegar com pan/zoom, fundo sólido ou transparente, caneta/pincel/marcador em cores, setas/formas/cards, textos Markdown, imagens via arrastar/colar, selecionar/mover/redimensionar/apagar, undo/redo, 3 modos, atalhos personalizáveis, autosave após reboot. Cada item vira especificação própria antes de implementar — nada aqui autoriza código.
-
-## 12. Métricas de produto
-
-Sucesso = composição em segundos + reboot intacto + alternância de modos sem "sensação de app". Sem analytics (local-first, nada phona home).
+1. primeira abertura em Edição pedindo o arraste da área;
+2. área visível no desktop depois de fixar, com fundo bege e com fundo transparente;
+3. cliques do desktop e das janelas livres enquanto a área está Fixa;
+4. Ctrl + Alt + T trazendo o mesmo documento para Edição com outro app aberto;
+5. toolbar visível, focável e movível pelo pegador;
+6. traço nas três cores, nota com tabela, post-it, borracha, undo e redo funcionais;
+7. Fixar no desktop e o atalho salvando antes de reparentar;
+8. área e conteúdo restaurados depois de fechar e abrir;
+9. tray e single-instance funcionais;
+10. RAM em repouso e CPU registrados em docs/OPERATIONS.md.

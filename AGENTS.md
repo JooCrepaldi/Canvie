@@ -1,209 +1,200 @@
-# AGENTS.md — Canvie
+# Canvie agent instructions
 
-This is the constitution of the project: how to think before writing a single line of code. Three layers: Identity (why the product exists and what it refuses to be), Process (how work flows from doc to merge), Standards (how code must be). When instinct and this file disagree, this file wins. When this file and docs/ disagree, flag it — don't guess.
+This file is the working contract for agents in this repository. Read it before changing code or product behavior. Follow direct system, developer, and user instructions first. When this file conflicts with a more specific instruction under the working directory, use the more specific file and record the scope in the change.
 
----
+## Product identity
 
-## Layer 1 — Identity
+Canvie keeps one local canvas in a rectangle of the Windows desktop that the user drags to define. The user calls a focused editing layer with a shortcut, draws or writes Markdown notes and post-its, and fixes the area back to the desktop.
 
-### 1. Mission
+The MVP proves one claim: a canvas on the desktop is useful and pleasant. Choose the smallest change that tests that claim. Keep the app local-first, quiet, friendly, and light while it runs in the background.
 
-**Product:** Canvie turns the Windows desktop into a persistent visual thinking space. Ideas, images, arrows and references live directly on the desktop — a whiteboard that stays there — instead of inside yet another window.
+Product constraints:
 
-**User:** anyone who lives on their desktop and thinks visually. They never asked for a whiteboard app; they get a wall.
+- Windows is the only target in the current cycle.
+- Canvas content stays on the machine. There are no accounts, cloud sync, analytics, or collaboration features in the MVP.
+- The desktop is the product. A normal app window is a support surface for focused editing.
+- Persistent state includes content, canvas position, size, monitor, and user preferences.
+- The toolbar has a separate side handle. Dragging the handle moves the toolbar; clicking a tool never moves it.
+- Wall and Edit are the only window placements in the first cycle. The product calls Wall **Fixo**. The transition must save before returning to Wall.
+- The first cycle offers one choice of each kind: a paper or transparent background, one brush in three colors, and one font in three sizes. More options wait for the cycle to prove the transition.
 
-**Problem solved:** canvas tools are powerful but live inside windows you must open; the desktop — the space you already see every day — is dead surface. Canvie makes it a persistent thinking surface: close the computer, find the same thought where you left it.
+## Read the right document first
 
-**Product philosophy:** the canvas is not a window, it is part of the desktop. Quiet second-plane app: it runs in the background, appears only when needed, disappears when not. Minimalist, warm, slightly playful — never corporate SaaS.
+Use the document that owns the question. Do not copy a rule into a second document when a link is enough.
 
-**Business context (shapes everything):** solo founder, MVP-0 proving one thesis: *a canvas on the desktop is useful and pleasant*. Every decision passes "does this prove the thesis with the least machinery?" — never "does this scale?". Shippable simplicity beats clever architecture.
+| Question or change | Authoritative document |
+| --- | --- |
+| What the product is, who uses it, and what belongs in the MVP | [`product.md`](product.md) |
+| How to install, run, build, and find documentation | [`README.md`](README.md) |
+| How processes, state, ownership, persistence, and Windows integration fit together | [`architecture.md`](architecture.md) |
+| What the UI looks like and how it behaves visually | [`design_system.md`](design_system.md) |
+| Why a hard-to-reverse choice was made | [`decisions/`](decisions/) |
+| Current product contract for the first cycle | [`docs/PRD.md`](docs/PRD.md) |
+| Detailed runtime, frontend, backend, operations, or roadmap facts | [`docs/`](docs/) |
+| Domain terms without implementation details | [`CONTEXT.md`](CONTEXT.md) |
 
-### 2. Product principles — never violate
+When product intent conflicts with shipped behavior, name the conflict. Treat `product.md` as the target and `docs/PRD.md` plus the code as the delivered state until the user chooses a change. Never resolve a product conflict by silently changing scope.
 
-- **Desktop first.** The desktop is the product, not where the product opens.
-- **Persistent by default.** Everything placed on the canvas stays saved; kill, reboot, it comes back identical.
-- **Quiet UI.** The interface appears only when needed; canvas and user content are the protagonists.
-- **Friendly.** Light and personal. No dashboards, no enterprise chrome.
-- **Local-first (MVP-0).** The canvas never leaves the machine: no cloud, no accounts, no sync. Nothing phones home.
-- **Light footprint.** The app is always running, so idle must stay quiet: < 150MB RAM, ~0% CPU. A heavy background app betrays the product.
+## Work in small, verifiable slices
 
-### 3. Decision criteria — conflict resolution, in order
+Follow this sequence for code and behavior changes:
 
-1. Consistency with README.md + docs/MVP-0-ROADMAP.md (source of truth)
-2. Windows integration correctness (layering, input, tray, autostart)
-3. Simplicity (fewer parts, shippable)
-4. UX clarity (the quiet canvas)
-5. Performance (only when a measured problem exists)
+1. **Classify the change.** Identify product, architecture, frontend, backend, UI, operations, or documentation scope.
+2. **Read the owner documents.** Read the relevant root document and the matching file under `docs/` before planning.
+3. **Inspect the repository.** Check the actual tree, package scripts, Rust configuration, capabilities, and existing patterns. Do not invent a path that is absent.
+4. **Plan one vertical slice.** State the smallest user-visible behavior, its owner, its failure path, and its completion evidence.
+5. **Implement in the owning layer.** Keep domain logic pure and keep Windows, filesystem, and Tauri I/O at the boundary.
+6. **Verify the real behavior.** Run the narrowest useful build, check, or E2E flow. Prefer actual hotkeys, windows, tray state, files, and logs over mocks.
+7. **Update documentation in the same change.** Update the owner document when product behavior, shortcuts, architecture, operations, or visual rules change.
+8. **Review the full diff.** Check scope, ownership, permissions, error paths, user-facing copy, and stale links.
 
-If a change would require violating #1, stop and flag it — updating the product docs is a founder decision, not a silent side effect.
+The slice is complete only when the code or document is changed, the requested behavior is observable, and the evidence is recorded in the final report or the relevant operations document.
 
----
+Do not start a later roadmap layer while its predecessor lacks its done evidence. See [`docs/MVP-0-ROADMAP.md`](docs/MVP-0-ROADMAP.md).
 
-## Layer 2 — Process
+## Source control and delivery
 
-### 4. Source of truth — read before implementing
+Use a branch named `feat/<layer>-<slug>`, `fix/<slug>`, or `docs/<slug>` when a Git repository and remote are available. Docs-only changes may go directly to `main` when the project workflow allows it.
 
-| Doc                        | Holds                                                        |
-| -------------------------- | ------------------------------------------------------------ |
-| README.md                  | Product vision, modes, shortcuts, v1 scope (pt-BR, user-facing, non-technical) |
-| docs/PRD.md                | Frozen MVP-0 requirements + v1 sketch (pt-BR, buildable)     |
-| docs/ARCHITECTURE.md       | Runtime, ModeState, layering, bridge, ownership, ADRs        |
-| docs/FRONTEND.md           | Canvas, camera, tools, persistence wiring, transparency      |
-| docs/BACKEND.md            | Rust state machine, wallpaper.rs, commands/ACL, tray/lifecycle |
-| docs/OPERATIONS.md         | Commands, E2E matrix, machine quirks, troubleshooting (pt-BR) |
-| docs/MVP-0-ROADMAP.md      | Build order L0–L6, done criteria, hard-won findings per layer |
-| AGENTS.md (this file)      | How to think and work here                                   |
+Use imperative English commit messages with these prefixes:
 
-Never decide alone what a doc has already decided. Docs > memory > instinct.
+- `feat:` for a user-facing capability.
+- `fix:` for a behavior correction.
+- `docs:` for documentation.
+- `assets:` for visual assets.
 
-### 5. Development flow — always the same
+A code change is ready for a pull request when the frontend and Rust checks pass, the relevant E2E evidence exists, the diff is self-reviewed, and the owning documents are current. Docs-only changes skip code review, but still need link, command, heading, and consistency checks.
 
-Read docs → Plan → Implement (one small vertical slice, one layer at a time, on a branch) → Test (real hotkeys, real processes, never assume) → Self-review → Update docs (if behavior changed) → PR to main → Assistant code review (§5b) → Address findings → Merge → Tag per milestone (`mvp-0-*`).
+Every code pull request requires an assistant review before merge. Review in this order:
 
-Don't start a layer whose predecessors aren't DONE.
+1. Windows, persistence, transparency, shortcut, and security invariants.
+2. Layer ownership, Tauri permissions, and the single state machine.
+3. Correctness, race conditions, and error paths.
+4. TypeScript and Rust standards, dead code, and unnecessary dependencies.
+5. Build, E2E, and log evidence.
+6. Documentation for changed behavior.
 
-### 5b. Assistant code review — the merge gate (replaces CodeRabbit)
+The review returns **approve** or **request changes** with file, line, reason, and suggested fix. Address every finding or record a concrete justification before merge.
 
-Every code PR gets a review by the assistant before merge. Docs-only PRs skip it.
+## Architecture contracts
 
-Review angles, in order:
+The target stack is Tauri 2, Vite, React 19, strict TypeScript, Rust, and Canvas 2D. Keep the public ownership split below:
 
-1. Invariants (§10) — any broken Win32/persistence/transparency/shortcut invariant is a blocker.
-2. Architecture rules (§9) — layering, ACL permissions, single state machine.
-3. Correctness — logic errors, race conditions (hotkey/hot-path threads), error paths that swallow failures.
-4. Standards (§11/12) — strict TS/Rust, no dead code, comments only for inexpressible constraints.
-5. Tests & evidence — E2E script updated or re-run for behavior changes; frontend + Rust builds green.
-6. Docs — README/roadmap updated in the same PR when behavior changed.
-7. Security (§14) — writes outside allowed paths, elevated execution, secrets, shell injection via unquoted paths.
+- `frontend/src/canvas/` owns drawing, camera transforms, notes, post-its, the area rectangle, and element interaction.
+- `persistence.ts` owns document validation, loading, saving, debounce, and saveNow.
+- `placement.ts` owns the frontend wrapper around backend placement commands and events.
+- `frontend/src-tauri/src/lib.rs` owns the single `PlacementState`, commands, events, tray, lifecycle, and global shortcuts.
+- `wallpaper.rs` owns all Win32 parent, style, transparency, hit-testing, and Z-order work.
+- `src-tauri/capabilities/` owns the smallest permissions that expose commands or plugins to a window.
 
-Verdict is binary: **approve** or **request changes** with a finding list (file:line + why + suggested fix). Findings are addressed in the PR (fix or reply with justification); re-review until approve, then merge. The review lives in the PR as a comment so the reasoning is on record.
+The frontend mirrors backend mode events. It does not create a second mode machine. The backend does not draw canvas elements.
 
-### 6. Checklist — before implementing
+For Tauri commands, complete all of these steps:
 
-- Is there documentation for this? (README.md / docs/)
-- Is it inside MVP-0 scope? (the roadmap's frozen scope is a contract)
-- Is there an existing pattern, component, or command to reuse?
-- Which layer does this belong to, and is the previous one DONE?
-- Branch cut from main (`feat/<layer>-<slug>`)?
+1. Add the typed `#[tauri::command]` function.
+2. Register it with the handler and the app manifest when required.
+3. Add the narrow capability or permission.
+4. Add a typed frontend wrapper with error handling and a browser fallback where development needs it.
 
-### 7. Checklist — before considering a task done / merging a PR
+Tauri capabilities are a security boundary, not a convenience list. Grant only the command and scope the window needs. The official reference is linked from [`architecture.md`](architecture.md).
 
-- Frontend build passes (`npm run build`: `tsc -b` + vite); `npx oxlint` clean
-- Rust compiles (`cargo check`); Tauri bundle builds when the shell changed
-- E2E evidence exists (real hotkeys sent, real process/window state asserted — see `scripts/e2e/`)
-- Self-reviewed the full diff
-- Docs updated in the same commit if behavior/shortcuts/architecture changed
-- Commits: imperative, English, `feat:` / `docs:` / `assets:` / `fix:`, explain the why
-- Assistant review approved (§5b); every finding fixed or answered
-- Squash or small-commit history readable; branch deleted after merge
+## Windows invariants
 
-Branch per change (`feat/<layer>-<slug>`) → PR to main. Docs-only changes may go straight to main.
+These invariants are blockers during review:
 
----
+1. **Re-embed after `tao`.** Calls that change `always_on_top`, `ignore_cursor_events`, or visibility rewrite window styles. Reapply the parent, `WS_CHILD`, and Z-order after every such call. A window with `WS_EX_LAYERED` also needs `SetLayeredWindowAttributes`, or Windows does not draw it.
+2. **Use the tested desktop parent.** Wall uses the `Progman` relationship defined in the architecture docs. Do not introduce Explorer hooks, `WorkerW` surgery, or DefView patching.
+3. **Treat Wall as non-interactive.** A window behind the icon layer cannot receive desktop input. Use backend click-through for the Wall path.
+4. **Keep `Win + T` reserved.** Use `Ctrl + Alt + T` for Edit until a recorded product decision changes it.
+5. **Preserve data.** Validate loaded JSON, boot empty on corruption without crashing, reseed ids beyond restored ids, and debounce saves without deleting the last valid document.
+6. **Keep transparency outside the area.** `html`, `body`, `#root`, and the Tauri shell stay transparent. Only the area paints its chosen background, and Edit adds the dim around it.
+7. **Keep fallbacks usable.** Missing Tauri APIs in browser development must leave a working canvas. A denied capability must degrade with a warning, not prevent startup.
+8. **Keep startup installed.** Autostart must target the installed executable and never a development binary.
+9. **Keep one instance.** A second launch focuses the running instance and exits.
 
-## Layer 3 — Standards
+## Frontend standards
 
-### 8. Engineering philosophy
+- Use strict TypeScript. Do not use `any` without a written reason on the same line.
+- Keep UI strings in pt-BR. Keep code, symbols, and comments in English.
+- Use plain CSS next to components. Add a styling dependency only after a measured need and a recorded decision.
+- Use one DPR-aware canvas with `screenToWorld` and `worldToScreen` transforms.
+- Keep pointer drafts in refs. Do not re-render React state for every pointer move.
+- Keep undo and redo as explicit action stacks.
+- Keep the toolbar compact, with visible focus, accessible names, a separate handle, and a recoverable route through tray or shortcuts when click-through is active.
+- Do not leave dead code, commented-out code, or untracked TODOs. Move real future work into `product.md` or the roadmap.
 
-Simplicity over abstraction. YAGNI. KISS. Don't build infra for users that don't exist.
+## Rust standards
 
-Explicit over clever; readability over brevity; small functions, small files.
+- Keep `cargo check` free of new warnings.
+- Use comments for constraints the type system cannot express, such as Win32 behavior. Do not narrate the next line.
+- Log mode transitions, layer changes, shortcut registration, startup, persistence failures, and degraded fallbacks.
+- Keep Windows crate use within the surfaces documented by [`docs/BACKEND.md`](docs/BACKEND.md). Add a decision before expanding the surface.
+- Return typed errors or clear status values. Do not swallow an error that changes user-visible behavior.
 
-Pure logic at the core (geometry, persistence model), I/O at the edges (Win32, Tauri commands).
+## Security and data boundaries
 
-Every new dependency must earn its place — each one is compile time, bundle weight and background RAM. Prefer the platform (Canvas 2D, CSS, Win32) over a library.
+- Store user data under `%APPDATA%/com.canvie.app`.
+- Never run elevated.
+- Never log canvas contents, personal paths, secrets, or clipboard data.
+- Quote paths passed to shell commands.
+- Keep installers in the local target output, not in Git.
+- Keep `.agents/skills/` and other local agent state ignored. Skills are working instructions, not project content.
 
-Optimize only with evidence of a real problem.
+## Verification commands
 
-### 9. Architecture rules
+Run commands from the directory that owns the script. PowerShell 5.1 does not support `&&`; use separate lines or `if ($?) { }`. `$pid` is a reserved variable.
 
-Never:
+```powershell
+Set-Location frontend
+npm run build
+npx oxlint
+Set-Location src-tauri
+$env:CARGO_BUILD_JOBS = "1"
+cargo check
+```
 
-- Canvas rendering via a library before raw Canvas 2D proves insufficient.
-- A Tauri command without its ACL permission (`AppManifest::commands` in `build.rs` + `allow-*` in `capabilities/default.json`) — the build fails, and that failure is the guardrail working.
-- A global shortcut whose registration failure can crash or block startup — log a warn, keep running degraded.
-- An autostart entry pointing anywhere but the installed build — never leave a Run key behind that launches a dev binary.
-- A second instance — single-instance focuses the running one, always.
-- Touch Explorer internals beyond `SetParent` window parenting. No hooks, no shell patching, no DefView style surgery.
-- Duplicate a mode/transition rule that already lives in the Rust state machine.
+For a release bundle:
 
-Always:
+```powershell
+Set-Location frontend
+npm run tauri build
+```
 
-- One mode state machine in `src-tauri/src/lib.rs` (`ModeState`: mode + return target + embedded + raised); the frontend mirrors it via the `canvie-mode` event, never invents it.
-- `wallpaper.rs` owns all Win32 layering; `Canvas.tsx` owns all drawing; `persistence.ts` owns the doc model; `mode.ts` owns the frontend/backend mode bridge.
-- Reuse existing commands/helpers before writing new ones.
+For E2E scripts:
 
-### 10. Technical invariants — never break
+```powershell
+Set-Location frontend
+powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\<name>.ps1
+```
 
-- **Embed AFTER tao.** `tao` rewrites `GWL_STYLE` wholesale on `set_always_on_top` / `set_ignore_cursor_events`, silently dropping our `WS_CHILD`. Any layer transition re-embeds (or re-asserts raise) after every tao call. No exceptions.
-- **Progman, not WorkerW.** On this Win11 shell there is no spare fullscreen WorkerW: Progman is the bottom surface and hosts `SHELLDLL_DefView` directly. The canvas is a Progman child resting raised above the icon layer (below taskbar/windows) in Canvas and Locked alike; Locked frees the desktop via click-through.
-- **Behind means no input.** A window behind the icon layer never receives clicks (DefView eats all hit-testing) — that is physics, not a bug. Nothing rests behind the icons anymore; the desktop stays usable via the cursor tool (window click-through), not layer order.
-- **`Win+T` belongs to Explorer.** `RegisterHotKey` fails with "already registered". MVP-0 uses `Ctrl+Alt+T` until a product decision says otherwise.
-- **Persistence never loses data.** `loadDoc()` validates; corrupted JSON returns null and the app boots empty — never crashes. Id counters reseed past restored ids. Saves are debounced (~500ms).
-- **Transparency is total.** `html/body/#root` transparent, Tauri window `transparent: true`, no opaque backgrounds anywhere in the shell. A single opaque layer breaks the wallpaper illusion.
-- **Fallbacks stay usable.** Every frontend/backend bridge (`invoke`, event listen, storage) degrades to a working canvas when Tauri APIs are absent (browser dev).
+Run E2E only when the change affects runtime behavior. Use real hotkeys, real processes, real window state, and release logs. The machine has limited RAM, so keep `CARGO_BUILD_JOBS=1` and use the target directory configured outside OneDrive.
 
-### 11. Frontend standards
+## Documentation rules
 
-- Vite + React 19 + TypeScript strict. No `any` without a written justification on the line.
-- UI strings in pt-BR, code/comments in English. Copy lives inline for MVP-0 scale (extract when v1 toolbar lands).
-- Styling: plain CSS next to components (`App.css`, `index.css`). No CSS framework until v1 earns it.
-- Canvas: one `<canvas>` element, DPR-aware, camera transform (`screenToWorld`/`worldToScreen`); strokes/texts as state, drafts in refs (no re-render per pointermove); undo/redo as action stacks in memory.
-- The toolbar is always visible above the taskbar and eats clicks only inside its own rect; with click-through on (cursor/Lock) it is visibly unreachable — tray/keys are the way back.
-- Click-through is owned by Rust (`set_passthrough` + re-embed + re-raise); the frontend never calls the Tauri window API for it. Bare `V`/`B`/`E` are frontend-only (never global — a bare `B` would steal typing system-wide).
-- No dead code, no commented-out code, no forgotten TODOs.
+Update the smallest authoritative document that owns the change, then update cross-links when the public map changes:
 
-### 12. Rust standards
+| Change | Update |
+| --- | --- |
+| Product behavior, user flow, shortcuts, MVP boundary | `product.md` and `docs/PRD.md` when delivered behavior changes |
+| Runtime, state, layering, bridge, ownership | `architecture.md` and the matching file under `docs/` |
+| Tokens, components, accessibility, UI states | `design_system.md` |
+| Hard-to-reverse tradeoff | A numbered file under `decisions/` |
+| Build, E2E, logs, machine quirks | `docs/OPERATIONS.md` |
+| Build order or layer evidence | `docs/MVP-0-ROADMAP.md` |
+| Domain terminology | `CONTEXT.md` |
 
-- `cargo check` clean with no new warnings. Comments only for constraints the code can't express (Win32 quirks qualify; narrating the next line doesn't).
-- New commands follow the L4 pattern: `#[tauri::command]` + `AppManifest::commands` entry + `allow-*` capability + frontend wrapper in `mode.ts` with try/catch fallback.
-- Log state transitions (`mode ->`, `layer ->`, `hotkey registered`) — in release the log file is the only trace.
-- Keep `windows`-crate usage to `Win32_Foundation` + `Win32_UI_WindowsAndMessaging` + `Win32_Graphics_Dwm` (Dwm is only the Overlay blur-behind). No new Win32 surface without a comment explaining why.
+Use links instead of duplicating a rule. Keep root docs concise and move deep implementation details into `docs/`. A decision record must state context, the decision, consequences, alternatives, status, and date.
 
-### 13. Quality bar
+## Review checklist
 
-Builds green (frontend + Rust), E2E evidence for behavior changes, docs updated in the same commit. A TODO either becomes roadmap scope or doesn't get written.
+Before declaring work complete, confirm:
 
-### 14. Security
-
-Never: write outside `%APPDATA%/com.canvie.app` and the Run key; run elevated; log paths/contents beyond state transitions; commit machine-specific secrets (there are none — keep it that way).
-Always: degrade on denied capability; quote paths; keep installers out of git (they live in the local target dir).
-
-### 15. Living documentation
-
-After any meaningful decision, ask: "does this need to enter the documentation?" If unsure, it does — in the same commit:
-
-| Changed                          | Update                  |
-| -------------------------------- | ----------------------- |
-| Product behavior / UX / shortcuts | README.md + docs/PRD.md |
-| Runtime / modes / layering / bridge | docs/ARCHITECTURE.md |
-| Canvas / persistence / transparency | docs/FRONTEND.md     |
-| Rust commands / tray / Win32      | docs/BACKEND.md         |
-| Commands / E2E / quirks           | docs/OPERATIONS.md      |
-| Build order / layer findings      | docs/MVP-0-ROADMAP.md   |
-| How to think / work here          | AGENTS.md (this file)   |
-
-### Appendix — practical
-
-| What | Command (run from `frontend/`) |
-| ---- | ------------------------------ |
-| Frontend build | `npm run build` |
-| Rust check | `cargo check` (from `frontend/src-tauri/`) |
-| Debug bundle | `npx tauri build --debug` |
-| Release bundle | `npx tauri build` |
-| E2E (real hotkeys + window asserts) | `powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\<name>.ps1` |
-| Open a PR | `gh pr create --fill` (from the feature branch) |
-| Merge after approval | `gh pr merge --squash --delete-branch` |
-| App log file | `%LOCALAPPDATA%\com.canvie.app\logs\Canvie.log` |
-| Installed app | `%LOCALAPPDATA%\Canvie\canvie.exe` |
-
-**Machine quirks (this dev machine — respect all of them):**
-
-- Rust build dir lives OUTSIDE OneDrive: `frontend/src-tauri/.cargo/config.toml` sets `target-dir` to `%LOCALAPPDATA%\canvie-target`. File sync corrupts concurrent builds. Never run cargo with a cwd that bypasses this config.
-- 5.9GB RAM / tight disk: always `CARGO_BUILD_JOBS=1`; clean `npm cache` when the disk fills; debug builds are heavy — prefer release incremental.
-- `rustc` 1.98 intermittently crashes (`STATUS_STACK_BUFFER_OVERRUN`) on the giant `windows` crate: retry the exact command before changing anything.
-- Debug builds are currently unreliable on this machine — validate behavior on release + the log file.
-- PowerShell 5.1: no `&&` (use `; if ($?) { }`), `$pid` is reserved, `SendKeys` needs a `WScript.Shell` object, `Set-ExecutionPolicy Bypass -File` for scripts.
-- Window handles lie: `MainWindowHandle` points at the `com.canvie.app-sic` helper, not the canvas. Locate `Tauri Window` by PID; after embedding it is a Progman child, invisible to top-level enumeration — search Progman children first.
-
-**Current state (v1 started):** MVP-0 complete through wallpaper embedding + draw-layer toggle + centered pill (tag `mvp-0-instalavel` marks the pre-wallpaper installer) → v1 slice 1: canvas rests raised by default, cursor/brush/eraser toolbar with hover tooltips (`V`/`B`/`E`), click-through cursor frees the desktop, `Ctrl+D` removed. Next: brushes, markdown, backgrounds per README.
+- The change matches `product.md` or records the product decision that changes it.
+- The correct layer owns each new rule.
+- Capabilities and scopes are minimal.
+- Error paths degrade safely and leave a useful log.
+- Persistence keeps the last valid state.
+- Windows layering and input invariants still hold.
+- Accessibility names, focus, keyboard paths, contrast, and DPI behavior are covered.
+- Documentation links and commands point to existing files or are explicitly marked as future layout.
+- The final report states what changed and what evidence was run.

@@ -20,9 +20,10 @@ O primeiro usuário é o próprio criador do Canvie: alguém que passa o dia no 
 
 - **Desktop primeiro.** O estado normal é a área quieta e fixa no desktop.
 - **Edição sob demanda.** A toolbar aparece apenas quando o usuário traz a área para a frente.
-- **Um canvas.** Uma área e um documento reduzem decisões, memória e tempo de recuperação.
+- **Um canvas.** Uma área e um documento reduzem decisões, memória e tempo de recuperação. A 0.0.3 revê este princípio para vários canvases.
 - **Local.** O conteúdo fica na máquina. Não há conta, servidor, sincronização ou telemetria.
 - **MVP cru.** O primeiro ciclo entrega uma opção de cada coisa e cresce depois que a troca entre desktop e edição funcionar.
+- **Valores prontos.** Depois da 0.0.1, tamanhos, fontes, cores e temas crescem como listas curtas e fixas. Escolher é um clique, não um ajuste. A decisão está em [0008](decisions/0008-preset-values.md).
 - **Retorno claro.** O botão **Fixar no desktop** sempre deixa visível o que acontecerá com a edição.
 
 ## Escopo do primeiro ciclo
@@ -48,18 +49,41 @@ O primeiro ciclo entrega:
 
 O canvas fica no monitor principal no primeiro ciclo.
 
-## Depois do MVP
+## Próximas versões
 
-Estas ideias fazem parte da direção do produto e entram depois que a troca entre Fixo e Edição funcionar em uma instalação real:
+Estas versões entram depois que a troca entre Fixo e Edição funcionar em uma instalação real, com a L6 e a L7 do [primeiro ciclo](docs/MVP-0-ROADMAP.md) concluídas.
 
+### 0.0.2: escrever mais rápido
+
+Continua uma área, um canvas e um documento. A ordem das camadas está em [ROADMAP-0.0.2.md](docs/ROADMAP-0.0.2.md).
+
+- toolbar de ícones com aba de arrastar em cima, centralizada no rodapé, com posição salva e **Reposicionar toolbar** ([0009](decisions/0009-toolbar-tab-and-icons.md));
+- Seleção sem botão, Mão só para a câmera e duplo clique no canvas para escrever ([0010](decisions/0010-implicit-selection-and-hand.md));
+- alinhamento à esquerda, ao centro e à direita na nota selecionada;
+- popover do Texto com Serifa, Sem serifa e Mono e seis tamanhos;
+- popover do Pincel com caneta, marca-texto, borracha e seis cores;
+- menu do botão direito em Edição com Reposicionar toolbar, Tema, Área, Ajustar à tela, Zoom e Limpar canvas;
+- temas bege, branco, preto, amarelo e transparente;
+- documento v2, que migra o documento da 0.0.1 sem perder conteúdo.
+
+### 0.0.3: vários canvases e formas
+
+- ferramenta Novo canvas, que cria outra área no desktop, cada uma com fundo e câmera próprios;
+- formas básicas: seta, linha, retângulo e círculo, com seleção, mover e redimensionar;
+- seleção de vários elementos;
+- janela de configurações, não um painel permanente, com o atalho global e iniciar com o Windows.
+
+Vários canvases mudam o princípio **Um canvas** e precisam de uma decisão própria antes do código.
+
+### 1.0: organizar o desktop
+
+- alinhar os canvases automaticamente na vertical, na horizontal ou em grade, com um atalho que não use Win + setas;
+- Fixed Canvas, em que o texto se adapta ao formato da área como uma página, e Infinite Canvas, livre como o canvas atual;
+- canvases em outros monitores;
+- outros polígonos, como o octógono;
 - entrada de voz para texto em anotações rápidas;
 - imagens dentro do Markdown, em uma estrutura de texto parecida com a do Obsidian;
-- um atalho para mostrar e esconder a toolbar, com animação curta;
-- lembrar a posição da toolbar entre sessões;
-- mais cores de fundo, como branco, preto e amarelo;
-- mais pincéis, cores de tinta e fontes;
-- iniciar com o Windows;
-- escolher outro atalho global.
+- um atalho para mostrar e esconder a toolbar, com animação curta.
 
 ## Estados visíveis ao usuário
 
@@ -106,7 +130,7 @@ O primeiro ciclo está pronto quando o usuário consegue:
 
 ## Fora do ciclo
 
-Não entram nesta proposta:
+Não entram no primeiro ciclo. Vários canvases, formas e seleção múltipla voltam nas [próximas versões](#próximas-versões).
 
 - contas, nuvem, colaboração ou sincronização;
 - múltiplas áreas ou vários canvases;

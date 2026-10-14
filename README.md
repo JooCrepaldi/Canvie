@@ -2,7 +2,7 @@
 
 Canvie é uma área de anotação fixa no desktop do Windows. Você arrasta um retângulo no desktop e ele vira um canvas para desenhos, notas em Markdown e post-its. Quando precisa anotar algo, use Ctrl + Alt + T: a área vem para a frente com uma toolbar compacta e volta ao desktop, salva, quando você usa o atalho de novo ou clica em **Fixar no desktop**.
 
-O repositório está no início do projeto. Ele contém a proposta, o contrato de transição, o scaffold Tauri da L0, o canvas da L1 e o documento persistente da L2. As camadas seguintes entram depois que cada comportamento tiver evidência própria.
+A versão 0.0.1 entrega as camadas L0 a L5: a área, o conteúdo, o estado Fixo e a transição para Edição. A L6 e a L7 fecham o primeiro ciclo, e a 0.0.2 segue o [roadmap próprio](docs/ROADMAP-0.0.2.md).
 
 ## Proposta atual
 
@@ -15,7 +15,7 @@ O repositório está no início do projeto. Ele contém a proposta, o contrato d
 - tray e instância única;
 - Windows como único alvo.
 
-A transição Fixo → Edição → Fixo é o critério principal. Voz para texto, imagens no Markdown, múltiplos canvases e formas ficam para depois do MVP.
+A transição Fixo → Edição → Fixo é o critério principal. As próximas versões estão em [product.md](product.md#próximas-versões).
 
 ## Stack escolhida
 
@@ -32,7 +32,8 @@ Leia o documento que responde à pergunta:
 | design_system.md | Visual inspirado na densidade do Codex e comportamento da toolbar |
 | CONTEXT.md | Vocabulário do domínio |
 | docs/PRD.md | Contrato funcional do primeiro ciclo |
-| docs/MVP-0-ROADMAP.md | Camadas L0 a L6 e evidência de done |
+| docs/MVP-0-ROADMAP.md | Camadas L0 a L7 do primeiro ciclo e evidência de done |
+| docs/ROADMAP-0.0.2.md | Camadas L8 a L12 da 0.0.2 |
 | docs/ARCHITECTURE.md | Detalhe do runtime e da transição |
 | docs/FRONTEND.md | Canvas, persistência, toolbar e fallback de navegador |
 | docs/BACKEND.md | Rust, Tauri, tray, atalhos e Win32 |

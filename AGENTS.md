@@ -50,7 +50,7 @@ Follow this sequence for code and behavior changes:
 
 The slice is complete only when the code or document is changed, the requested behavior is observable, and the evidence is recorded in the final report or the relevant operations document.
 
-Do not start a later roadmap layer while its predecessor lacks its done evidence. See [`docs/MVP-0-ROADMAP.md`](docs/MVP-0-ROADMAP.md).
+Do not start a later roadmap layer while its predecessor lacks its done evidence. See [`docs/MVP-0-ROADMAP.md`](docs/MVP-0-ROADMAP.md) and [`docs/ROADMAP-0.0.2.md`](docs/ROADMAP-0.0.2.md).
 
 ## Source control and delivery
 
@@ -180,7 +180,7 @@ Update the smallest authoritative document that owns the change, then update cro
 | Tokens, components, accessibility, UI states | `design_system.md` |
 | Hard-to-reverse tradeoff | A numbered file under `decisions/` |
 | Build, E2E, logs, machine quirks | `docs/OPERATIONS.md` |
-| Build order or layer evidence | `docs/MVP-0-ROADMAP.md` |
+| Build order or layer evidence | `docs/MVP-0-ROADMAP.md` and `docs/ROADMAP-0.0.2.md` |
 | Domain terminology | `CONTEXT.md` |
 
 Use links instead of duplicating a rule. Keep root docs concise and move deep implementation details into `docs/`. A decision record must state context, the decision, consequences, alternatives, status, and date.

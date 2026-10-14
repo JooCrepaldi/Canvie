@@ -150,4 +150,4 @@ Fixo é o nome do produto para o placement Wall. A direção atual está em [pro
 
     L0 → L1 → L2 → L3 → L4 → L5 → L6 → L7
 
-L5 é a primeira camada que entrega a proposta completa. L4 precisa estar comprovada antes dela, porque Edição depende de reanexar a janela ao desktop sem perder o canvas. As ideias de [Depois do MVP](../product.md#depois-do-mvp) entram depois da L7.
+L5 é a primeira camada que entrega a proposta completa. L4 precisa estar comprovada antes dela, porque Edição depende de reanexar a janela ao desktop sem perder o canvas. As [próximas versões](../product.md#próximas-versões) entram depois da L7. A 0.0.2 continua em [ROADMAP-0.0.2.md](ROADMAP-0.0.2.md), a partir da L8.

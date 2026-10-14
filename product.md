@@ -78,6 +78,7 @@ Se o salvamento falhar, a área permanece em Edição e mostra uma ação para t
 | --- | --- |
 | Ctrl + Alt + T | Trazer a área para a frente quando estiver Fixa. Salvar e fixar quando estiver em Edição. |
 | Esc | Salvar e fixar, quando nenhuma nota estiver em edição. Cancela a edição de uma nota. |
+| Alt + F4 | Salvar e fixar, sem encerrar o Canvie. Antes de existir uma área, encerrar o Canvie. |
 | B | Pincel. |
 | T | Nota de texto. |
 | P | Post-it. |

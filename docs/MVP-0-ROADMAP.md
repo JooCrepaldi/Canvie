@@ -122,7 +122,7 @@ Fixo é o nome do produto para o placement Wall. A direção atual está em [pro
 **Inclui:**
 
 - Alt + F4 em Edição fixa a área em vez de encerrar;
-- recriar e fixar de novo a janela quando um reinício do Explorer destruir o Progman;
+- devolver a área ao novo Progman quando o Explorer reiniciar, depois de uma queda ou de uma saída normal;
 - logs de startup, atalho, transição, falha de save e re-embed, incluindo as falhas de persistência do frontend.
 
 **Falha tratada:** uma ação do tray que falhar mantém o processo ativo e mostra um aviso no log.

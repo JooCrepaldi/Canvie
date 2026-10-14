@@ -1,6 +1,6 @@
 # Frontend
 
-Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, and L5 the transition between Fixo and Edição.
+Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, L5 the transition between Fixo and Edição, and L6 the persistence failures in the release log.
 
 ## Files
 
@@ -13,6 +13,7 @@ Frontend is implemented in layers. Paths are relative to frontend/src. L1 delive
 | canvas/markdown.ts | markdown-it sem HTML bruto nem imagens |
 | canvasTypes.ts | Tipos e limites do documento, paleta de tinta e tamanhos de texto |
 | persistence.ts | load, save, saveNow, validação e backup local |
+| diagnostics.ts | Ponte para report_frontend_issue, com códigos fixos de falha |
 | placement.ts | Ponte Tauri para Wall e Edit |
 | Toolbar.tsx | Pegador, ferramentas, cores, tamanhos, fundo, área, histórico e Fixar no desktop |
 | index.css e App.css | Transparência, área, notas, dim, toolbar, foco e escala |
@@ -70,7 +71,7 @@ O pegador tem um ponteiro separado. Arrastar qualquer botão não move a toolbar
 
 ## Ponte de estado
 
-placement.ts expõe getPlacement, enterEdit, pinToWall, onPlacementChanged e onPinRequested. No boot:
+placement.ts expõe getPlacement, enterEdit, pinToWall, quitApp, onPlacementChanged, onPinRequested e onCloseRequested. No boot:
 
 1. o App assina canvie-placement e chama getPlacement; um evento vence uma resposta mais lenta;
 2. em Tauri, o App mostra Wall até o backend confirmar Edit;
@@ -82,6 +83,8 @@ Fixar no desktop, Esc fora do editor e do seletor, e canvie-pin-requested (envia
 2. tira o foco do elemento ativo, o que conclui uma nota em edição pelo blur;
 3. chama saveNow com o documento atual; se falhar, fica em Edit e o aviso de save oferece Tentar novamente;
 4. chama pinToWall; se o backend recusar, fica em Edit e mostra O canvas foi salvo, mas não voltou ao desktop, com Tentar novamente.
+
+canvie-close-requested (Alt + F4 ou WM_CLOSE durante Edit) chama a mesma função quando existe área. Antes da primeira área não há o que fixar: o App grava um save que ainda esteja no debounce, como o de desfazer a primeira área, e chama quitApp, que encerra o app. No navegador não existe esse pedido.
 
 O frontend não chama set_always_on_top, set_ignore_cursor_events ou SetParent. Essas operações pertencem ao backend e a wallpaper.rs.
 
@@ -98,3 +101,5 @@ Sem Tauri, placement.ts usa um adapter em memória que começa em Edit. Fixar no
 - pin_to_wall falha depois do save: Edit continua com o aviso de fixar e Tentar novamente;
 - evento de colocação atrasado: manter a camada visual anterior até o evento chegar;
 - atalho indisponível: não bloquear a toolbar nem o adapter de navegador.
+
+Documento recuperado, salvamento desativado e falha de save também chegam ao log do backend por report_frontend_issue. Só um código fixo atravessa a ponte (`document_recovered`, `saving_blocked` ou `save_failed`), nunca o conteúdo ou o erro do storage, que ficam no console da WebView. Uma sequência de saves falhos conta uma vez, até um save passar. No navegador, o relatório é ignorado.

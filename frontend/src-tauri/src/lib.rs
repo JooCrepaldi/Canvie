@@ -1,19 +1,30 @@
 mod wallpaper;
 
-use std::sync::{
-  atomic::{AtomicBool, Ordering},
-  Mutex, PoisonError,
+use std::{
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    mpsc, Mutex, PoisonError,
+  },
+  thread,
+  time::Duration,
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{
   menu::{Menu, MenuItem},
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-  App, AppHandle, Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder,
+  App, AppHandle, CloseRequestApi, Emitter, Manager, RunEvent, State, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use wallpaper::Desktop;
 
 const PIN_REQUESTED_EVENT: &str = "canvie-pin-requested";
+const CLOSE_REQUESTED_EVENT: &str = "canvie-close-requested";
+const DESKTOP_CHECK_INTERVAL: Duration = Duration::from_secs(1);
+// Checks without the icon layer before the watchdog embeds in Progman anyway.
+const ICON_LAYER_PATIENCE: u32 = 10;
+// Upper bound, in checks, between attempts after repeated embed failures.
+const MAX_RETRY_CHECKS: u32 = 300;
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -60,6 +71,27 @@ impl PlacementState {
       return Err("a placement change is already in progress".into());
     }
     Ok(MoveGuard(&self.moving))
+  }
+
+  fn is_moving(&self) -> bool {
+    self.moving.load(Ordering::SeqCst)
+  }
+}
+
+/// Set once the app is meant to end: Sair in the tray, or a close request in
+/// Wall. Until then, losing the window means Explorer took it down with
+/// Progman, and the app keeps running to rebuild it.
+struct Lifecycle {
+  quitting: AtomicBool,
+}
+
+impl Lifecycle {
+  fn quit(&self) {
+    self.quitting.store(true, Ordering::SeqCst);
+  }
+
+  fn is_quitting(&self) -> bool {
+    self.quitting.load(Ordering::SeqCst)
   }
 }
 
@@ -130,7 +162,9 @@ fn apply_edit(window: &WebviewWindow) -> Result<(), String> {
   Ok(())
 }
 
-fn place_on_wall_at_startup(app: &AppHandle, window: &WebviewWindow) {
+/// Puts the window on the desktop at startup, and again when the watchdog
+/// brings it back after Explorer restarts. Returns whether Progman is the parent.
+fn settle_on_wall(app: &AppHandle, window: &WebviewWindow) -> bool {
   let embedded = apply_wall(window).unwrap_or_else(|error| {
     log::warn!("wall embed failed: {error}");
     false
@@ -141,6 +175,121 @@ fn place_on_wall_at_startup(app: &AppHandle, window: &WebviewWindow) {
     log::warn!("placement -> wall degraded to a transparent top-level window");
   }
   publish(app, PlacementSnapshot { placement: Placement::Wall, embedded });
+  embedded
+}
+
+/// What an Explorer restart can do to the window.
+enum Loss {
+  /// The window is gone: a clean Explorer exit destroyed it, or a crash left
+  /// Tauri holding a dead handle. Its WebView is gone with it.
+  Window,
+  /// The window is alive but outside Progman, as after a Wall that started
+  /// before Explorer.
+  Parent(WebviewWindow),
+}
+
+/// A transition in progress detaches the window on purpose, so only a
+/// settled Wall can lose its parent.
+fn find_loss(app: &AppHandle) -> Option<Loss> {
+  let window = app.get_webview_window("main");
+  let Some(hwnd) = window.as_ref().and_then(|window| window.hwnd().ok()).filter(|hwnd| wallpaper::is_alive(*hwnd)) else {
+    return Some(Loss::Window);
+  };
+  let state = app.state::<PlacementState>();
+  let settled_wall = state.snapshot().placement == Placement::Wall && !state.is_moving();
+  if settled_wall && !wallpaper::is_embedded(hwnd) {
+    window.map(Loss::Parent)
+  } else {
+    None
+  }
+}
+
+/// Explorer restarts take Progman, and with it the window. Once a new Progman
+/// and its icon layer exist, the watchdog restarts Canvie when the window is
+/// gone, or embeds a living window again. In Wall the document is already
+/// saved, so a restart loses only the session history.
+fn watch_desktop(app: AppHandle) {
+  thread::spawn(move || {
+    let mut lost_checks = 0;
+    let mut icon_waits = 0;
+    let mut retry_in = 0;
+    let mut backoff = 1;
+    loop {
+      thread::sleep(DESKTOP_CHECK_INTERVAL);
+      if app.state::<Lifecycle>().is_quitting() {
+        return;
+      }
+      let Some(loss) = find_loss(&app) else {
+        (lost_checks, icon_waits, retry_in, backoff) = (0, 0, 0, 1);
+        continue;
+      };
+      // A single check can land between a detach and the end of its transition.
+      lost_checks += 1;
+      if lost_checks < 2 {
+        continue;
+      }
+      if lost_checks == 2 {
+        match loss {
+          Loss::Window => log::warn!("wall: the window is gone; waiting for the desktop to restart Canvie"),
+          Loss::Parent(_) => log::warn!("wall: the window is outside Progman; waiting for the desktop"),
+        }
+      }
+      if retry_in > 0 {
+        retry_in -= 1;
+        continue;
+      }
+      match wallpaper::desktop() {
+        Desktop::Missing => continue,
+        Desktop::WithoutIcons if icon_waits < ICON_LAYER_PATIENCE => {
+          icon_waits += 1;
+          continue;
+        }
+        _ => {}
+      }
+      match loss {
+        Loss::Window => {
+          log::info!("restarting Canvie on the new desktop");
+          app.request_restart();
+          return;
+        }
+        Loss::Parent(window) => {
+          if !re_embed(&app, window) {
+            retry_in = backoff;
+            backoff = (backoff * 2).min(MAX_RETRY_CHECKS);
+          }
+        }
+      }
+    }
+  });
+}
+
+/// Embeds the window again on the main thread, where every placement change
+/// runs. Returns whether it is in Progman.
+fn re_embed(app: &AppHandle, window: WebviewWindow) -> bool {
+  let (done, outcome) = mpsc::channel();
+  let handle = app.clone();
+  let scheduled = app.run_on_main_thread(move || {
+    // The watchdog waits on the other end; it is gone only when the app exits.
+    let _ = done.send(re_embed_now(&handle, &window));
+  });
+  if let Err(error) = scheduled {
+    log::warn!("wall re-embed could not reach the main thread: {error}");
+    return false;
+  }
+  outcome.recv().unwrap_or(false)
+}
+
+fn re_embed_now(app: &AppHandle, window: &WebviewWindow) -> bool {
+  let state = app.state::<PlacementState>();
+  let Ok(_move) = state.begin_move() else {
+    return false;
+  };
+  // Edit was called, or the window came back, while the watchdog waited.
+  if state.snapshot().placement == Placement::Edit || window.hwnd().is_ok_and(wallpaper::is_embedded) {
+    return true;
+  }
+  log::info!("wall: embedding the window in the new Progman");
+  settle_on_wall(app, window)
 }
 
 fn enter_edit_now(app: &AppHandle) -> Result<PlacementSnapshot, String> {
@@ -216,6 +365,41 @@ fn request_pin(app: &AppHandle, source: &str) {
   }
 }
 
+/// Alt + F4 or WM_CLOSE. In Edit the frontend decides, because only it knows
+/// whether an area exists: it pins the area, or quits when there is none. In
+/// Wall it quits, like Sair.
+fn on_close_requested(app: &AppHandle, api: &CloseRequestApi) {
+  if app.state::<PlacementState>().snapshot().placement == Placement::Edit {
+    api.prevent_close();
+    log::info!("close requested in Edit");
+    if let Err(error) = app.emit(CLOSE_REQUESTED_EVENT, ()) {
+      log::warn!("close request event failed: {error}");
+    }
+  } else {
+    log::info!("close requested in Wall: quit");
+    app.state::<Lifecycle>().quit();
+  }
+}
+
+/// Called by the frontend for a close request before any area exists, when
+/// there is nothing to pin. The frontend writes any pending save first.
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+  log::info!("close requested without an area: quit");
+  app.state::<Lifecycle>().quit();
+  app.exit(0);
+}
+
+/// Failures the frontend reports to the release log. Only these codes cross
+/// the bridge, so canvas content cannot reach the log.
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FrontendIssue {
+  SaveFailed,
+  DocumentRecovered,
+  SavingBlocked,
+}
+
 #[tauri::command]
 fn get_placement(state: State<'_, PlacementState>) -> PlacementSnapshot {
   state.snapshot()
@@ -230,6 +414,16 @@ fn enter_edit(app: AppHandle) -> Result<PlacementSnapshot, String> {
 #[tauri::command]
 fn pin_to_wall(app: AppHandle) -> Result<PlacementSnapshot, String> {
   pin_now(&app).inspect_err(|error| log::warn!("pin_to_wall failed; staying in Edit: {error}"))
+}
+
+#[tauri::command]
+fn report_frontend_issue(issue: FrontendIssue) {
+  let message = match issue {
+    FrontendIssue::SaveFailed => "document save failed; the last valid document stays in storage",
+    FrontendIssue::DocumentRecovered => "invalid stored document replaced by an empty canvas; a copy was kept",
+    FrontendIssue::SavingBlocked => "stored document could not be read or copied; saving is off for this session",
+  };
+  log::warn!("frontend: {message}");
 }
 
 fn edit_shortcut() -> Shortcut {
@@ -254,6 +448,7 @@ fn build_tray(app: &App) -> tauri::Result<()> {
       "pin" if app.state::<PlacementState>().snapshot().placement == Placement::Edit => request_pin(app, "tray"),
       "quit" => {
         log::info!("tray: quit");
+        app.state::<Lifecycle>().quit();
         app.exit(0);
       }
       _ => {}
@@ -285,6 +480,9 @@ pub fn run() {
       }),
       moving: AtomicBool::new(false),
     })
+    .manage(Lifecycle {
+      quitting: AtomicBool::new(false),
+    })
     .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
       log::info!("second instance blocked; bringing the canvas to Edit");
       if let Err(error) = enter_edit_now(app) {
@@ -306,9 +504,9 @@ pub fn run() {
         .build(),
     )
     .setup(|app| {
-      log::info!("Canvie startup");
+      log::info!("Canvie startup {}", app.package_info().version);
       let window = create_main_window(app)?;
-      place_on_wall_at_startup(app.handle(), &window);
+      settle_on_wall(app.handle(), &window);
       if let Err(error) = build_tray(app) {
         log::warn!("tray unavailable: {error}");
       }
@@ -316,9 +514,26 @@ pub fn run() {
         Ok(()) => log::info!("shortcut registered: Ctrl+Alt+T"),
         Err(error) => log::warn!("shortcut Ctrl+Alt+T unavailable; Editar stays in the tray: {error}"),
       }
+      watch_desktop(app.handle().clone());
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![get_placement, enter_edit, pin_to_wall])
-    .run(tauri::generate_context!())
-    .expect("error while running Canvie");
+    .on_window_event(|window, event| {
+      if let (WindowEvent::CloseRequested { api, .. }, "main") = (event, window.label()) {
+        on_close_requested(window.app_handle(), api);
+      }
+    })
+    .invoke_handler(tauri::generate_handler![get_placement, enter_edit, pin_to_wall, quit_app, report_frontend_issue])
+    .build(tauri::generate_context!())
+    .expect("error while building Canvie")
+    .run(|app, event| {
+      // Losing the last window asks to exit with no code. Unless the user is
+      // quitting, Explorer destroyed the window, and the watchdog restarts
+      // Canvie once the desktop is back.
+      if let RunEvent::ExitRequested { code: None, api, .. } = event {
+        if !app.state::<Lifecycle>().is_quitting() {
+          log::warn!("main window destroyed outside a quit; waiting for the desktop");
+          api.prevent_exit();
+        }
+      }
+    });
 }

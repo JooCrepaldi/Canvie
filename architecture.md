@@ -66,7 +66,7 @@ O atalho Ctrl + Alt + T e o tray usam canvie-pin-requested durante Edit. Nenhum 
 4. O frontend assina canvie-placement e só então lê get_placement.
 5. O estado inicial do backend é sempre Wall. O app não abre uma edição pendente depois de um reinício. Sem área salva, o frontend pede enter_edit uma vez, para o primeiro arraste.
 
-Se o Explorer reiniciar, o Progman e a janela filha podem ser destruídos. A recriação da janela está prevista na L6.
+Se o Explorer reiniciar, o Progman some e destrói a janela junto, com a WebView. Desde a L6, um watchdog no backend espera o novo desktop e reinicia o Canvie, que volta ao Progman com o documento salvo. O detalhe está em [docs/BACKEND.md](docs/BACKEND.md#reinício-do-explorer).
 
 ## Ownership
 

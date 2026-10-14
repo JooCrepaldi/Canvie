@@ -11,6 +11,7 @@ import {
   type Point,
   type Stroke,
 } from './canvasTypes'
+import { reportIssue } from './diagnostics'
 
 export const DOCUMENT_STORAGE_KEY = 'canvie.document.v1'
 export const INVALID_DOCUMENT_STORAGE_KEY = 'canvie.document.invalid.v1'
@@ -173,6 +174,7 @@ export class DocumentPersistence {
     if (stored) return { status: 'loaded', document: stored }
     if (!this.backupInvalid(raw)) return this.block(empty, 'invalid stored document could not be backed up')
     console.warn('Canvie: invalid stored document replaced by an empty canvas; a local copy was kept')
+    reportIssue('document_recovered')
     return { status: 'recovered', document: empty }
   }
 
@@ -248,12 +250,15 @@ export class DocumentPersistence {
     const message = `Canvie: ${reason}; saving is disabled for this session`
     if (error === undefined) console.warn(message)
     else console.warn(message, error)
+    reportIssue('saving_blocked')
     return { status: 'blocked', document: empty }
   }
 
   private setFailed(failed: boolean): void {
     if (this.failed === failed) return
     this.failed = failed
+    // Saves keep failing while storage is full; the log gets one line per episode.
+    if (failed) reportIssue('save_failed')
     for (const listener of this.listeners) listener()
   }
 }

@@ -30,8 +30,13 @@ Os E2E das camadas rodam depois de `npm run tauri build`, um de cada vez, porque
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l3-area-content.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l4-fixed-area.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l5-transition.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l6-lifecycle.ps1
 
-Cada script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. O E2E da L4 lê o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca move as janelas do usuário. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
+O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
+
+Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
+
+Cada script abre o executável release com o perfil do WebView2 redirecionado para uma pasta temporária e confirma o redirecionamento antes de qualquer escrita. O canvas real do usuário não é lido nem alterado. Ele dirige a página pelo protocolo DevTools com input real de mouse e teclado. Os E2E da L4 e da L6 leem o estado Win32 da janela por `scripts/e2e/lib/win32-probe.ps1` e nunca movem as janelas do usuário. Screenshots e `report.json` ficam na pasta de evidência impressa no fim.
 
 ## Evidência por camada
 
@@ -109,6 +114,37 @@ Na mesma build, as suítes anteriores continuaram passando: L2 com 41 de 41, L3 
 
 O tray usa as mesmas funções do atalho e de enter_edit, mas não foi acionado pelo E2E: clicar no ícone da área de notificação exigiria mexer na barra de tarefas do usuário.
 
+## Evidência registrada em 2026-10-14: L6
+
+`scripts/e2e/l6-lifecycle.ps1` passou 24 de 24 verificações na build release, num monitor de 1920 × 1080 a 100%, com o Explorer real reiniciado duas vezes:
+
+- Alt + F4 enviado pelo Windows, em Edição, salvou o traço e fixou a área em 3 ms, sem encerrar o processo. A janela voltou ao Progman, click-through e fora do topo.
+- Com o localStorage cheio, o save falhou, o aviso Tentar novamente apareceu e o log registrou `frontend: document save failed`. Com espaço de volta, o pin funcionou.
+- Uma janela viva tirada do Progman voltou a ele, acima dos ícones, em 2,2 s, e o atalho e Fixar no desktop continuaram funcionando.
+- Queda do Explorer (`Stop-Process -Force`): o Windows reiniciou o shell em 0,25 s. O Canvie reiniciou e a área voltou ao Progman 4 s depois, com o mesmo documento e um Wall embutido.
+- Saída normal do Explorer (o comando Exit Explorer da taskbar): o script iniciou o shell, que ficou pronto em 1,4 s. O log registrou `main window destroyed outside a quit`, e a área voltou ao Progman 3,9 s depois, pelo mesmo reinício.
+- Por 10 s depois disso, o watchdog não reencaixou nem reiniciou nada.
+- Um WM_CLOSE em Fixo encerrou o processo com código 0.
+- O log registrou uma abertura por processo (4), nenhuma linha de erro, o pin pedido pelo fechamento, a janela fora do Progman, o reencaixe e o fechamento em Fixo.
+
+A primeira execução encontrou um defeito: depois da queda do Explorer, o watchdog tentava reencaixar uma janela cujo HWND estava morto, falhava com `O identificador da janela é inválido` e esperava cada vez mais entre as tentativas. Cada evento para a WebView morta gerava um ERROR no log. O watchdog passou a conferir o HWND com IsWindow e a reiniciar o Canvie. A segunda execução travou na saída normal, porque o explorer.exe iniciado pelo script herdou o pipe de saída do driver; `restart-explorer.ps1` passou a usar CreateProcess sem herança de handles.
+
+O E2E não confere o ícone do tray depois de um reinício. O processo novo cria o tray na abertura, e o log não registrou `tray unavailable`.
+
+A regressão das suítes anteriores encontrou uma mudança de comportamento: na primeira abertura, sem área, Alt + F4 deixou de fechar o app e não fazia nada, porque não havia o que fixar. Por decisão do produto, o fechamento em Edição passou a emitir `canvie-close-requested`. O frontend fixa quando existe área e chama quit_app quando não existe. Na build release final:
+
+- `l6-lifecycle.ps1 -SkipExplorer` passou 18 de 18: Alt + F4 sem área encerrou o app com código 0, Alt + F4 com área fixou em 5 ms sem encerrar, e o log registrou `close requested in Edit` e `close requested without an area: quit`. O watchdog não mudou desde a execução com os dois reinícios do Explorer;
+- L2 passou 41 de 41, L3 27 de 27, L4 17 de 17 e L5 24 de 24.
+
+A revisão do PR pediu duas correções: gravar o save pendente antes de encerrar sem área, e fazer `stop('close')` aceitar um app que encerra no primeiro WM_CLOSE. Na build release com as duas:
+
+- L2 passou 41 de 41, L3 27 de 27 e L5 24 de 24;
+- `l6-lifecycle.ps1 -SkipExplorer` passou todas as checagens de comportamento, incluindo a nova `stop(close) ends the app in Edit without an area`. As cinco checagens de log falharam porque o log rotacionou no meio da execução (veja Falhas conhecidas). Repetida com o log em 8 KB, a suíte passou 19 de 19, com todas as checagens de log.
+
+O flush antes de `quit_app` não tem E2E: o envio de uma tecla real abre um PowerShell e leva mais que os 350 ms do debounce.
+
+Na L4, a checagem da área pintada sobre o desktop rodou pela primeira vez, porque havia uma região de 240 × 160 px sem janelas, e leu o bege exato, rgb(244, 236, 220). Antes, `screen-pixel.ps1` devolvia `[r, g, b]` em vez de `[[r, g, b]]` para um único ponto, porque o PowerShell achata a saída de um pipeline com um array só, e a checagem falhava mesmo com a cor certa.
+
 As suítes que abrem a Edição em tela cheia (L2, L3 e L5) mostram o canvas sobre as janelas abertas e recebem o mouse e o teclado de quem estiver usando a máquina. Uma execução enquanto o usuário trabalhava perdeu o foco do editor de nota e um pin; com a máquina ociosa, as mesmas suítes passaram. Rode-as sem usar o computador.
 
 ## Falhas conhecidas
@@ -118,7 +154,10 @@ As suítes que abrem a Edição em tela cheia (L2, L3 e L5) mostram o canvas sob
 - Na primeira abertura, o evento de placement pode chegar antes de o listener do frontend existir. O App só lê o placement atual depois de a assinatura estar confirmada.
 - tao pode reescrever WS_CHILD. Reaplique parent e estilos após always_on_top, ignore_cursor_events e show.
 - O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes. Sem os atributos, a janela não aparece no desktop, embora o hit-test funcione.
-- Uma janela filha de Progman pode ser destruída quando o Explorer reinicia. A recriação está prevista na L6.
+- Quando o Explorer reinicia, a janela filha do Progman é destruída. Numa queda, o Windows não manda WM_DESTROY, e o Tauri fica com um HWND morto que IsWindow detecta. O watchdog da L6 reinicia o Canvie nos dois casos; veja [BACKEND.md](BACKEND.md#reinício-do-explorer).
+- Uma janela de outro processo criada com `UseShellExecute = false` herda os handles de quem a criou. Um explorer.exe iniciado assim segurou o pipe de saída do E2E, e o `execFileSync` do Node nunca terminou. `restart-explorer.ps1` usa CreateProcess sem herança de handles.
+- O log do release roda em 40 KB e descarta o arquivo anterior (padrão do tauri-plugin-log, RotationStrategy::KeepOne). Uma suíte que cruza a rotação perde as linhas de antes e falha nas checagens de log, embora o app tenha registrado tudo. Rode de novo com o log menor.
+- A simulação com um formulário WinForms como pai, morto à força, deixou a janela filha viva e órfã. Com o Explorer real, a janela morre. Teste o shell de verdade.
 - No PowerShell, `$null` passado a um parâmetro string vira texto vazio. Use `[NullString]::Value` em chamadas como FindWindow.
 - Uma capacidade negada precisa gerar warn e manter o app iniciado.
 - Um saveNow falho não pode reparentar a janela.

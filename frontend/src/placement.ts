@@ -10,6 +10,7 @@ export type PlacementSnapshot = {
 
 const PLACEMENT_EVENT = 'canvie-placement'
 const PIN_REQUESTED_EVENT = 'canvie-pin-requested'
+const CLOSE_REQUESTED_EVENT = 'canvie-close-requested'
 
 // The browser has no desktop to pin to: an in-memory adapter switches the
 // view between Wall and Edit, and Ctrl + Alt + T stands in for the global
@@ -60,6 +61,12 @@ export async function pinToWall(): Promise<void> {
   await invoke('pin_to_wall')
 }
 
+// Only for a close request before any area exists. The browser has no app to quit.
+export async function quitApp(): Promise<void> {
+  if (!isTauri()) return
+  await invoke('quit_app')
+}
+
 // ready settles once the listener is registered in the backend. An event
 // emitted before that is lost, so state read after ready is complete.
 export type Subscription = {
@@ -107,4 +114,10 @@ export function onPinRequested(listener: () => void): () => void {
     }
   }
   return subscribe<null>(PIN_REQUESTED_EVENT, () => listener()).unsubscribe
+}
+
+// Alt + F4 or WM_CLOSE during Edit. The browser has no window to close.
+export function onCloseRequested(listener: () => void): () => void {
+  if (!isTauri()) return () => undefined
+  return subscribe<null>(CLOSE_REQUESTED_EVENT, () => listener()).unsubscribe
 }

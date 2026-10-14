@@ -11,12 +11,13 @@ export function withTimeout(promise, ms, message) {
 }
 
 export class DevTools {
-  static async attach(port, timeoutMs = 30_000) {
+  // skipUrl ignores a page that is still listed after its window went away.
+  static async attach(port, timeoutMs = 30_000, skipUrl = null) {
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
       try {
         const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
-        const page = targets.find((target) => target.type === 'page')
+        const page = targets.find((target) => target.type === 'page' && target.webSocketDebuggerUrl !== skipUrl)
         if (page) return await DevTools.open(page.webSocketDebuggerUrl)
       } catch {
         // The DevTools endpoint is not listening yet.
@@ -29,13 +30,14 @@ export class DevTools {
   static open(url) {
     return new Promise((resolve, reject) => {
       const socket = new WebSocket(url)
-      socket.addEventListener('open', () => resolve(new DevTools(socket)), { once: true })
+      socket.addEventListener('open', () => resolve(new DevTools(socket, url)), { once: true })
       socket.addEventListener('error', () => reject(new Error('DevTools socket failed')), { once: true })
     })
   }
 
-  constructor(socket) {
+  constructor(socket, url) {
     this.socket = socket
+    this.url = url
     this.nextId = 1
     this.calls = new Map()
     socket.addEventListener('message', (event) => {
@@ -52,12 +54,15 @@ export class DevTools {
     })
   }
 
-  send(method, params = {}) {
+  // A page whose window died can keep its socket open and never answer, so
+  // every call has a deadline.
+  send(method, params = {}, timeoutMs = 60_000) {
     const id = this.nextId++
-    return new Promise((resolve, reject) => {
+    const reply = new Promise((resolve, reject) => {
       this.calls.set(id, { method, resolve, reject })
       this.socket.send(JSON.stringify({ id, method, params }))
     })
+    return withTimeout(reply, timeoutMs, `${method}: no reply in ${timeoutMs} ms`).finally(() => this.calls.delete(id))
   }
 
   async evaluate(expression) {

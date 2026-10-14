@@ -282,8 +282,10 @@ export default function App({ persistence, initialLoad }: AppProps) {
       // The note editor handles its own Esc before this listener.
       if (key === 'escape' && !showAreaSelector) {
         event.preventDefault()
-        if (selection !== null) setSelection(null)
-        else void requestPin()
+        // An undo can remove the selected note; that selection is not shown.
+        const shown = selection !== null && docRef.current.notes.some((note) => note.id === selection)
+        setSelection(null)
+        if (!shown) void requestPin()
         return
       }
       if ((key === 'delete' || key === 'backspace') && selection !== null) {

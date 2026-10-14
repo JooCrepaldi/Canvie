@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, waitForPlacement } from './lib/app.mjs'
-import { areaRect, canvasDigest, click, clickElement, defineArea, drag, notice, pressEnter, pressEscape, pressLetter, readRaw, screenshot, typeText } from './lib/devtools.mjs'
+import { areaRect, canvasDigest, click, clickElement, defineArea, drag, notice, pressEnter, pressEscape, pressLetter, readRaw, screenshot, selectionMode, typeText } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 
 const DOC_KEY = 'canvie.document'
@@ -200,7 +200,7 @@ async function everyNewValue() {
   // The editor keeps dark text on its light field over the black background.
   await reloadWith(page, [[DOC_KEY, JSON.stringify(doc)]])
   await editNow(page)
-  await clickElement(page, 'button[aria-label="Mover, atalho Space"]')
+  await selectionMode(page)
   await clickElement(page, '.note-text', 2)
   await page.waitFor(editorOpen)
   const editor = await page.evaluate("(() => { const style = getComputedStyle(document.activeElement); return { color: style.color, font: style.fontFamily, size: style.fontSize } })()")

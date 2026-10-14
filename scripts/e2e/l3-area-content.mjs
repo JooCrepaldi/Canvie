@@ -21,6 +21,7 @@ import {
   pressed,
   readRaw,
   screenshot,
+  selectionMode,
   typeText,
 } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
@@ -132,7 +133,7 @@ async function postit() {
 
 async function editMoveErase() {
   const page = app.page
-  await clickElement(page, 'button[aria-label="Mover, atalho Space"]')
+  await selectionMode(page)
   await clickElement(page, '.note-postit', 2)
   await page.waitFor(editorOpen)
   await typeText(page, ' amanha')
@@ -147,7 +148,7 @@ async function editMoveErase() {
   await sleep(SETTLE_MS)
   doc = await readDoc(page)
   const after = doc.notes.find((note) => note.kind === 'text')
-  report.check('Mover drags a note by the pointer distance', after.x === before.x + 40 && after.y === before.y + 30, `${before.x},${before.y} -> ${after.x},${after.y}`)
+  report.check('Seleção drags a note by the pointer distance', after.x === before.x + 40 && after.y === before.y + 30, `${before.x},${before.y} -> ${after.x},${after.y}`)
 
   await pressLetter(page, 'e')
   const target = await center(page, '.note-postit')

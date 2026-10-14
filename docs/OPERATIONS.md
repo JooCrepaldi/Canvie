@@ -46,6 +46,12 @@ A L8 prova a migração com um documento real gravado por uma build anterior à 
 
 Desde a L8, as suítes leem o documento em `canvie.document` e a cópia de payload inválido em `canvie.document.invalid`.
 
+A L9 prova a Seleção, a Mão e o duplo clique:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l9-selection-hand.ps1
+
+Desde a L9, Edição começa em Seleção. As suítes escolhem o Pincel com `chooseTool(page, 'Pincel')` antes de desenhar e voltam à Seleção com `selectionMode(page)`. As duas usam as letras das ferramentas, que funcionam mesmo com o seletor de área cobrindo a tela.
+
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
 Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
@@ -200,6 +206,19 @@ A mesma build passou as suítes anteriores com `-Exe` apontando para o executáv
 - sobre o fundo preto, o editor de uma nota manteve o texto escuro no campo claro, com a fonte e o tamanho da nota. A primeira versão da regra que clareia o texto no fundo preto pegava também o editor; a revisão encontrou o defeito, e a checagem entrou na suíte.
 
 Na mesma build, a regressão passou: L2 41 de 41, L3 27 de 27, L4 15 de 15, L5 24 de 24 e L6 19 de 19 sem reiniciar o Explorer. Na L4, a checagem da pintura sobre o desktop não rodou porque a tela estava coberta.
+
+## Evidência registrada em 2026-10-14: L9
+
+`scripts/e2e/l9-selection-hand.ps1` passou 24 de 24 na build release:
+
+- Edição começa em Seleção, sem ferramenta pressionada, e a toolbar mostra Mão no lugar de Mover;
+- um duplo clique no canvas vazio abriu o editor; a nota ficou onde o clique caiu, com `sans` e `left`, e o canvas voltou à Seleção com a nota selecionada e a barra de alinhamento;
+- arrastar a nota selecionada a moveu exatamente 40 × 30 px; Centralizar gravou e renderizou `align: center`; Delete apagou a nota, e Ctrl + Z a trouxe de volta, centralizada;
+- com a Mão, arrastar sobre uma nota moveu só a câmera, em −60 × −40, e um duplo clique também abriu uma nota, que devolveu o canvas à Seleção;
+- repetir a letra ou clicar na ferramenta ativa volta à Seleção; escolher uma tinta escolhe o Pincel; um duplo clique com o Pincel não abre editor; um post-it novo volta à Seleção, selecionado;
+- o primeiro Esc limpou a seleção e manteve a Edição; o segundo salvou e fixou.
+
+Na mesma build, a regressão passou: L3 27 de 27, L4 15 de 15, L5 24 de 24, L6 19 de 19 sem reiniciar o Explorer e L8 23 de 23. A L2 passou as 40 checagens de comportamento. A checagem de uma abertura por processo no log falhou porque o log rotacionou às 18:12:45, no meio da suíte.
 
 ### Pendências manuais da L7
 

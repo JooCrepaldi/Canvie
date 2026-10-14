@@ -21,8 +21,9 @@ type ToolbarProps = {
   onPin: () => void
 }
 
+// Seleção has no button: it is the state with no tool pressed (decision 0010).
 const tools: Array<{ id: Tool; label: string; shortcut: string }> = [
-  { id: 'cursor', label: 'Mover', shortcut: 'Space' },
+  { id: 'hand', label: 'Mão', shortcut: 'H' },
   { id: 'brush', label: 'Pincel', shortcut: 'B' },
   { id: 'text', label: 'Nota', shortcut: 'T' },
   { id: 'postit', label: 'Post-it', shortcut: 'P' },

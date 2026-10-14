@@ -58,7 +58,7 @@ O frontend recebe o evento de estado do backend. Ele não inventa Edição em Re
 - A ferramenta Nota cria uma nota no ponto clicado e abre o editor de texto. A ferramenta Post-it faz o mesmo sobre um cartão amarelo.
 - O editor mostra o Markdown bruto. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
 - Fora do editor, a nota mostra o Markdown renderizado: títulos, listas, ênfase, código, citações e tabelas. HTML escrito pelo usuário aparece como texto, e links não navegam.
-- Duplo clique edita uma nota. A ferramenta Mover arrasta uma nota quando o clique começa nela e move a câmera quando começa no fundo.
+- Edição começa em Seleção, o estado sem ferramenta pressionada. Em Seleção, um clique seleciona uma nota ou um post-it, arrastar move, Delete ou Backspace apaga, e uma barra acima da nota alinha o texto. Um duplo clique no canvas vazio, em Seleção ou com a Mão, começa uma nota de texto; um duplo clique numa nota a edita. A Mão (H) arrasta só a câmera. A letra da ferramenta ativa, ou um clique nela, volta para Seleção, e criar uma nota ou um post-it também volta, com o item selecionado. Escolher uma tinta escolhe o Pincel ([0010](../decisions/0010-implicit-selection-and-hand.md)).
 - O tamanho selecionado na toolbar vale para a próxima nota e para a nota em edição.
 
 ### Fixar no desktop
@@ -80,12 +80,16 @@ O app não confirma a troca antes de salvar. Sem área definida, a transição p
 | Atalho | Ação | Escopo |
 | --- | --- | --- |
 | Ctrl + Alt + T | Chama ou fixa a área | Global |
-| Esc | Salva e fixa; cancela a nota em edição | Edição |
+| Esc | Cancela a nota em edição; sem editor, limpa a seleção; sem seleção, salva e fixa | Edição |
 | Alt + F4 | Salva e fixa, sem encerrar o app; sem área, encerra o app | Edição |
+| H | Mão | Edição |
 | B | Pincel | Edição |
 | T | Nota | Edição |
 | P | Post-it | Edição |
 | E | Borracha | Edição |
+| Letra da ferramenta ativa | Volta para Seleção | Edição |
+| Delete ou Backspace | Apaga a nota selecionada | Seleção |
+| Duplo clique no canvas vazio | Começa uma nota de texto | Seleção e Mão |
 | Ctrl + Z | Desfazer | Edição |
 | Ctrl + Shift + Z ou Ctrl + Y | Refazer | Edição |
 | Ctrl + Enter | Concluir a nota | Editor de nota |

@@ -14,6 +14,7 @@ import { CanvieApp, closeWindow, webviewCommandLines } from './lib/app.mjs'
 import {
   areaRect,
   canvasDigest,
+  chooseTool,
   click,
   clickElement,
   defineArea,
@@ -63,6 +64,7 @@ async function readDoc(page) {
 
 async function ensureArea(page) {
   if (await page.evaluate("document.querySelector('.area-selector') !== null")) await defineArea(page, AREA_START, AREA_END)
+  await chooseTool(page, 'Pincel')
   return areaRect(page)
 }
 
@@ -140,8 +142,8 @@ async function l1Workload() {
   await sleep(SETTLE_MS)
   report.check('redo is saved', (await readDoc(page)).strokes.length === 49)
 
-  await clickElement(page, 'button[aria-label="Mover, atalho Space"]')
-  report.check('cursor tool is active for the pan', (await pressed(page, 'Mover,')) === 'true')
+  await chooseTool(page, 'Mão')
+  report.check('Mão is active for the pan', (await pressed(page, 'Mão,')) === 'true')
   const middle = { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }
   await drag(page, [middle, { x: middle.x + 20, y: middle.y + 10 }, { x: middle.x + 40, y: middle.y + 30 }, { x: middle.x + 60, y: middle.y + 40 }])
   await wheel(page, middle.x, middle.y, -100)
@@ -172,6 +174,7 @@ async function killAndRestore() {
   const restored = JSON.parse(after)
   const maxId = Math.max(...restored.strokes.map((stroke) => stroke.id), ...restored.notes.map((note) => note.id))
   const rect = await areaRect(page)
+  await chooseTool(page, 'Pincel')
   await drag(page, longStroke(rect, rect.y + 90, 8))
   await sleep(SETTLE_MS)
   const next = await readDoc(page)
@@ -253,6 +256,7 @@ async function treeKillDurability() {
   for (const delayMs of [600, 2_000, 6_000, 12_000]) {
     const page = app.page
     const rect = await areaRect(page)
+    await chooseTool(page, 'Pincel')
     await drag(page, longStroke(rect, rect.y + 230, 8))
     await sleep(SETTLE_MS)
     const expected = (await readDoc(page)).revision
@@ -280,6 +284,7 @@ async function editDuringSave() {
     return true
   })()`)
   const rect = await areaRect(page)
+  await chooseTool(page, 'Pincel')
   for (let index = 0; index < 12; index += 1) {
     // The previous stroke's save fires about 200 ms into this stroke.
     await drag(page, longStroke(rect, rect.y + 60 + index * 35, 38), 16)

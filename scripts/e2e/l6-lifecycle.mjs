@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, closeWindow, isRunning, placementOf, waitForPlacement } from './lib/app.mjs'
-import { areaRect, clickElement, defineArea, drag, FILLER_KEY, fillStorage, notice, readRaw, screenshot, withTimeout } from './lib/devtools.mjs'
+import { areaRect, chooseTool, clickElement, defineArea, drag, FILLER_KEY, fillStorage, notice, readRaw, screenshot, withTimeout } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
@@ -117,6 +117,7 @@ async function firstRun() {
   const page = await app.launch('first area')
   await waitForPlacement(page, 'edit')
   await defineArea(page, { x: 200, y: 160 }, { x: 980, y: 700 })
+  await chooseTool(page, 'Pincel')
   await strokeInArea(page, 0)
 }
 

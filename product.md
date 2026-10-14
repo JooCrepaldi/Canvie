@@ -101,20 +101,25 @@ Se o salvamento falhar, a área permanece em Edição e mostra uma ação para t
 | Entrada | Ação |
 | --- | --- |
 | Ctrl + Alt + T | Trazer a área para a frente quando estiver Fixa. Salvar e fixar quando estiver em Edição. |
-| Esc | Salvar e fixar, quando nenhuma nota estiver em edição. Cancela a edição de uma nota. |
+| Esc | Cancelar a edição de uma nota; sem editor, limpar a seleção; sem seleção, salvar e fixar. |
 | Alt + F4 | Salvar e fixar, sem encerrar o Canvie. Antes de existir uma área, encerrar o Canvie. |
+| H | Mão: arrastar move só a câmera. |
 | B | Pincel. |
 | T | Nota de texto. |
 | P | Post-it. |
 | E | Borracha. |
+| A letra da ferramenta ativa, ou um clique nela | Voltar para Seleção, o estado sem ferramenta. |
+| Clique em uma nota, em Seleção | Selecionar a nota; arrastar move a nota. |
+| Delete ou Backspace | Apagar a nota selecionada. |
 | Ctrl + Z | Desfazer. |
 | Ctrl + Shift + Z ou Ctrl + Y | Refazer. |
 | Space + arrastar | Mover a câmera. |
 | Scroll | Zoom. |
 | Duplo clique em uma nota | Editar a nota. |
+| Duplo clique no canvas vazio, em Seleção ou com a Mão | Começar uma nota de texto no ponto. |
 | Ctrl + Enter | Concluir a edição de uma nota. |
 
-Os atalhos de letra e de histórico valem apenas em Edição. Win + T continua reservado pelo Explorer e não é usado pelo produto. O atalho global pode mudar quando houver uma escolha definitiva.
+Os atalhos de letra e de histórico valem apenas em Edição. Edição começa em Seleção. Depois de criar uma nota ou um post-it, o canvas volta para Seleção com a nota selecionada, e uma barra acima dela alinha o texto à esquerda, ao centro ou à direita. Win + T continua reservado pelo Explorer e não é usado pelo produto. O atalho global pode mudar quando houver uma escolha definitiva.
 
 ## Critérios de aceite
 

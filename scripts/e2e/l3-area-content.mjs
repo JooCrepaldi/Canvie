@@ -10,10 +10,12 @@ import {
   areaRect,
   canvasDigest,
   center,
+  chooseInk,
   click,
   clickElement,
   defineArea,
   drag,
+  menuAction,
   notice,
   pressEnter,
   pressEscape,
@@ -82,7 +84,7 @@ async function inks() {
   const page = app.page
   const rect = await areaRect(page)
   for (const [index, [label]] of INKS.entries()) {
-    await clickElement(page, `button[aria-label="${label}"]`)
+    await chooseInk(page, label)
     const y = rect.y + rect.height - 120 + index * 30
     await drag(page, Array.from({ length: 10 }, (_, step) => ({ x: rect.x + 30 + step * 15, y: y + Math.sin(step) * 6 })))
   }
@@ -163,24 +165,24 @@ async function editMoveErase() {
 async function background() {
   const page = app.page
   const color = () => page.evaluate("getComputedStyle(document.querySelector('.canvas-area')).backgroundColor")
-  await clickElement(page, 'button[aria-label^="Fundo"]')
+  await menuAction(page, 'Transparente')
   await sleep(SETTLE_MS)
   report.check('background switches to transparent', (await readDoc(page)).background === 'transparent' && (await color()) === 'rgba(0, 0, 0, 0)', await color())
   await screenshot(page, report.file('l3-03-transparent.png'))
-  await clickElement(page, 'button[aria-label^="Fundo"]')
+  await menuAction(page, 'Bege')
   await sleep(SETTLE_MS)
   report.check('background switches back to paper', (await readDoc(page)).background === 'paper' && (await color()) === 'rgb(244, 236, 220)', await color())
 }
 
 async function redefineArea() {
   const page = app.page
-  await clickElement(page, 'button[aria-label="Redefinir área do canvas"]')
+  await menuAction(page, 'Redefinir área')
   report.check('Área can be cancelled with Esc', (await hint(page))?.includes('Esc cancela'), await hint(page))
   await pressEscape(page)
   await sleep(200)
   report.check('Esc keeps the previous area', await page.evaluate("document.querySelector('.area-selector') === null") && (await readDoc(page)).area.width === 720)
 
-  await clickElement(page, 'button[aria-label="Redefinir área do canvas"]')
+  await menuAction(page, 'Redefinir área')
   await defineArea(page, { x: 150, y: 140 }, { x: 850, y: 580 })
   await sleep(SETTLE_MS)
   const doc = await readDoc(page)

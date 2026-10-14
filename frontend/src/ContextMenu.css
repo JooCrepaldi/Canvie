@@ -1,0 +1,181 @@
+/* The right-click menu and the Limpar confirmation (L10), in the toolbar's
+   black and white. */
+
+.menu-backdrop {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+}
+
+.menu-backdrop.is-dim {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.context-menu,
+.clear-dialog {
+  position: absolute;
+  z-index: 8;
+  border-radius: 12px;
+  background: #202123;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  color: #f3f4f6;
+  font-size: 13px;
+}
+
+.context-menu {
+  display: grid;
+  width: 232px;
+  padding: 6px;
+}
+
+.menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  outline: 0;
+}
+
+.menu-item:focus-visible {
+  box-shadow: inset 0 0 0 2px #f3f4f6;
+}
+
+.menu-item.is-danger {
+  color: #fca5a5;
+}
+
+.menu-check {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+}
+
+.menu-swatch {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.menu-swatch-paper {
+  background: #f4ecdc;
+}
+
+.menu-swatch-white {
+  background: #ffffff;
+}
+
+.menu-swatch-black {
+  background: #1c1c1e;
+}
+
+.menu-swatch-yellow {
+  background: #fef3c7;
+}
+
+.menu-swatch-transparent {
+  background: repeating-conic-gradient(#a7a9b0 0 25%, transparent 0 50%) 50% / 8px 8px;
+}
+
+.menu-label {
+  margin: 6px 10px 2px;
+  color: #a7a9b0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.menu-zoom {
+  display: flex;
+  gap: 2px;
+}
+
+.menu-zoom .menu-item {
+  width: auto;
+  justify-content: center;
+}
+
+.menu-zoom-field {
+  width: 64px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  background: #2b2d31;
+  color: inherit;
+  font: inherit;
+}
+
+.menu-zoom-field:focus-visible {
+  outline: 2px solid #f3f4f6;
+  outline-offset: 1px;
+}
+
+.clear-dialog {
+  top: 50%;
+  left: 50%;
+  width: 320px;
+  padding: 18px;
+  transform: translate(-50%, -50%);
+}
+
+.clear-dialog h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.clear-dialog p {
+  margin: 0 0 16px;
+  color: #a7a9b0;
+  line-height: 1.4;
+}
+
+.clear-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.clear-button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2b2d31;
+  color: #f3f4f6;
+  font: inherit;
+  cursor: pointer;
+}
+
+.clear-button.is-danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.clear-button:focus-visible {
+  outline: 2px solid #f3f4f6;
+  outline-offset: 2px;
+}

@@ -52,6 +52,12 @@ A L9 prova a Seleção, a Mão e o duplo clique:
 
 Desde a L9, Edição começa em Seleção. As suítes escolhem o Pincel com `chooseTool(page, 'Pincel')` antes de desenhar e voltam à Seleção com `selectionMode(page)`. As duas usam as letras das ferramentas, que funcionam mesmo com o seletor de área cobrindo a tela.
 
+A L10 e a L11 provam o menu do botão direito e a toolbar nova:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l10-l11-menu-toolbar.ps1
+
+Desde a L11, as suítes leem a ferramenta ativa em `.toolbar[data-tool]` com `activeTool(page)`. As tintas ficam no popover do Pincel, e `chooseInk(page, 'Tinta azul')` abre o popover quando preciso. Tema e Redefinir área ficam no menu, e `menuAction(page, 'Redefinir área')` abre o menu com o botão direito real e clica no item. Com o Pincel, o primeiro Esc fecha o popover e o segundo fixa.
+
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
 Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
@@ -220,6 +226,25 @@ Na mesma build, a regressão passou: L2 41 de 41, L3 27 de 27, L4 15 de 15, L5 2
 
 Na mesma build, a regressão passou: L3 27 de 27, L4 15 de 15, L5 24 de 24, L6 19 de 19 sem reiniciar o Explorer e L8 23 de 23. A L2 passou as 40 checagens de comportamento. A checagem de uma abertura por processo no log falhou porque o log rotacionou às 18:12:45, no meio da suíte.
 
+## Evidência registrada em 2026-10-14: L10 e L11
+
+`scripts/e2e/l10-l11-menu-toolbar.ps1` passou 51 de 51 na build release final, num monitor de 1920 × 1080 a 100%, com a área de trabalho terminando em 1032:
+
+- a toolbar abriu centralizada (centro em 960) com a base em 1012, 20 px acima da taskbar, na ordem aba, Texto, Post-it, Pincel, Mão e Fixar;
+- a aba ficou com opacidade 0 em repouso e 1 com o ponteiro na barra e com o foco do Tab; o Tab percorreu aba, ferramentas e Fixar na ordem;
+- o popover do Pincel abriu acima da barra; a Borracha manteve o Pincel pressionado; uma tinta voltou à Caneta e desenhou em vermelho; as ferramentas não moveram a barra; o primeiro Esc fechou o popover e manteve a ferramenta e a Edição; Texto abriu os tamanhos com Médio pressionado;
+- o editor de uma nota nova não teve borda, fundo, contorno nem placeholder; os tamanhos apareceram durante a escrita em Seleção; Texto grande manteve o editor aberto; a nota renderizada ficou em 280 × 360 com a mesma largura do editor, 224,6 px;
+- o botão direito abriu o menu no ponteiro, em 860 × 200, sem desenhar com o Pincel ativo; o foco foi para o primeiro item, as setas andaram, Esc fechou sem fixar e, fora da área, nada abriu; Shift + F10 abriu no centro da área, em 580 × 390;
+- os cinco temas foram gravados e pintados, e o menu marcou Preto;
+- Zoom 200%, 50% e 150% digitado aplicaram; 1000 parou em 400%; depois de a Mão empurrar a nota para fora da vista, Ajustar à tela a trouxe de volta com zoom 2,28, e Ctrl + Z desfez;
+- Limpar abriu com o foco em Cancelar; Enter em Cancelar e Esc mantiveram tudo; Tab foi para Limpar, e Enter removeu traços e notas e manteve área, tema e câmera; Ctrl + Z trouxe tudo de volta;
+- arrastar a aba moveu a barra 500 × 420 px e gravou `{ left: 342, top: 534 }` em `canvie.toolbar`, fora do documento; depois de matar o processo, a toolbar abriu no mesmo lugar; Reposicionar toolbar voltou ao padrão e apagou a preferência;
+- uma posição fora da tela e um JSON inválido abriram no padrão, foram apagados e deixaram um WARN cada no log.
+
+Na build anterior, só com a aba antiga, a regressão passou: L2 41 de 41, L3 27 de 27, L5 25 de 25, L8 23 de 23 e L9 25 de 25. A primeira L2, logo depois da suíte da L10 e da L11, falhou só na checagem de long tasks (714 e 448 ms); a repetição não teve nenhuma long task. A L5 mudou para o Esc em dois passos com o Pincel. A L8 passou a esperar texto claro no editor sobre o tema preto, porque o editor não tem mais campo próprio. A L4, a L6 e a L7 não rodaram: o estado Fixo, o ciclo de vida e o instalador não mudaram, e o fechamento da 0.0.2 roda a matriz da L7 de novo. O item Reposicionar toolbar do tray não foi acionado pelo E2E, pelo mesmo motivo do resto do tray.
+
+O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar nova levaram o JavaScript de 345,55 kB para 359,78 kB minificado (de 118,87 kB para 124,03 kB com gzip).
+
 ### Pendências manuais da L7
 
 Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso ficam com quem usa a máquina, e a L7 só fecha depois deles:
@@ -238,6 +263,7 @@ Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso
 - O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes. Sem os atributos, a janela não aparece no desktop, embora o hit-test funcione.
 - Quando o Explorer reinicia, a janela filha do Progman é destruída. Numa queda, o Windows não manda WM_DESTROY, e o Tauri fica com um HWND morto que IsWindow detecta. O watchdog da L6 reinicia o Canvie nos dois casos; veja [BACKEND.md](BACKEND.md#reinício-do-explorer).
 - Uma janela de outro processo criada com `UseShellExecute = false` herda os handles de quem a criou. Um explorer.exe iniciado assim segurou o pipe de saída do E2E, e o `execFileSync` do Node nunca terminou. `restart-explorer.ps1` usa CreateProcess sem herança de handles.
+- A checagem de long tasks da L2 falhou uma vez logo depois de outra suíte, com tarefas de 714 ms, e passou sem nenhuma ao repetir. Repita a suíte antes de investigar.
 - O log do release roda em 40 KB e descarta o arquivo anterior (padrão do tauri-plugin-log, RotationStrategy::KeepOne). Uma suíte que cruza a rotação perde as linhas de antes e falha nas checagens de log, embora o app tenha registrado tudo. Rode de novo com o log menor.
 - A simulação com um formulário WinForms como pai, morto à força, deixou a janela filha viva e órfã. Com o Explorer real, a janela morre. Teste o shell de verdade.
 - No PowerShell, `$null` passado a um parâmetro string vira texto vazio. Use `[NullString]::Value` em chamadas como FindWindow.

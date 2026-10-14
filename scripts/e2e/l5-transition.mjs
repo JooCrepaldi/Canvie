@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, placementOf, waitForPlacement } from './lib/app.mjs'
-import { areaRect, chooseTool, clickElement, defineArea, drag, FILLER_KEY, fillStorage, notice, pressEscape, pressed, readRaw, screenshot, withTimeout } from './lib/devtools.mjs'
+import { activeTool, areaRect, chooseTool, clickElement, defineArea, drag, FILLER_KEY, fillStorage, notice, pressEscape, readRaw, screenshot, withTimeout } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
@@ -79,9 +79,9 @@ async function firstRun() {
   if (window.foreground) {
     sendKeys('e')
     await sleep(300)
-    const eraser = await pressed(page, 'Borracha')
+    const tool = await activeTool(page)
     sendKeys('b')
-    report.check('Edit receives keyboard input from Windows', eraser === 'true', `Borracha pressed=${eraser}`)
+    report.check('Edit receives keyboard input from Windows', tool === 'eraser', `tool=${tool}`)
   } else {
     report.check('Edit receives keyboard input from Windows', false, 'skipped: Canvie did not hold the foreground')
   }
@@ -117,9 +117,13 @@ async function escapePins() {
   sendKeys('ctrl+alt+t')
   await waitForPlacement(page, 'edit')
   await strokeInArea(page, 2)
+  // With the Pincel, its popover is open, and the first Esc closes it.
+  await pressEscape(page)
+  await sleep(200)
+  report.check('the first Esc closes the Pincel popover and stays in Edit', (await placementOf(page)).placement === 'edit' && (await page.evaluate("document.querySelector('.toolbar-popover') === null")))
   await pressEscape(page)
   await waitForPlacement(page, 'wall')
-  report.check('Esc saves and pins', (await readDoc(page)).strokes.length === 3)
+  report.check('the next Esc saves and pins', (await readDoc(page)).strokes.length === 3)
 }
 
 async function failedSaveKeepsEdit() {

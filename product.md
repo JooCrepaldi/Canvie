@@ -90,7 +90,7 @@ Vários canvases mudam o princípio **Um canvas** e precisam de uma decisão pr�
 | Estado | O que o usuário vê | O que o app aceita |
 | --- | --- | --- |
 | Fixo | A área no desktop, com o fundo escolhido e o conteúdo, sem toolbar | Nenhum clique na área. O desktop e as janelas continuam utilizáveis. |
-| Edição | A área à frente das janelas, com o resto da tela escurecido e a toolbar | Desenho, notas, post-its, apagar, desfazer, refazer, redefinir a área e fixar. |
+| Edição | A área à frente das janelas, com o resto da tela escurecido e a toolbar | Desenho, notas, post-its, apagar, desfazer, refazer, o menu do canvas e fixar. |
 | Definindo a área | A tela escurecida e o retângulo que o usuário arrasta | Arrastar com o botão esquerdo. É o primeiro passo quando ainda não existe área. |
 | Salvando | O mesmo estado de Edição, com um aviso discreto | A edição continua. O app só volta ao estado Fixo depois de salvar. |
 
@@ -101,13 +101,14 @@ Se o salvamento falhar, a área permanece em Edição e mostra uma ação para t
 | Entrada | Ação |
 | --- | --- |
 | Ctrl + Alt + T | Trazer a área para a frente quando estiver Fixa. Salvar e fixar quando estiver em Edição. |
-| Esc | Cancelar a edição de uma nota; sem editor, limpar a seleção; sem seleção, salvar e fixar. |
+| Esc | Cancelar a edição de uma nota; sem editor, fechar o popover da ferramenta; sem popover, limpar a seleção; sem seleção, salvar e fixar. Com o menu aberto, só fechar o menu. |
 | Alt + F4 | Salvar e fixar, sem encerrar o Canvie. Antes de existir uma área, encerrar o Canvie. |
 | H | Mão: arrastar move só a câmera. |
 | B | Pincel. |
-| T | Nota de texto. |
+| T | Texto. |
 | P | Post-it. |
-| E | Borracha. |
+| E | Borracha, que fica no popover do Pincel. |
+| Botão direito na área, Shift + F10 ou a tecla de menu | Abrir o menu do canvas: Reposicionar toolbar, Tema, Redefinir área, Ajustar à tela, Zoom e Limpar canvas. |
 | A letra da ferramenta ativa, ou um clique nela | Voltar para Seleção, o estado sem ferramenta. |
 | Clique em uma nota, em Seleção | Selecionar a nota; arrastar move a nota. |
 | Delete ou Backspace | Apagar a nota selecionada. |

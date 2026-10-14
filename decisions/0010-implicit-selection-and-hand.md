@@ -18,6 +18,8 @@ Na 0.0.1, a ferramenta Mover arrasta uma nota quando o clique começa nela e mov
 - Esc cancela o editor aberto. Sem editor, Esc limpa a seleção. Sem editor e sem seleção, Esc salva e fixa.
 - Na 0.0.2, a seleção vale para um elemento. Seleção múltipla e traços selecionáveis entram com as formas na 0.0.3.
 
+**Revisão de 2026-10-14 (L11):** com o popover de uma ferramenta aberto, Esc primeiro fecha o popover, depois limpa a seleção e só então fixa. Com o Pincel, fixar pelo Esc pede dois toques. O menu do botão direito e o diálogo de limpeza tratam o próprio Esc e nunca fixam.
+
 ## Consequências
 
 - A seleção é estado de interação do frontend. Ela não entra no documento nem no histórico. Mover, apagar e alinhar entram no histórico.

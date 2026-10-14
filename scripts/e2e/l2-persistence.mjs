@@ -12,6 +12,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, closeWindow, webviewCommandLines } from './lib/app.mjs'
 import {
+  activeTool,
   areaRect,
   canvasDigest,
   chooseTool,
@@ -24,7 +25,6 @@ import {
   notice,
   pressEnter,
   pressLetter,
-  pressed,
   readRaw,
   screenshot,
   typeText,
@@ -123,7 +123,7 @@ async function l1Workload() {
   await page.waitFor("document.activeElement?.classList.contains('note-editor') === true")
   await typeText(page, 'teste')
   const typed = await page.evaluate("document.querySelector('.note-editor').value")
-  report.check('typing in a note does not trigger tool shortcuts', typed === 'teste' && (await pressed(page, 'Nota')) === 'true', `value=${typed}`)
+  report.check('typing in a note does not trigger tool shortcuts', typed === 'teste' && (await activeTool(page)) === 'text', `value=${typed}`)
   await pressEnter(page, 2)
 
   await pressLetter(page, 'e')
@@ -143,7 +143,7 @@ async function l1Workload() {
   report.check('redo is saved', (await readDoc(page)).strokes.length === 49)
 
   await chooseTool(page, 'Mão')
-  report.check('Mão is active for the pan', (await pressed(page, 'Mão,')) === 'true')
+  report.check('Mão is active for the pan', (await activeTool(page)) === 'hand')
   const middle = { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }
   await drag(page, [middle, { x: middle.x + 20, y: middle.y + 10 }, { x: middle.x + 40, y: middle.y + 30 }, { x: middle.x + 60, y: middle.y + 40 }])
   await wheel(page, middle.x, middle.y, -100)

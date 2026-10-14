@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, waitForPlacement } from './lib/app.mjs'
-import { areaRect, chooseTool, clickElement, defineArea, drag, readRaw } from './lib/devtools.mjs'
+import { activeTool, areaRect, chooseTool, clickElement, defineArea, drag, readRaw } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
@@ -94,11 +94,11 @@ async function keyboardShortcuts() {
   await page.evaluate('document.activeElement?.blur(); true')
   sendKeys('e')
   await sleep(200)
-  const eraser = await page.evaluate(`document.querySelector('button[aria-label^="Borracha"]')?.getAttribute('aria-pressed')`)
+  const eraser = await activeTool(page)
   sendKeys('b')
   await sleep(200)
-  const brush = await page.evaluate(`document.querySelector('button[aria-label^="Pincel"]')?.getAttribute('aria-pressed')`)
-  report.check('E and B switch between Borracha and Pincel', eraser === 'true' && brush === 'true')
+  const brush = await activeTool(page)
+  report.check('E and B switch between Borracha and Pincel', eraser === 'eraser' && brush === 'brush', `${eraser} -> ${brush}`)
   const before = await strokes(page)
   sendKeys('ctrl+z')
   await sleep(600)

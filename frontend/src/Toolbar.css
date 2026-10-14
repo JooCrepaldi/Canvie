@@ -1,0 +1,272 @@
+/* The 0.0.2 toolbar: black and white, no accent color (decision 0009). */
+
+.toolbar {
+  position: absolute;
+  z-index: 5;
+  width: max-content;
+  color: #f3f4f6;
+}
+
+.toolbar-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: #202123;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: #2b2d31;
+}
+
+.toolbar-tool {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f3f4f6;
+  cursor: pointer;
+  place-items: center;
+}
+
+.toolbar-tool svg,
+.popover-option svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.75;
+}
+
+.toolbar-tool:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-tool[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Fixar is the way out of Edit, so it is the one solid button. */
+.toolbar-pin {
+  background: #f3f4f6;
+  color: #111214;
+}
+
+.toolbar-pin:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+.toolbar-pin:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.toolbar-tool:focus-visible,
+.toolbar-tab:focus-visible,
+.popover-option:focus-visible,
+.popover-swatch:focus-visible,
+.popover-size:focus-visible {
+  outline: 2px solid #f3f4f6;
+  outline-offset: 2px;
+}
+
+/* Inside the tab, so the ring does not cross into the bar. */
+.toolbar-tab:focus-visible {
+  outline-offset: -3px;
+}
+
+/* The drag tab shows while the pointer is over the toolbar, a control in it
+   has focus, or a drag is running. It hides after a short delay, so the
+   pointer can travel from the bar to the tab. */
+.toolbar-tab {
+  position: absolute;
+  z-index: 2;
+  /* The tab ends 1 px inside the bar, so its fill covers the bar's edge line
+     where the two meet. */
+  bottom: calc(100% - 1px);
+  left: 50%;
+  display: grid;
+  width: 64px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: #a7a9b0;
+  cursor: grab;
+  opacity: 0;
+  place-items: center;
+  pointer-events: none;
+  transform: translateX(-50%);
+  translate: 0 4px;
+  transition: opacity 120ms ease-out 300ms, translate 120ms ease-out 300ms;
+}
+
+/* The visible tab is 24 px tall; this keeps the target at 32 px. */
+.toolbar-tab::after {
+  position: absolute;
+  inset: -7px 0 0;
+  content: "";
+}
+
+/* One shape for the tab and the concave corners that join it to the bar. */
+.toolbar-tab-shape {
+  position: absolute;
+  bottom: 0;
+  left: -10px;
+  width: 84px;
+  height: 25px;
+  overflow: visible;
+}
+
+.toolbar-tab-fill {
+  fill: #202123;
+}
+
+/* The same thin edge as the bar, continued around the tab. */
+.toolbar-tab-edge {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 1;
+}
+
+.toolbar-tab-grip {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+
+.toolbar:hover .toolbar-tab,
+.toolbar:focus-within .toolbar-tab,
+.toolbar.is-dragging .toolbar-tab {
+  opacity: 1;
+  pointer-events: auto;
+  translate: 0 0;
+  transition-delay: 0s;
+}
+
+.toolbar.is-dragging .toolbar-tab {
+  cursor: grabbing;
+}
+
+/* Popovers and the status open above the tab's height. */
+.toolbar-popover,
+.toolbar-status {
+  position: absolute;
+  bottom: calc(100% + 40px);
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.toolbar-popover {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #2b2d31;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.popover-row {
+  display: flex;
+  gap: 4px;
+}
+
+.popover-option {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #f3f4f6;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.popover-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.popover-option[aria-pressed="true"],
+.popover-size[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.popover-divider {
+  height: 1px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.popover-swatches {
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.popover-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+}
+
+.popover-swatch[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px #2b2d31, 0 0 0 4px #f3f4f6;
+}
+
+.popover-size {
+  width: 46px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: #35373c;
+  color: #f3f4f6;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.popover-size-sm {
+  font-size: 12px;
+}
+
+.popover-size-md {
+  font-size: 15px;
+}
+
+.popover-size-lg {
+  font-size: 19px;
+}
+
+.toolbar-status {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #0f1012;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-tab {
+    transition: none;
+  }
+}

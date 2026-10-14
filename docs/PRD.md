@@ -15,7 +15,7 @@ O usuário mantém uma área de anotação fixa em um canto do desktop que ele e
 O produto tem uma área, um canvas e um documento, locais e no monitor principal. O primeiro ciclo inclui:
 
 - área definida ao arrastar um retângulo, salva e redefinível;
-- fundo bege ou transparente;
+- tema da área em bege, branco, preto, amarelo ou transparente;
 - um pincel em preto, azul ou vermelho;
 - notas em Markdown com uma fonte em três tamanhos;
 - post-its;
@@ -25,8 +25,8 @@ O produto tem uma área, um canvas e um documento, locais e no monitor principal
 - câmera com pan e zoom dentro da área;
 - persistência local;
 - Fixo e Edição;
-- toolbar compacta e móvel pelo pegador;
-- tray com Editar, Fixar no desktop e Sair, e instância única.
+- toolbar de ícones, movível pela aba, e menu do botão direito com as ações do canvas;
+- tray com Editar, Fixar no desktop, Reposicionar toolbar e Sair, e instância única.
 
 Imagens, voz para texto, múltiplos documentos, formas e outras cores ficam fora deste PRD.
 
@@ -34,7 +34,7 @@ Imagens, voz para texto, múltiplos documentos, formas e outras cores ficam fora
 
 ### Definir a área
 
-Quando não existe área salva, o app abre em Edição com a tela escurecida e a instrução para arrastar. O usuário pressiona o botão esquerdo, arrasta e solta. O retângulo vira a área do canvas e é salvo no documento. A ação **Área** da toolbar repete esse passo e mantém o conteúdo. Uma área menor que 160 × 120 pixels é recusada e o app pede outro arraste.
+Quando não existe área salva, o app abre em Edição com a tela escurecida e a instrução para arrastar. O usuário pressiona o botão esquerdo, arrasta e solta. O retângulo vira a área do canvas e é salvo no documento. **Redefinir área**, no menu do botão direito, repete esse passo e mantém o conteúdo. Uma área menor que 160 × 120 pixels é recusada e o app pede outro arraste.
 
 ### Fixo
 
@@ -48,18 +48,25 @@ Ctrl + Alt + T ou o tray chamam Edição. A mesma janela:
 2. vira top-level e fica sempre no topo;
 3. recebe foco;
 4. escurece a tela fora da área e mostra a toolbar;
-5. libera desenho, notas, post-its e a ação Área.
+5. libera desenho, notas, post-its e o menu do canvas.
 
 O frontend recebe o evento de estado do backend. Ele não inventa Edição em React.
 
 ### Conteúdo
 
 - O pincel desenha na cor selecionada. A borracha remove os traços e as notas que tocar.
-- A ferramenta Nota cria uma nota no ponto clicado e abre o editor de texto. A ferramenta Post-it faz o mesmo sobre um cartão amarelo.
-- O editor mostra o Markdown bruto. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
+- A ferramenta Texto cria uma nota no ponto clicado e abre o editor de texto. A ferramenta Post-it faz o mesmo sobre um cartão amarelo.
+- O editor mostra o Markdown bruto, sem caixa: só o cursor aparece, no lugar onde a nota vai ficar. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
 - Fora do editor, a nota mostra o Markdown renderizado: títulos, listas, ênfase, código, citações e tabelas. HTML escrito pelo usuário aparece como texto, e links não navegam.
 - Edição começa em Seleção, o estado sem ferramenta pressionada. Em Seleção, um clique seleciona uma nota ou um post-it, arrastar move, Delete ou Backspace apaga, e uma barra acima da nota alinha o texto. Um duplo clique no canvas vazio, em Seleção ou com a Mão, começa uma nota de texto; um duplo clique numa nota a edita. A Mão (H) arrasta só a câmera. A letra da ferramenta ativa, ou um clique nela, volta para Seleção, e criar uma nota ou um post-it também volta, com o item selecionado. Escolher uma tinta escolhe o Pincel ([0010](../decisions/0010-implicit-selection-and-hand.md)).
-- O tamanho selecionado na toolbar vale para a próxima nota e para a nota em edição.
+- O tamanho fica no popover do Texto e do Post-it, que também aparece enquanto qualquer nota está sendo escrita. Ele vale para a próxima nota e para a nota em edição.
+
+### Toolbar e menu
+
+- A toolbar tem [Texto, Post-it, Pincel, Mão] e [Fixar]. O Pincel abre um popover com Caneta, Borracha e as três tintas. Desfazer e Refazer ficam só no teclado ([0009](../decisions/0009-toolbar-tab-and-icons.md)).
+- A toolbar abre centralizada acima da taskbar. A aba acima dela aparece com o ponteiro ou com o foco e arrasta a toolbar. A posição arrastada fica salva como preferência. Uma posição inválida ou fora da tela volta ao padrão e registra um aviso. **Reposicionar toolbar**, no menu ou no tray, volta ao padrão.
+- O botão direito dentro da área, Shift + F10 ou a tecla de menu abrem o menu do canvas: Reposicionar toolbar, Tema, Redefinir área, Ajustar à tela, Zoom e Limpar canvas. O Zoom tem 50%, 100%, 200% e um campo, limitado de 25% a 400%. Ajustar à tela enquadra todo o conteúdo com margem; num canvas vazio, volta à câmera padrão.
+- Limpar canvas pede confirmação, mantém a área, o tema e a câmera, e Ctrl + Z desfaz. O botão direito nunca desenha, apaga nem escreve.
 
 ### Fixar no desktop
 
@@ -80,13 +87,14 @@ O app não confirma a troca antes de salvar. Sem área definida, a transição p
 | Atalho | Ação | Escopo |
 | --- | --- | --- |
 | Ctrl + Alt + T | Chama ou fixa a área | Global |
-| Esc | Cancela a nota em edição; sem editor, limpa a seleção; sem seleção, salva e fixa | Edição |
+| Esc | Cancela a nota em edição; sem editor, fecha o popover; sem popover, limpa a seleção; sem seleção, salva e fixa. Com o menu aberto, só fecha o menu | Edição |
 | Alt + F4 | Salva e fixa, sem encerrar o app; sem área, encerra o app | Edição |
 | H | Mão | Edição |
 | B | Pincel | Edição |
-| T | Nota | Edição |
+| T | Texto | Edição |
 | P | Post-it | Edição |
-| E | Borracha | Edição |
+| E | Borracha, no popover do Pincel | Edição |
+| Botão direito na área, Shift + F10 ou tecla de menu | Abre o menu do canvas | Edição |
 | Letra da ferramenta ativa | Volta para Seleção | Edição |
 | Delete ou Backspace | Apaga a nota selecionada | Seleção |
 | Duplo clique no canvas vazio | Começa uma nota de texto | Seleção e Mão |
@@ -113,7 +121,7 @@ O produto não usa Win + T porque o Explorer reserva a combinação.
     Stroke { id, points, color, width, brush: 'pen' | 'highlighter' }
     Note { id, x, y, text, size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', font: 'serif' | 'sans' | 'mono', align: 'left' | 'center' | 'right', kind: 'text' | 'postit' }
 
-O formato é o v2 desde a L8 da 0.0.2. A interface do primeiro ciclo continua usando só `sm`, `md` e `lg`, `paper` e `transparent`, a caneta, `sans` e `left`. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
+O formato é o v2 desde a L8 da 0.0.2. A interface usa os cinco temas desde a L10, o alinhamento desde a L9, e só `sm`, `md` e `lg`, a caneta e `sans` até a L12. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
 
 A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
 
@@ -139,7 +147,7 @@ O PRD passa quando uma build instalada demonstra:
 2. área visível no desktop depois de fixar, com fundo bege e com fundo transparente;
 3. cliques do desktop e das janelas livres enquanto a área está Fixa;
 4. Ctrl + Alt + T trazendo o mesmo documento para Edição com outro app aberto;
-5. toolbar visível, focável e movível pelo pegador;
+5. toolbar visível, focável e movível pela aba;
 6. traço nas três cores, nota com tabela, post-it, borracha, undo e redo funcionais;
 7. Fixar no desktop e o atalho salvando antes de reparentar;
 8. área e conteúdo restaurados depois de fechar e abrir;

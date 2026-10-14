@@ -14,9 +14,9 @@ O retângulo do desktop escolhido pelo usuário para o canvas. O usuário define
 
 O único documento visual do Canvie, mostrado dentro da área.
 
-## Fundo
+## Tema
 
-A aparência da área atrás do conteúdo. O primeiro ciclo oferece bege e transparente.
+A aparência da área atrás do conteúdo: bege, branco, preto, amarelo ou transparente. O primeiro ciclo chamava o tema de fundo e oferecia bege e transparente.
 
 ## Fixo
 
@@ -52,11 +52,15 @@ Ferramenta que arrasta só a câmera do canvas, sem mover notas.
 
 ## Toolbar
 
-Barra compacta que aparece em Edição. Ela contém o pegador, as ferramentas, as cores, os tamanhos de texto, o fundo, a ação Área, o histórico e o botão **Fixar no desktop**.
+Barra compacta de ícones que aparece em Edição. Ela contém as ferramentas Texto, Post-it, Pincel e Mão, e o botão **Fixar no desktop**. As tintas, a Borracha e os tamanhos de texto abrem em popovers acima dela.
 
-## Pegador
+## Aba
 
-Controle separado usado para mover a toolbar. O pegador não ativa uma ferramenta.
+O pegador da toolbar: uma aba acima da barra, que aparece com o ponteiro ou com o foco e é o único jeito de mover a toolbar. A aba não ativa uma ferramenta.
+
+## Menu do canvas
+
+Menu do botão direito em Edição, com as ações que valem para o canvas inteiro: Reposicionar toolbar, Tema, Redefinir área, Ajustar à tela, Zoom e Limpar canvas.
 
 ## Documento
 

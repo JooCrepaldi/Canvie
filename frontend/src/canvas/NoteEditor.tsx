@@ -30,7 +30,6 @@ export function NoteEditor({ x, y, kind, size, font, align, text, onTextChange, 
       className={`note note-editor note-${kind} note-${size} note-font-${font} note-align-${align}`}
       style={{ left: x, top: y }}
       aria-label={kind === 'postit' ? 'Texto do post-it em Markdown' : 'Texto da nota em Markdown'}
-      placeholder="Escreva em Markdown"
       maxLength={MAX_NOTE_LENGTH}
       value={text}
       onChange={(event) => onTextChange(event.target.value)}

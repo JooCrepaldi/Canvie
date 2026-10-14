@@ -35,6 +35,7 @@ type CanvasProps = {
   onSelect: (id: number | null) => void
   // A new note was committed; the app returns to Seleção with it selected.
   onNoteCreated: (id: number) => void
+  onEditorChange: (open: boolean) => void
 }
 
 type PointerDraft =
@@ -90,7 +91,7 @@ function nextId(doc: CanvasDoc): number {
   return ids.length === 0 ? 1 : Math.max(...ids) + 1
 }
 
-export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, onNoteSizeChange, onSelect, onNoteCreated }: CanvasProps) {
+export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, onNoteSizeChange, onSelect, onNoteCreated, onEditorChange }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const notesLayerRef = useRef<HTMLDivElement>(null)
   const noteElements = useRef(new Map<number, HTMLDivElement>())
@@ -106,6 +107,12 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     editingRef.current = next
     setEditingState(next)
   }
+
+  const editorOpen = editing !== null
+  useEffect(() => {
+    onEditorChange(editorOpen)
+    return () => onEditorChange(false)
+  }, [editorOpen, onEditorChange])
 
   // Strokes are drawn on the canvas; notes follow the camera through one CSS
   // transform on their layer, so a pan never re-renders React.
@@ -224,7 +231,9 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) }
   }
 
+  // The right button belongs to the menu: it never draws, erases or writes.
   const startPointer = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (event.button === 2) return
     const hadEditor = editingRef.current !== null
     finishEditing(true)
     const canvas = event.currentTarget
@@ -253,6 +262,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
   }
 
   const startNotePointer = (note: Note, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button === 2) return
     if (tool === 'text' || tool === 'postit') {
       event.preventDefault()
       event.stopPropagation()

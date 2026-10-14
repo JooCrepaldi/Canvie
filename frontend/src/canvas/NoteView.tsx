@@ -31,6 +31,7 @@ export function NoteView({ note, interactive, selected, elementRef, onPointerDow
       ref={(element) => elementRef(note.id, element)}
       className={`note note-${note.kind} note-${note.size} note-font-${note.font} note-align-${note.align}${interactive ? ' is-interactive' : ''}${selected ? ' is-selected' : ''}`}
       style={{ left: note.x, top: note.y }}
+      data-note-id={note.id}
       role="note"
       tabIndex={interactive ? 0 : -1}
       onPointerDown={(event) => onPointerDown(note, event)}

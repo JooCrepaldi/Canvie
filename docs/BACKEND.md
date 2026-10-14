@@ -47,6 +47,7 @@ O tray oferece:
 
 - Editar;
 - Fixar no desktop, que emite canvie-pin-requested durante Edit;
+- Reposicionar toolbar, que chama enter_edit e emite canvie-toolbar-reset, para o frontend apagar a posição salva;
 - Sair.
 
 O clique esquerdo no ícone do tray alterna como o atalho; o menu abre com o clique direito. O tray chama enter_edit diretamente em Wall. Em Edit, o tray e o atalho global emitem canvie-pin-requested para o frontend. O frontend salva e chama pin_to_wall. Não existe uma terceira regra de transição.
@@ -103,4 +104,4 @@ Quando a última janela é destruída, o Tauri pede para sair sem código. Se `L
 
 ## Logs
 
-Registre startup com a versão, hotkey, tray, mudança de placement, re-embed, foco, click-through, segunda instância, falha de comando, Alt + F4 em Edit e o encerramento sem área, a janela perdida ou fora do Progman, o reinício pelo watchdog e o fechamento que encerra o app. As falhas de persistência do frontend chegam por report_frontend_issue, que aceita só um código fixo. Não registre conteúdo do canvas.
+Registre startup com a versão, hotkey, tray, mudança de placement, re-embed, foco, click-through, segunda instância, falha de comando, Alt + F4 em Edit e o encerramento sem área, a janela perdida ou fora do Progman, o reinício pelo watchdog e o fechamento que encerra o app. As falhas de persistência do frontend e a posição inválida da toolbar chegam por report_frontend_issue, que aceita só um código fixo. Não registre conteúdo do canvas.

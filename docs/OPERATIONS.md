@@ -139,7 +139,7 @@ A regressão das suítes anteriores encontrou uma mudança de comportamento: na 
 A revisão do PR pediu duas correções: gravar o save pendente antes de encerrar sem área, e fazer `stop('close')` aceitar um app que encerra no primeiro WM_CLOSE. Na build release com as duas:
 
 - L2 passou 41 de 41, L3 27 de 27 e L5 24 de 24;
-- `l6-lifecycle.ps1 -SkipExplorer` passou todas as checagens de comportamento, incluindo a nova `stop(close) ends the app in Edit without an area`. As cinco checagens de log falharam porque o log rotacionou no meio da execução (veja Falhas conhecidas). As linhas que elas procuram vêm do Rust, que não mudou desde a execução de 18 de 18. A repetição com o log menor foi interrompida porque o computador estava em uso.
+- `l6-lifecycle.ps1 -SkipExplorer` passou todas as checagens de comportamento, incluindo a nova `stop(close) ends the app in Edit without an area`. As cinco checagens de log falharam porque o log rotacionou no meio da execução (veja Falhas conhecidas). Repetida com o log em 8 KB, a suíte passou 19 de 19, com todas as checagens de log.
 
 O flush antes de `quit_app` não tem E2E: o envio de uma tecla real abre um PowerShell e leva mais que os 350 ms do debounce.
 

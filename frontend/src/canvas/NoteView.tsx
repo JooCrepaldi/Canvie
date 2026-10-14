@@ -6,6 +6,7 @@ import { renderMarkdown } from './markdown'
 type NoteViewProps = {
   note: Note
   interactive: boolean
+  selected: boolean
   elementRef: (id: number, element: HTMLDivElement | null) => void
   onPointerDown: (note: Note, event: ReactPointerEvent<HTMLDivElement>) => void
   onEdit: (note: Note) => void
@@ -16,7 +17,7 @@ function keepLinksInside(event: ReactMouseEvent<HTMLDivElement>) {
   if (event.target instanceof Element && event.target.closest('a')) event.preventDefault()
 }
 
-export function NoteView({ note, interactive, elementRef, onPointerDown, onEdit }: NoteViewProps) {
+export function NoteView({ note, interactive, selected, elementRef, onPointerDown, onEdit }: NoteViewProps) {
   const html = useMemo(() => renderMarkdown(note.text), [note.text])
 
   const editWithKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -28,7 +29,7 @@ export function NoteView({ note, interactive, elementRef, onPointerDown, onEdit 
   return (
     <div
       ref={(element) => elementRef(note.id, element)}
-      className={`note note-${note.kind} note-${note.size} note-font-${note.font} note-align-${note.align}${interactive ? ' is-interactive' : ''}`}
+      className={`note note-${note.kind} note-${note.size} note-font-${note.font} note-align-${note.align}${interactive ? ' is-interactive' : ''}${selected ? ' is-selected' : ''}`}
       style={{ left: note.x, top: note.y }}
       role="note"
       tabIndex={interactive ? 0 : -1}

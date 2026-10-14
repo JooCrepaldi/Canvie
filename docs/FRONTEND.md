@@ -9,6 +9,7 @@ Frontend is implemented in layers. Paths are relative to frontend/src. L1 delive
 | App.tsx | Shell transparente, histórico, ferramenta, tinta, tamanho, fundo e composição da tela |
 | canvas/Canvas.tsx | Área, Canvas 2D dos traços, camada de notas, câmera e interação com elementos |
 | canvas/NoteView.tsx e canvas/NoteEditor.tsx | Nota e post-it renderizados e o editor de Markdown |
+| canvas/ContextBar.tsx | Barra de alinhamento acima da nota selecionada |
 | canvas/AreaSelector.tsx e canvas/area.ts | Arraste da área, tamanho mínimo e ajuste ao viewport |
 | canvas/markdown.ts | markdown-it sem HTML bruto nem imagens |
 | canvasTypes.ts | Tipos e limites do documento, paleta de tinta e tamanhos de texto |
@@ -48,12 +49,15 @@ fitArea limita a área à janela na hora de desenhar, sem mudar o documento. Em 
 
 Use um canvas DPR-aware do tamanho da área. Converta pontos com screenToWorld e worldToScreen, com a origem do mundo no centro da área. Mantenha o draft do ponteiro em refs para não renderizar React a cada movimento.
 
-O ciclo tem cinco ferramentas:
+Desde a L9, o canvas tem a Seleção, o estado sem ferramenta, e cinco ferramentas que alternam: repetir a ferramenta ativa volta para Seleção ([0010](../decisions/0010-implicit-selection-and-hand.md)):
 
-- Mover: pan quando o arraste começa no fundo, e arrasta a nota quando começa nela;
-- Pincel: traço na tinta selecionada (preto, azul ou vermelho);
+- Seleção, o padrão de Edição: um clique numa nota a seleciona e arrastar a move; um clique no fundo limpa a seleção. A seleção é estado do App, fora do documento e do histórico; mover, apagar e alinhar entram no histórico. A barra contextual (canvas/ContextBar.tsx) fica acima da nota selecionada, em coordenadas de tela, e alinha o texto;
+- Mão: arrastar move só a câmera, inclusive sobre uma nota, porque as notas não recebem ponteiro com a Mão;
+- Pincel: traço na tinta selecionada (preto, azul ou vermelho). Escolher uma tinta escolhe o Pincel;
 - Nota e Post-it: um clique no fundo abre o editor de uma nova nota, e um clique em uma nota abre a nota;
 - Borracha: remove os traços e as notas que o caminho toca.
+
+Um duplo clique no canvas vazio, em Seleção ou com a Mão, abre o editor de uma nota de texto. Uma nota nova, criada por qualquer caminho, devolve o canvas à Seleção com ela selecionada. Space + arrastar move a câmera em qualquer ferramenta.
 
 Os traços ficam no Canvas 2D. As notas são HTML em uma camada com um único transform CSS da câmera, atualizado junto com o redraw; por isso pan e zoom não renderizam React. O Markdown passa pelo markdown-it com `html: false` e sem a regra de imagem ([0007](../decisions/0007-markdown-notes.md)). Um clique em link não navega.
 

@@ -46,7 +46,11 @@
   touch-action: none;
 }
 
-.canvas-surface.tool-cursor {
+.canvas-surface.tool-select {
+  cursor: default;
+}
+
+.canvas-surface.tool-hand {
   cursor: grab;
 }
 
@@ -147,6 +151,54 @@
 .note.is-interactive {
   cursor: pointer;
   pointer-events: auto;
+}
+
+/* Selection has no color (decision 0009): a dark ring with a light halo
+   reads on every background. */
+.note.is-selected {
+  outline: 1.5px solid #1f2328;
+  outline-offset: 6px;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.55);
+}
+
+.context-bar {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #202123;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.context-bar button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #f3f4f6;
+}
+
+.context-bar button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.context-bar button:focus-visible {
+  outline: 2px solid #f3f4f6;
+  outline-offset: 1px;
+}
+
+.context-bar svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
 }
 
 .note:focus-visible {

@@ -79,7 +79,7 @@ A toolbar:
 
 Ordem padrão:
 
-    [pegador] [mover] [pincel] [nota] [post-it] [borracha] | [preto] [azul] [vermelho] | [P] [M] [G] | [fundo] [área] | [desfazer] [refazer] | [Fixar no desktop]
+    [pegador] [mão] [pincel] [nota] [post-it] [borracha] | [preto] [azul] [vermelho] | [P] [M] [G] | [fundo] [área] | [desfazer] [refazer] | [Fixar no desktop]
 
 O botão de fixar usa texto, não apenas um ícone, com contorno color.accent que preenche no hover. Ele mostra Salvando… enquanto a transição salva, e fica desativado enquanto não existe área. A ação é a saída principal da Edição. As cores mostram a amostra e têm nome acessível; a cor ativa também ganha contorno, não só destaque de cor.
 
@@ -93,7 +93,8 @@ Notas usam a fonte de conteúdo, texto em color.inkBlack e um dos três tamanhos
 
 - O foco inicial de Edição vai para o canvas ou para a primeira ferramenta.
 - Tab percorre pegador, ferramentas, histórico e fixar nessa ordem.
-- Esc salva e volta à Parede.
+- Esc cancela o editor aberto; sem editor, limpa a seleção; sem seleção, salva e volta à Parede.
+- A nota selecionada ganha um contorno escuro de 1,5 px, a 6 px dela, com um halo claro, sem cor de destaque. Uma barra contextual escura, com três botões de 32 px para alinhar, fica 46 px acima do canto da nota. O botão ativo usa branco translúcido.
 - Tooltips mostram nome e atalho depois de um pequeno atraso. Eles não substituem o nome acessível.
 - O arraste começa apenas no pegador.
 - Um botão nunca move a toolbar.

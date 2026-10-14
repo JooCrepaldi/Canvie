@@ -63,7 +63,8 @@ export type CanvasDoc = {
   camera: Camera
 }
 
-export type Tool = 'cursor' | 'brush' | 'text' | 'postit' | 'eraser'
+// select is the state with no tool pressed (decision 0010).
+export type Tool = 'select' | 'hand' | 'brush' | 'text' | 'postit' | 'eraser'
 
 export const INK_COLORS = [
   { id: 'black', label: 'preta', value: '#1F2328' },

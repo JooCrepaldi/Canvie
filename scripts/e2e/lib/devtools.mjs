@@ -137,6 +137,20 @@ export function pressLetter(page, letter, modifiers = 0) {
 
 export const pressEnter = (page, modifiers = 0) => press(page, 'Enter', { code: 'Enter', keyCode: 13, text: modifiers === 0 ? '\r' : undefined, modifiers })
 export const pressEscape = (page) => press(page, 'Escape', { code: 'Escape', keyCode: 27 })
+export const pressDelete = (page) => press(page, 'Delete', { code: 'Delete', keyCode: 46 })
+
+const TOOL_KEYS = { 'Mão': 'h', Pincel: 'b', Nota: 't', 'Post-it': 'p', Borracha: 'e' }
+
+// Tools are toggles: the letter of the active tool goes back to Seleção.
+// Letters reach the app through the page, so they work under the area selector.
+export async function chooseTool(page, name) {
+  if ((await pressed(page, `${name},`)) !== 'true') await pressLetter(page, TOOL_KEYS[name])
+}
+
+// Seleção is the state with no tool pressed.
+export async function selectionMode(page) {
+  for (const [name, letter] of Object.entries(TOOL_KEYS)) if ((await pressed(page, `${name},`)) === 'true') await pressLetter(page, letter)
+}
 
 export async function typeText(page, text) {
   for (const character of text) {

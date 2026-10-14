@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, waitForPlacement } from './lib/app.mjs'
-import { areaRect, clickElement, defineArea, drag, readRaw } from './lib/devtools.mjs'
+import { areaRect, chooseTool, clickElement, defineArea, drag, readRaw } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
@@ -61,6 +61,7 @@ async function firstRun() {
   if (!isolated) throw new Error('WEBVIEW2_USER_DATA_FOLDER was ignored; refusing to write to the real profile')
   await waitForPlacement(page, 'edit')
   await defineArea(page, { x: 200, y: 160 }, { x: 980, y: 700 })
+  await chooseTool(page, 'Pincel')
   const rect = await areaRect(page)
   await drag(page, Array.from({ length: 10 }, (_, step) => ({ x: rect.x + 40 + step * 25, y: rect.y + 60 + Math.sin(step) * 6 })))
 }

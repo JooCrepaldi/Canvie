@@ -8,6 +8,7 @@ import { enterEdit, getPlacement, initialPlacement, onCloseRequested, onPinReque
 import { Toolbar } from './Toolbar'
 
 const TOOL_SHORTCUTS: Record<string, Tool | undefined> = {
+  h: 'hand',
   b: 'brush',
   t: 'text',
   p: 'postit',
@@ -111,7 +112,9 @@ function SaveNotice({ blocked, saveFailed, pinFailed, recovered, onRetry, onRetr
 
 export default function App({ persistence, initialLoad }: AppProps) {
   const [doc, setDoc] = useState<CanvasDoc>(initialLoad.document)
-  const [tool, setTool] = useState<Tool>('brush')
+  // Seleção is the default, so a double click on the canvas starts a note.
+  const [tool, setTool] = useState<Tool>('select')
+  const [selection, setSelection] = useState<number | null>(null)
   const [ink, setInk] = useState<string>(INK_COLORS[0].value)
   const [noteSize, setNoteSize] = useState<NoteSize>('md')
   const [selectingArea, setSelectingArea] = useState(initialLoad.document.area === null)
@@ -194,6 +197,32 @@ export default function App({ persistence, initialLoad }: AppProps) {
     commit({ ...docRef.current, background: docRef.current.background === 'paper' ? 'transparent' : 'paper' })
   }, [commit])
 
+  // Tools are toggles: choosing the active tool again goes back to Seleção.
+  // Any tool change drops the selection, which exists only in Seleção.
+  const chooseTool = useCallback((next: Tool) => {
+    setTool((current) => (current === next ? 'select' : next))
+    setSelection(null)
+  }, [])
+
+  // Choosing an ink means drawing with it.
+  const chooseInk = useCallback((next: string) => {
+    setInk(next)
+    setTool('brush')
+    setSelection(null)
+  }, [])
+
+  const noteCreated = useCallback((id: number) => {
+    setTool('select')
+    setSelection(id)
+  }, [])
+
+  const deleteSelection = useCallback(() => {
+    const current = docRef.current
+    if (selection === null || !current.notes.some((note) => note.id === selection)) return
+    commit({ ...current, notes: current.notes.filter((note) => note.id !== selection) })
+    setSelection(null)
+  }, [commit, selection])
+
   // Fixar no desktop: close the note editor, save, and only then ask the
   // backend to move the window. A failed save keeps Edit and the notice.
   const requestPin = useCallback(async () => {
@@ -204,6 +233,7 @@ export default function App({ persistence, initialLoad }: AppProps) {
     // Blurring an open note editor commits it before the save.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     setSelectingArea(false)
+    setSelection(null)
     try {
       await persistence.saveNow(docRef.current)
       await pinToWall().catch((error: unknown) => {
@@ -248,14 +278,24 @@ export default function App({ persistence, initialLoad }: AppProps) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return
       const key = event.key.toLowerCase()
+      // Esc first drops the selection; with nothing selected it saves and pins.
+      // The note editor handles its own Esc before this listener.
       if (key === 'escape' && !showAreaSelector) {
         event.preventDefault()
-        void requestPin()
+        // An undo can remove the selected note; that selection is not shown.
+        const shown = selection !== null && docRef.current.notes.some((note) => note.id === selection)
+        setSelection(null)
+        if (!shown) void requestPin()
+        return
+      }
+      if ((key === 'delete' || key === 'backspace') && selection !== null) {
+        event.preventDefault()
+        deleteSelection()
         return
       }
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         const shortcutTool = TOOL_SHORTCUTS[key]
-        if (shortcutTool) setTool(shortcutTool)
+        if (shortcutTool) chooseTool(shortcutTool)
       }
       if (event.ctrlKey && key === 'z') {
         event.preventDefault()
@@ -269,7 +309,7 @@ export default function App({ persistence, initialLoad }: AppProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [editing, redo, requestPin, showAreaSelector, undo])
+  }, [chooseTool, deleteSelection, editing, redo, requestPin, selection, showAreaSelector, undo])
 
   const area = doc.area && fitArea(doc.area, viewport)
 
@@ -278,7 +318,18 @@ export default function App({ persistence, initialLoad }: AppProps) {
     <main className="canvie-shell" aria-label="Canvie">
       {area && (
         <>
-          <Canvas doc={doc} area={area} tool={tool} ink={ink} noteSize={noteSize} onChange={commit} onNoteSizeChange={setNoteSize} />
+          <Canvas
+            doc={doc}
+            area={area}
+            tool={tool}
+            ink={ink}
+            noteSize={noteSize}
+            selection={editing ? selection : null}
+            onChange={commit}
+            onNoteSizeChange={setNoteSize}
+            onSelect={setSelection}
+            onNoteCreated={noteCreated}
+          />
           {editing && !showAreaSelector && <div className="area-frame" style={{ left: area.x, top: area.y, width: area.width, height: area.height }} aria-hidden="true" />}
         </>
       )}
@@ -301,8 +352,8 @@ export default function App({ persistence, initialLoad }: AppProps) {
             background={doc.background}
             canUndo={past.length > 0}
             canRedo={future.length > 0}
-            onToolChange={setTool}
-            onInkChange={setInk}
+            onToolChange={chooseTool}
+            onInkChange={chooseInk}
             onNoteSizeChange={setNoteSize}
             onBackgroundToggle={toggleBackground}
             onSelectArea={() => setSelectingArea(true)}

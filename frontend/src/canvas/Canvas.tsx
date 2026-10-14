@@ -18,6 +18,7 @@ import {
   type Stroke,
   type Tool,
 } from '../canvasTypes'
+import { ContextBar } from './ContextBar'
 import { NoteEditor } from './NoteEditor'
 import { NoteView } from './NoteView'
 
@@ -27,8 +28,13 @@ type CanvasProps = {
   tool: Tool
   ink: string
   noteSize: NoteSize
+  // The selected note, shown only while tool is select.
+  selection: number | null
   onChange: (doc: CanvasDoc) => void
   onNoteSizeChange: (size: NoteSize) => void
+  onSelect: (id: number | null) => void
+  // A new note was committed; the app returns to Seleção with it selected.
+  onNoteCreated: (id: number) => void
 }
 
 type PointerDraft =
@@ -44,6 +50,8 @@ const BRUSH_WIDTH = 3
 const HIGHLIGHTER_ALPHA = 0.35
 const ERASER_RADIUS = 26
 const DRAG_THRESHOLD = 3
+// Space between the context bar and the top of the selected note.
+const CONTEXT_BAR_OFFSET = 46
 
 function screenToWorld(point: Point, camera: Camera, width: number, height: number): Point {
   return {
@@ -82,7 +90,7 @@ function nextId(doc: CanvasDoc): number {
   return ids.length === 0 ? 1 : Math.max(...ids) + 1
 }
 
-export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeChange }: CanvasProps) {
+export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, onNoteSizeChange, onSelect, onNoteCreated }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const notesLayerRef = useRef<HTMLDivElement>(null)
   const noteElements = useRef(new Map<number, HTMLDivElement>())
@@ -184,7 +192,9 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
     const text = note.text.trimEnd()
     if (note.id === null) {
       if (text.trim() === '') return
-      change({ ...current, notes: [...current.notes, { id: nextId(current), x: note.x, y: note.y, text, size: noteSize, font: note.font, align: note.align, kind: note.kind }] })
+      const id = nextId(current)
+      change({ ...current, notes: [...current.notes, { id, x: note.x, y: note.y, text, size: noteSize, font: note.font, align: note.align, kind: note.kind }] })
+      onNoteCreated(id)
       return
     }
     const original = current.notes.find((candidate) => candidate.id === note.id)
@@ -220,7 +230,13 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
     const canvas = event.currentTarget
     const position = canvasPoint(event)
     const world = screenToWorld(position, docRef.current.camera, canvas.clientWidth, canvas.clientHeight)
-    const shouldPan = tool === 'cursor' || event.button === 1 || spacePressedRef.current
+    const shouldPan = tool === 'hand' || event.button === 1 || spacePressedRef.current
+
+    // A click on the empty canvas clears the selection; Seleção draws nothing.
+    if (tool === 'select' && !shouldPan) {
+      onSelect(null)
+      return
+    }
 
     if ((tool === 'text' || tool === 'postit') && !shouldPan) {
       // The first click outside an open editor only closes it.
@@ -243,9 +259,10 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
       startEditing(note)
       return
     }
-    if (tool !== 'cursor' || event.button !== 0) return
+    if (tool !== 'select' || event.button !== 0) return
     event.stopPropagation()
     finishEditing(true)
+    onSelect(note.id)
     event.currentTarget.setPointerCapture(event.pointerId)
     draftRef.current = { kind: 'note', pointerId: event.pointerId, note, start: { x: event.clientX, y: event.clientY }, element: event.currentTarget, moved: false }
   }
@@ -323,7 +340,23 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
     change({ ...docRef.current, camera: { ...docRef.current.camera, zoom: nextZoom } })
   }
 
-  const notesInteractive = tool === 'cursor' || tool === 'text' || tool === 'postit'
+  // A double click on the empty canvas starts a text note there, in Seleção
+  // or with the Mão; the pen and the eraser keep drawing.
+  const writeAt = (event: ReactMouseEvent<HTMLCanvasElement>) => {
+    if (tool !== 'select' && tool !== 'hand') return
+    const canvas = event.currentTarget
+    const world = screenToWorld(canvasPoint(event), docRef.current.camera, canvas.clientWidth, canvas.clientHeight)
+    setEditing({ id: null, x: world.x, y: world.y, kind: 'text', font: DEFAULT_NOTE_FONT, align: DEFAULT_NOTE_ALIGN, text: '' })
+  }
+
+  const notesInteractive = tool === 'select' || tool === 'text' || tool === 'postit'
+  const selected = tool === 'select' && editing === null ? doc.notes.find((note) => note.id === selection) : undefined
+  const barPosition = selected && worldToScreen({ x: selected.x, y: selected.y }, doc.camera, area.width, area.height)
+
+  const align = (next: Note['align']) => {
+    if (!selected || selected.align === next) return
+    change({ ...docRef.current, notes: docRef.current.notes.map((note) => (note.id === selected.id ? { ...note, align: next } : note)) })
+  }
 
   return (
     <div
@@ -334,11 +367,11 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
       onPointerCancel={finishPointer}
       onWheel={zoom}
     >
-      <canvas ref={canvasRef} className={`canvas-surface tool-${tool}`} aria-label="Canvas de desenho" onPointerDown={startPointer} onMouseDown={keepNoteFocus} />
+      <canvas ref={canvasRef} className={`canvas-surface tool-${tool}`} aria-label="Canvas de desenho" onPointerDown={startPointer} onMouseDown={keepNoteFocus} onDoubleClick={writeAt} />
       <div className="notes-layer" ref={notesLayerRef}>
         {doc.notes.map((note) =>
           note.id === editing?.id ? null : (
-            <NoteView key={note.id} note={note} interactive={notesInteractive} elementRef={registerNote} onPointerDown={startNotePointer} onEdit={startEditing} />
+            <NoteView key={note.id} note={note} interactive={notesInteractive} selected={note.id === selected?.id} elementRef={registerNote} onPointerDown={startNotePointer} onEdit={startEditing} />
           ),
         )}
         {editing && (
@@ -356,6 +389,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
           />
         )}
       </div>
+      {selected && barPosition && <ContextBar left={barPosition.x} top={Math.max(4, barPosition.y - CONTEXT_BAR_OFFSET)} align={selected.align} onAlign={align} />}
     </div>
   )
 }

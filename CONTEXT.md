@@ -42,6 +42,14 @@ Nota em Markdown sobre um cartão amarelo.
 
 Sequência de pontos criada pelo pincel, em preto, azul ou vermelho. A borracha remove traços e notas em uma ação que pode ser desfeita.
 
+## Seleção
+
+Estado da Edição sem ferramenta pressionada. Em Seleção, o usuário seleciona uma nota ou um post-it para mover, apagar ou alinhar, e um duplo clique no canvas vazio começa uma nota. A seleção não faz parte do documento.
+
+## Mão
+
+Ferramenta que arrasta só a câmera do canvas, sem mover notas.
+
 ## Toolbar
 
 Barra compacta que aparece em Edição. Ela contém o pegador, as ferramentas, as cores, os tamanhos de texto, o fundo, a ação Área, o histórico e o botão **Fixar no desktop**.

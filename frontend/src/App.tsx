@@ -113,7 +113,7 @@ export default function App({ persistence, initialLoad }: AppProps) {
   const [doc, setDoc] = useState<CanvasDoc>(initialLoad.document)
   const [tool, setTool] = useState<Tool>('brush')
   const [ink, setInk] = useState<string>(INK_COLORS[0].value)
-  const [noteSize, setNoteSize] = useState<NoteSize>('medium')
+  const [noteSize, setNoteSize] = useState<NoteSize>('md')
   const [selectingArea, setSelectingArea] = useState(initialLoad.document.area === null)
   const viewport = useViewport()
   const placement = usePlacement()

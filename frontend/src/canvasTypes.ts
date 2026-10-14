@@ -3,16 +3,29 @@ export type Point = {
   y: number
 }
 
+// The value lists of the document. Each one is the whole set the stored
+// document accepts; the toolbar may offer fewer until its layer arrives.
+export const BRUSHES = ['pen', 'highlighter'] as const
+export const NOTE_SIZE_IDS = ['xs', 'sm', 'md', 'lg', 'xl', 'xxl'] as const
+export const NOTE_FONTS = ['serif', 'sans', 'mono'] as const
+export const NOTE_ALIGNS = ['left', 'center', 'right'] as const
+export const NOTE_KINDS = ['text', 'postit'] as const
+export const BACKGROUNDS = ['paper', 'white', 'black', 'yellow', 'transparent'] as const
+
+export type Brush = (typeof BRUSHES)[number]
+export type NoteSize = (typeof NOTE_SIZE_IDS)[number]
+export type NoteFont = (typeof NOTE_FONTS)[number]
+export type NoteAlign = (typeof NOTE_ALIGNS)[number]
+export type NoteKind = (typeof NOTE_KINDS)[number]
+export type Background = (typeof BACKGROUNDS)[number]
+
 export type Stroke = {
   id: number
   points: Point[]
   color: string
   width: number
+  brush: Brush
 }
-
-export type NoteSize = 'small' | 'medium' | 'large'
-
-export type NoteKind = 'text' | 'postit'
 
 // Notes store Markdown. x and y are the top-left corner in world units.
 export type Note = {
@@ -21,6 +34,8 @@ export type Note = {
   y: number
   text: string
   size: NoteSize
+  font: NoteFont
+  align: NoteAlign
   kind: NoteKind
 }
 
@@ -38,10 +53,8 @@ export type Area = {
   height: number
 }
 
-export type Background = 'paper' | 'transparent'
-
 export type CanvasDoc = {
-  version: 1
+  version: 2
   revision: number
   area: Area | null
   background: Background
@@ -60,11 +73,23 @@ export const INK_COLORS = [
 
 export type Ink = (typeof INK_COLORS)[number]['value']
 
-export const NOTE_SIZES: ReadonlyArray<{ id: NoteSize; short: string; label: string; px: number }> = [
-  { id: 'small', short: 'P', label: 'pequeno', px: 14 },
-  { id: 'medium', short: 'M', label: 'médio', px: 18 },
-  { id: 'large', short: 'G', label: 'grande', px: 24 },
+// The sizes the toolbar offers; the six pixel sizes live in App.css.
+export const NOTE_SIZES: ReadonlyArray<{ id: NoteSize; short: string; label: string }> = [
+  { id: 'sm', short: 'P', label: 'pequeno' },
+  { id: 'md', short: 'M', label: 'médio' },
+  { id: 'lg', short: 'G', label: 'grande' },
 ]
+
+export const BACKGROUND_LABELS: Record<Background, string> = {
+  paper: 'bege',
+  white: 'branco',
+  black: 'preto',
+  yellow: 'amarelo',
+  transparent: 'transparente',
+}
+
+export const DEFAULT_NOTE_FONT: NoteFont = 'sans'
+export const DEFAULT_NOTE_ALIGN: NoteAlign = 'left'
 
 export const MIN_ZOOM = 0.25
 export const MAX_ZOOM = 4
@@ -77,7 +102,7 @@ export const EMPTY_CAMERA: Camera = { x: 0, y: 0, zoom: 1 }
 
 export function createEmptyDocument(): CanvasDoc {
   return {
-    version: 1,
+    version: 2,
     revision: 0,
     area: null,
     background: 'paper',

@@ -8,6 +8,8 @@ As camadas continuam a numeração do [roadmap do primeiro ciclo](MVP-0-ROADMAP.
 
 A 0.0.2 começa quando a 0.0.1 fechar a L6 e a L7 do primeiro ciclo. A tag v0.0.1 marca o código. A L6 e a L7 provam o uso real: Alt + F4, reinício do Explorer, instalação, escala de tela, RAM e CPU.
 
+**Exceção registrada em 2026-10-14:** por decisão do produto, a L8 começou com a L7 provada na build instalada, mas sem as quatro verificações manuais listadas em [OPERATIONS.md](OPERATIONS.md#pendências-manuais-da-l7): reinício do Windows, escala de 125% a 200%, Narrador e alto contraste. Elas continuam pendentes e voltam no fechamento da 0.0.2.
+
 ## L8 — Documento v2
 
 **Objetivo:** mudar o formato do documento uma única vez para toda a 0.0.2, sem perder o canvas de quem usa a 0.0.1.
@@ -25,7 +27,7 @@ A 0.0.2 começa quando a 0.0.1 fechar a L6 e a L7 do primeiro ciclo. A tag v0.0.
 
 A interface não muda nesta camada. A toolbar continua oferecendo os três tamanhos atuais, gravados como `sm`, `md` e `lg`.
 
-A camada registra uma decisão sobre onde guardar o v2: na chave atual, com a cópia do v1, ou numa chave nova. A escolha precisa considerar o limite de cerca de 5,24 milhões de caracteres do localStorage, descrito em [OPERATIONS.md](OPERATIONS.md#falhas-conhecidas).
+A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fica: na chave estável `canvie.document`, com a chave da 0.0.1 intocada como a cópia do v1. Ela considera o limite de cerca de 5,24 milhões de caracteres do localStorage, descrito em [OPERATIONS.md](OPERATIONS.md#falhas-conhecidas).
 
 **Falha tratada:** se a migração falhar, o app abre o fluxo de recuperação da L2, com a cópia do payload. Ele nunca grava o v2 por cima do v1 sem uma cópia.
 

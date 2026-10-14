@@ -1,20 +1,33 @@
 import {
+  BACKGROUNDS,
+  BRUSHES,
   createEmptyDocument,
+  DEFAULT_NOTE_ALIGN,
+  DEFAULT_NOTE_FONT,
   MAX_NOTE_LENGTH,
   MAX_STROKE_POINTS,
   MAX_ZOOM,
   MIN_ZOOM,
+  NOTE_ALIGNS,
+  NOTE_FONTS,
+  NOTE_KINDS,
+  NOTE_SIZE_IDS,
   type Area,
   type Camera,
   type CanvasDoc,
   type Note,
+  type NoteSize,
   type Point,
   type Stroke,
 } from './canvasTypes'
 import { reportIssue } from './diagnostics'
 
-export const DOCUMENT_STORAGE_KEY = 'canvie.document.v1'
-export const INVALID_DOCUMENT_STORAGE_KEY = 'canvie.document.invalid.v1'
+// Every format version is saved under one key. The 0.0.1 key is only read:
+// it keeps the v1 document as the copy taken before the first v2 save
+// (decision 0011).
+export const DOCUMENT_STORAGE_KEY = 'canvie.document'
+export const LEGACY_DOCUMENT_STORAGE_KEY = 'canvie.document.v1'
+export const INVALID_DOCUMENT_STORAGE_KEY = 'canvie.document.invalid'
 export const SAVE_DEBOUNCE_MS = 350
 
 const MAX_STROKES = 10_000
@@ -22,9 +35,19 @@ const MAX_NOTES = 10_000
 const MAX_STROKE_WIDTH = 100
 const MAX_AREA_SIDE = 100_000
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
-const NOTE_SIZES = new Set(['small', 'medium', 'large'])
-const NOTE_KINDS = new Set(['text', 'postit'])
-const BACKGROUNDS = new Set(['paper', 'transparent'])
+
+// The 0.0.1 sizes and the v2 sizes with the same pixel size.
+const V1_SIZES = { small: 'sm', medium: 'md', large: 'lg' } as const satisfies Record<string, NoteSize>
+const V1_BACKGROUNDS = ['paper', 'transparent'] as const
+
+type StrokeV1 = Omit<Stroke, 'brush'>
+type NoteV1 = Omit<Note, 'size' | 'font' | 'align'> & { size: keyof typeof V1_SIZES }
+type CanvasDocV1 = Omit<CanvasDoc, 'version' | 'background' | 'strokes' | 'notes'> & {
+  version: 1
+  background: (typeof V1_BACKGROUNDS)[number]
+  strokes: StrokeV1[]
+  notes: NoteV1[]
+}
 
 type DocumentStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
@@ -50,11 +73,24 @@ function isId(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 }
 
+function oneOf<T extends string>(values: readonly T[]): (value: unknown) => value is T {
+  const allowed = new Set<string>(values)
+  return (value: unknown): value is T => typeof value === 'string' && allowed.has(value)
+}
+
+const isBrush = oneOf(BRUSHES)
+const isNoteSize = oneOf(NOTE_SIZE_IDS)
+const isNoteFont = oneOf(NOTE_FONTS)
+const isNoteAlign = oneOf(NOTE_ALIGNS)
+const isNoteKind = oneOf(NOTE_KINDS)
+const isBackground = oneOf(BACKGROUNDS)
+const isV1Background = oneOf(V1_BACKGROUNDS)
+
 function isPoint(value: unknown): value is Point {
   return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y)
 }
 
-function isStroke(value: unknown): value is Stroke {
+function isStrokeV1(value: unknown): value is StrokeV1 {
   return (
     isRecord(value) &&
     isId(value.id) &&
@@ -70,7 +106,12 @@ function isStroke(value: unknown): value is Stroke {
   )
 }
 
-function isNote(value: unknown): value is Note {
+function isStroke(value: unknown): value is Stroke {
+  return isRecord(value) && isBrush(value.brush) && isStrokeV1(value)
+}
+
+// The fields every note version shares.
+function isNoteBase(value: unknown): value is Record<string, unknown> {
   return (
     isRecord(value) &&
     isId(value.id) &&
@@ -79,11 +120,16 @@ function isNote(value: unknown): value is Note {
     typeof value.text === 'string' &&
     value.text.trim().length > 0 &&
     value.text.length <= MAX_NOTE_LENGTH &&
-    typeof value.size === 'string' &&
-    NOTE_SIZES.has(value.size) &&
-    typeof value.kind === 'string' &&
-    NOTE_KINDS.has(value.kind)
+    isNoteKind(value.kind)
   )
+}
+
+function isNoteV1(value: unknown): value is NoteV1 {
+  return isNoteBase(value) && typeof value.size === 'string' && Object.hasOwn(V1_SIZES, value.size)
+}
+
+function isNote(value: unknown): value is Note {
+  return isNoteBase(value) && isNoteSize(value.size) && isNoteFont(value.font) && isNoteAlign(value.align)
 }
 
 function isArea(value: unknown): value is Area {
@@ -104,38 +150,66 @@ function isCamera(value: unknown): value is Camera {
   return isRecord(value) && isFiniteNumber(value.x) && isFiniteNumber(value.y) && isFiniteNumber(value.zoom) && value.zoom >= MIN_ZOOM && value.zoom <= MAX_ZOOM
 }
 
-function hasUniqueIds(strokes: Stroke[], notes: Note[]): boolean {
+function hasUniqueIds(strokes: Array<{ id: number }>, notes: Array<{ id: number }>): boolean {
   const ids = new Set<number>()
   for (const stroke of strokes) ids.add(stroke.id)
   for (const note of notes) ids.add(note.id)
   return ids.size === strokes.length + notes.length
 }
 
-export function isCanvasDocument(value: unknown): value is CanvasDoc {
+// The fields every document version shares, with the version's own checks
+// for strokes, notes and background.
+function hasDocumentShape(
+  value: Record<string, unknown>,
+  isVersionStroke: (stroke: unknown) => boolean,
+  isVersionNote: (note: unknown) => boolean,
+  isVersionBackground: (background: unknown) => boolean,
+): boolean {
   return (
-    isRecord(value) &&
-    value.version === 1 &&
     typeof value.revision === 'number' &&
     Number.isSafeInteger(value.revision) &&
     value.revision >= 0 &&
     (value.area === null || isArea(value.area)) &&
-    typeof value.background === 'string' &&
-    BACKGROUNDS.has(value.background) &&
+    isVersionBackground(value.background) &&
     Array.isArray(value.strokes) &&
     value.strokes.length <= MAX_STROKES &&
-    value.strokes.every(isStroke) &&
+    value.strokes.every(isVersionStroke) &&
     Array.isArray(value.notes) &&
     value.notes.length <= MAX_NOTES &&
-    value.notes.every(isNote) &&
+    value.notes.every(isVersionNote) &&
     isCamera(value.camera) &&
     hasUniqueIds(value.strokes, value.notes)
   )
 }
 
+export function isCanvasDocument(value: unknown): value is CanvasDoc {
+  return isRecord(value) && value.version === 2 && hasDocumentShape(value, isStroke, isNote, isBackground)
+}
+
+function isCanvasDocumentV1(value: unknown): value is CanvasDocV1 {
+  return isRecord(value) && value.version === 1 && hasDocumentShape(value, isStrokeV1, isNoteV1, isV1Background)
+}
+
+// Keeps every id, position, color, text and pixel size, so the canvas looks
+// the same after the migration. Fields the v1 format did not have are dropped.
+function migrateV1(doc: CanvasDocV1): CanvasDoc {
+  return {
+    version: 2,
+    revision: doc.revision,
+    area: doc.area,
+    background: doc.background,
+    strokes: doc.strokes.map(({ id, points, color, width }) => ({ id, points, color, width, brush: 'pen' })),
+    notes: doc.notes.map(({ id, x, y, text, size, kind }) => ({ id, x, y, text, size: V1_SIZES[size], font: DEFAULT_NOTE_FONT, align: DEFAULT_NOTE_ALIGN, kind })),
+    camera: doc.camera,
+  }
+}
+
+// The stored document in the current format; a v1 document is migrated.
 function parseStoredDocument(raw: string): CanvasDoc | null {
   try {
     const value: unknown = JSON.parse(raw)
-    return isCanvasDocument(value) ? value : null
+    if (isCanvasDocument(value)) return value
+    return isCanvasDocumentV1(value) ? migrateV1(value) : null
   } catch {
     // The parser message can quote the payload, so it is never logged.
     return null
@@ -163,19 +237,27 @@ export class DocumentPersistence {
     if (!this.storage) return this.block(empty, 'local storage is unavailable')
 
     let raw: string | null
+    let legacy: string | null = null
     try {
       raw = this.storage.getItem(DOCUMENT_STORAGE_KEY)
+      if (raw === null) legacy = this.storage.getItem(LEGACY_DOCUMENT_STORAGE_KEY)
     } catch (error) {
       return this.block(empty, 'stored document could not be read', error)
     }
-    if (raw === null) return { status: 'empty', document: empty }
 
-    const stored = parseStoredDocument(raw)
-    if (stored) return { status: 'loaded', document: stored }
-    if (!this.backupInvalid(raw)) return this.block(empty, 'invalid stored document could not be backed up')
-    console.warn('Canvie: invalid stored document replaced by an empty canvas; a local copy was kept')
-    reportIssue('document_recovered')
-    return { status: 'recovered', document: empty }
+    if (raw !== null) {
+      const stored = parseStoredDocument(raw)
+      if (stored) return { status: 'loaded', document: stored }
+      if (!this.backupInvalid(raw)) return this.block(empty, 'invalid stored document could not be backed up')
+      return this.recover(empty, 'invalid stored document replaced by an empty canvas; a local copy was kept')
+    }
+    if (legacy === null) return { status: 'empty', document: empty }
+
+    // Only the 0.0.1 document exists. Its key is never written again, so it
+    // stays as the copy of the v1 document; the first save writes the new key.
+    const migrated = parseStoredDocument(legacy)
+    if (migrated) return { status: 'loaded', document: migrated }
+    return this.recover(empty, 'invalid 0.0.1 document replaced by an empty canvas; it stays untouched under its key')
   }
 
   schedule(doc: CanvasDoc): void {
@@ -243,6 +325,12 @@ export class DocumentPersistence {
       console.warn('Canvie: invalid stored document could not be backed up', error)
       return false
     }
+  }
+
+  private recover(empty: CanvasDoc, reason: string): LoadResult {
+    console.warn(`Canvie: ${reason}`)
+    reportIssue('document_recovered')
+    return { status: 'recovered', document: empty }
   }
 
   private block(empty: CanvasDoc, reason: string, error?: unknown): LoadResult {

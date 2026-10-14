@@ -13,7 +13,7 @@ import { areaRect, clickElement, defineArea, drag, readRaw } from './lib/devtool
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
-const DOC_KEY = 'canvie.document.v1'
+const DOC_KEY = 'canvie.document'
 const IDLE_MS = 60_000
 
 const { values: options } = parseArgs({

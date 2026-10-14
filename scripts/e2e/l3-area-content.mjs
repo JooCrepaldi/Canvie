@@ -25,7 +25,7 @@ import {
 } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 
-const DOC_KEY = 'canvie.document.v1'
+const DOC_KEY = 'canvie.document'
 const SETTLE_MS = 350 + 400
 const INKS = [
   ['Tinta preta', '#1F2328'],
@@ -108,7 +108,7 @@ async function markdownNote() {
     rawHtmlAsText: document.querySelector('.note-text')?.textContent.includes('<img src=x onerror=alert(1)>') ?? false,
   })`)
   const note = (await readDoc(page)).notes[0]
-  report.check('Markdown note keeps its source text', note?.text === MARKDOWN && note.kind === 'text' && note.size === 'medium')
+  report.check('Markdown note keeps its source text', note?.text === MARKDOWN && note.kind === 'text' && note.size === 'md')
   report.check('Markdown renders a heading and a table', dom.heading === 'Ideias' && dom.rows === 2, JSON.stringify(dom))
   report.check('raw HTML and javascript links render as text', dom.images === 0 && dom.links === 0 && dom.rawHtmlAsText)
 }
@@ -125,8 +125,8 @@ async function postit() {
   await pressEnter(page, 2)
   await sleep(SETTLE_MS)
   const note = (await readDoc(page)).notes.find((candidate) => candidate.kind === 'postit')
-  report.check('post-it is stored with the large size', note?.text === 'Ligar para **Ana**' && note.size === 'large', JSON.stringify(note))
-  report.check('post-it renders on its card', await page.evaluate("document.querySelector('.note-postit.note-large strong')?.textContent === 'Ana'"))
+  report.check('post-it is stored with the large size', note?.text === 'Ligar para **Ana**' && note.size === 'lg', JSON.stringify(note))
+  report.check('post-it renders on its card', await page.evaluate("document.querySelector('.note-postit.note-lg strong')?.textContent === 'Ana'"))
   await screenshot(page, report.file('l3-02-content.png'))
 }
 

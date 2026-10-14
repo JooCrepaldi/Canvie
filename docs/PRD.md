@@ -97,17 +97,19 @@ O produto não usa Win + T porque o Explorer reserva a combinação.
 ## 6. Modelo do documento
 
     CanvasDoc {
-      version: 1,
+      version: 2,
       revision: number,
       area: { x, y, width, height } | null,
-      background: 'paper' | 'transparent',
+      background: 'paper' | 'white' | 'black' | 'yellow' | 'transparent',
       strokes: Stroke[],
       notes: Note[],
       camera: Camera
     }
 
-    Stroke { id, points, color, width }
-    Note { id, x, y, text, size: 'small' | 'medium' | 'large', kind: 'text' | 'postit' }
+    Stroke { id, points, color, width, brush: 'pen' | 'highlighter' }
+    Note { id, x, y, text, size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', font: 'serif' | 'sans' | 'mono', align: 'left' | 'center' | 'right', kind: 'text' | 'postit' }
+
+O formato é o v2 desde a L8 da 0.0.2. A interface do primeiro ciclo continua usando só `sm`, `md` e `lg`, `paper` e `transparent`, a caneta, `sans` e `left`. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
 
 A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
 

@@ -10,18 +10,18 @@ import { areaRect, screenshot, writeRaw } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 import { captureScreen, probeWindow, screenPixels } from './lib/win32.mjs'
 
-const DOC_KEY = 'canvie.document.v1'
+const DOC_KEY = 'canvie.document'
 const AREA = { x: 160, y: 140, width: 520, height: 340 }
 const IDLE_MS = 20_000
 const DOCUMENT = {
-  version: 1,
+  version: 2,
   revision: 3,
   area: AREA,
   background: 'paper',
-  strokes: [{ id: 1, points: Array.from({ length: 12 }, (_, step) => ({ x: -200 + step * 20, y: 80 + Math.sin(step) * 10 })), color: '#2563EB', width: 3 }],
+  strokes: [{ id: 1, points: Array.from({ length: 12 }, (_, step) => ({ x: -200 + step * 20, y: 80 + Math.sin(step) * 10 })), color: '#2563EB', width: 3, brush: 'pen' }],
   notes: [
-    { id: 2, x: -230, y: -140, text: '## Fixo no desktop\n\n| a | b |\n| --- | --- |\n| 1 | 2 |', size: 'medium', kind: 'text' },
-    { id: 3, x: 20, y: -130, text: 'Post-it **fixo**', size: 'large', kind: 'postit' },
+    { id: 2, x: -230, y: -140, text: '## Fixo no desktop\n\n| a | b |\n| --- | --- |\n| 1 | 2 |', size: 'md', font: 'sans', align: 'left', kind: 'text' },
+    { id: 3, x: 20, y: -130, text: 'Post-it **fixo**', size: 'lg', font: 'sans', align: 'left', kind: 'postit' },
   ],
   camera: { x: 0, y: 0, zoom: 1 },
 }

@@ -33,8 +33,8 @@ import {
 } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 
-const DOC_KEY = 'canvie.document.v1'
-const BACKUP_KEY = 'canvie.document.invalid.v1'
+const DOC_KEY = 'canvie.document'
+const BACKUP_KEY = 'canvie.document.invalid'
 const SETTLE_MS = 350 + 400
 const AREA_START = { x: 20, y: 70 }
 const AREA_END = { x: 880, y: 590 }
@@ -92,9 +92,10 @@ function largeDocument(strokeCount, pointsPerStroke, revision) {
     })),
     color: '#1F2328',
     width: 3,
+    brush: 'pen',
   }))
   const area = { x: AREA_START.x, y: AREA_START.y, width: AREA_END.x - AREA_START.x, height: AREA_END.y - AREA_START.y }
-  return { version: 1, revision, area, background: 'paper', strokes, notes: [], camera: { x: 0, y: 0, zoom: 1 } }
+  return { version: 2, revision, area, background: 'paper', strokes, notes: [], camera: { x: 0, y: 0, zoom: 1 } }
 }
 
 async function freshBoot() {
@@ -206,13 +207,13 @@ async function writeFailure() {
 }
 
 async function invalidPayloads() {
-  const valid = { version: 1, revision: 4, area: { x: 20, y: 70, width: 400, height: 300 }, background: 'paper', strokes: [], notes: [], camera: { x: 0, y: 0, zoom: 1 } }
-  const stroke = { id: 1, points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], color: '#1F2328', width: 3 }
+  const valid = { version: 2, revision: 4, area: { x: 20, y: 70, width: 400, height: 300 }, background: 'paper', strokes: [], notes: [], camera: { x: 0, y: 0, zoom: 1 } }
+  const stroke = { id: 1, points: [{ x: 0, y: 0 }, { x: 1, y: 1 }], color: '#1F2328', width: 3, brush: 'pen' }
   const payloads = [
     ['truncated JSON', '{"version":1,"revision":3,"strokes":[{"id":1'],
-    ['future version with 2 MB of content', JSON.stringify({ ...valid, version: 2, layers: 'x'.repeat(2_000_000) })],
+    ['future version with 2 MB of content', JSON.stringify({ ...valid, version: 3, layers: 'x'.repeat(2_000_000) })],
     ['L2 document without area or background', JSON.stringify({ version: 1, revision: 5, strokes: [stroke], notes: [], camera: { x: 0, y: 0, zoom: 1 } })],
-    ['duplicate ids', JSON.stringify({ ...valid, strokes: [stroke], notes: [{ id: 1, x: 0, y: 0, text: 'a', size: 'medium', kind: 'text' }] })],
+    ['duplicate ids', JSON.stringify({ ...valid, strokes: [stroke], notes: [{ id: 1, x: 0, y: 0, text: 'a', size: 'md', font: 'sans', align: 'left', kind: 'text' }] })],
     ['zoom outside the camera range', JSON.stringify({ ...valid, camera: { x: 0, y: 0, zoom: 99 } })],
   ]
   for (const [index, [name, payload]] of payloads.entries()) {

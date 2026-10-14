@@ -40,6 +40,12 @@ A L7 roda na build instalada. `l7-install.ps1` instala o instalador mais recente
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l7-installed.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l2-persistence.ps1 -Exe "$env:LOCALAPPDATA\Canvie\canvie.exe"
 
+A L8 prova a migração com um documento real gravado por uma build anterior à L8. Por padrão, essa build é o Canvie instalado pela L7; `-LegacyExe` aponta para outra:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l8-document-v2.ps1
+
+Desde a L8, as suítes leem o documento em `canvie.document` e a cópia de payload inválido em `canvie.document.invalid`.
+
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
 Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
@@ -179,6 +185,21 @@ A mesma build passou as suítes anteriores com `-Exe` apontando para o executáv
 | Working set depois de 60 s, canvie.exe e 6 processos do WebView2 | 350,6 MB | 349,9 MB |
 | CPU em repouso | 0,28 s por minuto | 0,08 s por minuto |
 | Tempo da transição | 30 ms (Fixar no desktop até Wall) | 5 ms (Ctrl + Alt + T até Edit) |
+
+## Evidência registrada em 2026-10-14: L8
+
+`scripts/e2e/l8-document-v2.ps1` passou 23 de 23 na build release, com o perfil compartilhado entre a build instalada da L7 e a build da L8:
+
+- pela interface, a build da L7 gravou um documento v1 na revisão 7: área de 800 × 520, três traços em preto, azul e vermelho, uma nota média com tabela, um post-it grande e fundo transparente;
+- a build da L8 abriu o mesmo perfil sem aviso de recuperação e não gravou nada antes da primeira edição. Ela mostrou a mesma área, a tabela, o post-it, a nota em 18 px e o post-it em 24 px, com os traços desenhados;
+- o primeiro traço gravou `canvie.document` na versão 2, revisão 8. Os três traços antigos ficaram com id, cor, largura e pontos iguais, com `brush: pen`. As notas ficaram com id, texto e posição iguais, `md` e `lg`, `sans` e `left`. Área, fundo e câmera não mudaram;
+- `canvie.document.v1` ficou idêntica, caractere por caractere, antes e depois do save v2;
+- matar o processo e abrir de novo trouxe o mesmo v2;
+- um v2 com todos os valores novos renderizou: 12 px em Georgia, 32 px em Cascadia Mono ao centro, 48 px à direita, post-it em serifa, texto claro sobre o fundo preto, marca-texto com 7 272 pixels a cerca de 35% de opacidade, e fundos preto, branco e amarelo pintados;
+- a versão 3 e um v1 corrompido sozinho abriram o fluxo de recuperação; o v1 corrompido ficou intocado na própria chave.
+- sobre o fundo preto, o editor de uma nota manteve o texto escuro no campo claro, com a fonte e o tamanho da nota. A primeira versão da regra que clareia o texto no fundo preto pegava também o editor; a revisão encontrou o defeito, e a checagem entrou na suíte.
+
+Na mesma build, a regressão passou: L2 41 de 41, L3 27 de 27, L4 15 de 15, L5 24 de 24 e L6 19 de 19 sem reiniciar o Explorer. Na L4, a checagem da pintura sobre o desktop não rodou porque a tela estava coberta.
 
 ### Pendências manuais da L7
 

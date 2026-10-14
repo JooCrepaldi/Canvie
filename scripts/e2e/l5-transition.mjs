@@ -13,7 +13,7 @@ import { areaRect, clickElement, defineArea, drag, FILLER_KEY, fillStorage, noti
 import { Report } from './lib/report.mjs'
 import { probeWindow } from './lib/win32.mjs'
 
-const DOC_KEY = 'canvie.document.v1'
+const DOC_KEY = 'canvie.document'
 const WEBVIEW2_DEFAULT_ARGS = '--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection'
 
 const { values: options } = parseArgs({

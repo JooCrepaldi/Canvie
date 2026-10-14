@@ -22,7 +22,7 @@ O localStorage aceita cerca de 5,24 milhões de caracteres por origem, somando t
 ## Consequências
 
 - Quem usava a 0.0.1 guarda o documento duas vezes depois da primeira edição. Num documento muito grande, isso reduz pela metade o espaço livre do localStorage. Remover a cópia v1 exige uma decisão futura.
-- Se a 0.0.1 for aberta de novo, ela lê `canvie.document.v1` e mostra o canvas de antes da migração, sem as edições feitas na 0.0.2.
+- Se a 0.0.1 for aberta de novo, ela lê `canvie.document.v1` e mostra o canvas de antes da migração, sem as edições feitas na 0.0.2. O que ela gravar fica nessa chave antiga, e a 0.0.2 continua lendo `canvie.document`, então essas edições não aparecem ao voltar para a 0.0.2.
 - As próximas migrações não precisam de chave nova: o carregador lê `version` e migra no mesmo lugar.
 - A cópia de payload inválido da 0.0.1, em `canvie.document.invalid.v1`, fica onde está e não é mais lida.
 - Os E2E usam as chaves novas, e a L8 prova a migração com um documento gravado por uma build anterior à L8.

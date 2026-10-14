@@ -19,6 +19,8 @@ Para a build instalada:
     Set-Location frontend
     npm run tauri build
 
+Desde a L7, essa build também gera o instalador NSIS por usuário em `%LOCALAPPDATA%\canvie-target\release\bundle\nsis`. A configuração está em `bundle` no tauri.conf.json: `installMode: currentUser`, idioma português do Brasil, sem elevação. O instalador nunca entra no Git.
+
 O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máquina.
 
 Um rustc que termina com `0xc0000409, STATUS_STACK_BUFFER_OVERRUN` aqui é falta de memória do LLVM: o log mostra `rustc-LLVM ERROR: out of memory` logo antes. A máquina tem 6 GB. Feche outros servidores de desenvolvimento e páginas pesadas e rode o build de novo; o Cargo reaproveita os crates já compilados.
@@ -31,6 +33,12 @@ Os E2E das camadas rodam depois de `npm run tauri build`, um de cada vez, porque
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l4-fixed-area.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l5-transition.ps1
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l6-lifecycle.ps1
+
+A L7 roda na build instalada. `l7-install.ps1` instala o instalador mais recente em modo silencioso, abre o Canvie pelo atalho do menu Iniciar com o perfil real, só para abrir e fechar, desinstala e instala de novo. As outras suítes aceitam `-Exe` para rodar no executável instalado:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l7-install.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l7-installed.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l2-persistence.ps1 -Exe "$env:LOCALAPPDATA\Canvie\canvie.exe"
 
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
@@ -146,6 +154,40 @@ O flush antes de `quit_app` não tem E2E: o envio de uma tecla real abre um Powe
 Na L4, a checagem da área pintada sobre o desktop rodou pela primeira vez, porque havia uma região de 240 × 160 px sem janelas, e leu o bege exato, rgb(244, 236, 220). Antes, `screen-pixel.ps1` devolvia `[r, g, b]` em vez de `[[r, g, b]]` para um único ponto, porque o PowerShell achata a saída de um pipeline com um array só, e a checagem falhava mesmo com a cor certa.
 
 As suítes que abrem a Edição em tela cheia (L2, L3 e L5) mostram o canvas sobre as janelas abertas e recebem o mouse e o teclado de quem estiver usando a máquina. Uma execução enquanto o usuário trabalhava perdeu o foco do editor de nota e um pin; com a máquina ociosa, as mesmas suítes passaram. Rode-as sem usar o computador.
+
+## Evidência registrada em 2026-10-14: L7
+
+Instalador NSIS `Canvie_0.0.1_x64-setup.exe`, de 1,9 MB, num monitor de 1920 × 1080 a 100%.
+
+`l7-install.ps1` passou 10 de 10:
+
+- a instalação silenciosa terminou com código 0 em 2,9 s, sem pedir elevação, registrada só em HKCU e com o executável em `%LOCALAPPDATA%\Canvie`;
+- o atalho do menu Iniciar aponta para o executável instalado, abre o Canvie e o log registra a abertura;
+- a desinstalação silenciosa removeu o executável, o registro e o atalho, e manteve `%APPDATA%\com.canvie.app`;
+- uma segunda instalação funcionou depois da desinstalação, e o Canvie ficou instalado.
+
+Na build instalada, `l7-installed.ps1` passou 11 de 11:
+
+- o Tab real começa no pegador e percorre os 16 controles habilitados da toolbar na ordem do DOM, cada um com nome acessível e contorno de foco de 2 px;
+- E e B trocam entre Borracha e Pincel, e Ctrl + Z e Ctrl + Y desfazem e refazem um traço pelo teclado real;
+- Fixar no desktop chegou a Wall em 30 ms, e Ctrl + Alt + T chegou a Edit em 5 ms.
+
+A mesma build passou as suítes anteriores com `-Exe` apontando para o executável instalado: L2 41 de 41, L3 27 de 27, L4 15 de 15, L5 24 de 24 e L6 27 de 27, com os dois reinícios do Explorer. Na build instalada, a área voltou ao Progman 9,1 s depois da queda do Explorer e 7,9 s depois da saída normal, pelo reinício do Canvie. A checagem da L4 que confere a área pintada sobre o desktop não rodou, porque a tela estava toda coberta por janelas.
+
+| Métrica da build instalada | Fixo | Edição |
+| --- | --- | --- |
+| Working set depois de 60 s, canvie.exe e 6 processos do WebView2 | 350,6 MB | 349,9 MB |
+| CPU em repouso | 0,28 s por minuto | 0,08 s por minuto |
+| Tempo da transição | 30 ms (Fixar no desktop até Wall) | 5 ms (Ctrl + Alt + T até Edit) |
+
+### Pendências manuais da L7
+
+Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso ficam com quem usa a máquina, e a L7 só fecha depois deles:
+
+1. **Reinício do Windows:** com uma área fixa e um traço salvo, reinicie o Windows, abra o Canvie pelo menu Iniciar e confira a mesma área e o mesmo traço.
+2. **Escala de tela:** em Configurações > Sistema > Tela, troque a escala para 125%, 150% e 200%. Em cada uma, rode `l4-fixed-area.ps1` e `l5-transition.ps1` com `-Exe` e confira que a área e a toolbar aparecem inteiras.
+3. **Narrador:** ligue com Ctrl + Win + Enter, entre em Edição e percorra a toolbar com Tab. Cada controle precisa ser lido em português.
+4. **Alto contraste:** ligue com Alt esquerdo + Shift esquerdo + Print Screen. Em Edição, a toolbar e o contorno de foco precisam continuar visíveis.
 
 ## Falhas conhecidas
 

@@ -82,7 +82,7 @@ A aba é o único controle de arraste, com pointer capture, e a posição fica l
 
 ContextMenu.tsx abre em Edit no ponto do clique, quando o botão direito cai dentro da área, ou no centro da área com Shift + F10 e a tecla de menu. Um listener de `contextmenu` no window impede o menu do WebView em Edit, exceto em campos de texto, que mantêm recortar, copiar e colar.
 
-O menu tem `role="menu"`, foco no primeiro item, setas, Home e End. Esc fecha o menu e para a propagação, para não fixar a área. Com o menu ou o diálogo aberto, o listener de teclado do App não age.
+O menu tem `role="menu"`, foco no primeiro item, setas, Home e End. Tab e Shift + Tab ficam presos no menu e chegam ao campo do zoom. Esc fecha o menu e para a propagação, para não fixar a área. Com o menu ou o diálogo aberto, o listener de teclado do App não age.
 
 - Tema faz commit do background.
 - Redefinir área abre o seletor.

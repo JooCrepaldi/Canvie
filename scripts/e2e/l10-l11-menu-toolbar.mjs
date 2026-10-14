@@ -229,6 +229,13 @@ async function menuOpens() {
   report.check('the menu focuses its first item', (await focusedName(page)) === 'Reposicionar toolbar')
   await pressArrowDown(page)
   report.check('arrows move through the items', (await focusedName(page))?.startsWith('Bege'))
+  await press(page, 'Home', { code: 'Home', keyCode: 36 })
+  const cycle = []
+  for (const modifiers of [8, 8, 0, 0]) {
+    await press(page, 'Tab', { code: 'Tab', keyCode: 9, modifiers })
+    cycle.push(await focusedName(page))
+  }
+  report.check('Tab stays inside the menu and reaches the zoom field', cycle.join('|') === 'Limpar canvas…|Zoom em porcentagem|Limpar canvas…|Reposicionar toolbar', cycle.join('|'))
   await photo(page, 'l10-01-menu.png', { x: menu.x - 20, y: menu.y - 20, width: menu.width + 40, height: menu.height + 40 })
   await pressEscape(page)
   await sleep(200)

@@ -117,7 +117,7 @@ Escrever uma nota não mostra caixa. O editor fica no lugar exato da nota, sem b
 - O foco inicial de Edição vai para o canvas ou para a primeira ferramenta.
 - Tab percorre a aba, as ferramentas e Fixar, nessa ordem; com um popover aberto, as opções dele vêm depois.
 - Esc cancela o editor aberto; sem editor, fecha o popover; sem popover, limpa a seleção; sem seleção, salva e volta à Parede. Com o menu ou o diálogo aberto, Esc só fecha o menu ou cancela o diálogo.
-- No menu, as setas, Home e End percorrem os itens. No diálogo de limpeza, o foco começa em Cancelar e Tab alterna entre os dois botões.
+- No menu, as setas, Home e End percorrem os itens, e Tab e Shift + Tab ficam dentro do menu e chegam ao campo do zoom. No diálogo de limpeza, o foco começa em Cancelar e Tab alterna entre os dois botões.
 - A nota selecionada ganha um contorno escuro de 1,5 px, a 6 px dela, com um halo claro, sem cor de destaque. Uma barra contextual escura, com três botões de 32 px para alinhar, fica 46 px acima do canto da nota. O botão ativo usa branco translúcido.
 - Tooltips mostram nome e atalho depois de um pequeno atraso. Eles não substituem o nome acessível.
 - O arraste começa apenas na aba.

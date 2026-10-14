@@ -228,13 +228,13 @@ Na mesma build, a regressão passou: L3 27 de 27, L4 15 de 15, L5 24 de 24, L6 1
 
 ## Evidência registrada em 2026-10-14: L10 e L11
 
-`scripts/e2e/l10-l11-menu-toolbar.ps1` passou 51 de 51 na build release final, num monitor de 1920 × 1080 a 100%, com a área de trabalho terminando em 1032:
+`scripts/e2e/l10-l11-menu-toolbar.ps1` passou 52 de 52 na build release final, num monitor de 1920 × 1080 a 100%, com a área de trabalho terminando em 1032:
 
 - a toolbar abriu centralizada (centro em 960) com a base em 1012, 20 px acima da taskbar, na ordem aba, Texto, Post-it, Pincel, Mão e Fixar;
 - a aba ficou com opacidade 0 em repouso e 1 com o ponteiro na barra e com o foco do Tab; o Tab percorreu aba, ferramentas e Fixar na ordem;
 - o popover do Pincel abriu acima da barra; a Borracha manteve o Pincel pressionado; uma tinta voltou à Caneta e desenhou em vermelho; as ferramentas não moveram a barra; o primeiro Esc fechou o popover e manteve a ferramenta e a Edição; Texto abriu os tamanhos com Médio pressionado;
 - o editor de uma nota nova não teve borda, fundo, contorno nem placeholder; os tamanhos apareceram durante a escrita em Seleção; Texto grande manteve o editor aberto; a nota renderizada ficou em 280 × 360 com a mesma largura do editor, 224,6 px;
-- o botão direito abriu o menu no ponteiro, em 860 × 200, sem desenhar com o Pincel ativo; o foco foi para o primeiro item, as setas andaram, Esc fechou sem fixar e, fora da área, nada abriu; Shift + F10 abriu no centro da área, em 580 × 390;
+- o botão direito abriu o menu no ponteiro, em 860 × 200, sem desenhar com o Pincel ativo; o foco foi para o primeiro item, as setas andaram, Tab e Shift + Tab ficaram no menu e chegaram ao campo do zoom, Esc fechou sem fixar e, fora da área, nada abriu; Shift + F10 abriu no centro da área, em 580 × 390;
 - os cinco temas foram gravados e pintados, e o menu marcou Preto;
 - Zoom 200%, 50% e 150% digitado aplicaram; 1000 parou em 400%; depois de a Mão empurrar a nota para fora da vista, Ajustar à tela a trouxe de volta com zoom 2,28, e Ctrl + Z desfez;
 - Limpar abriu com o foco em Cancelar; Enter em Cancelar e Esc mantiveram tudo; Tab foi para Limpar, e Enter removeu traços e notas e manteve área, tema e câmera; Ctrl + Z trouxe tudo de volta;
@@ -243,7 +243,7 @@ Na mesma build, a regressão passou: L3 27 de 27, L4 15 de 15, L5 24 de 24, L6 1
 
 Na build anterior, só com a aba antiga, a regressão passou: L2 41 de 41, L3 27 de 27, L5 25 de 25, L8 23 de 23 e L9 25 de 25. A primeira L2, logo depois da suíte da L10 e da L11, falhou só na checagem de long tasks (714 e 448 ms); a repetição não teve nenhuma long task. A L5 mudou para o Esc em dois passos com o Pincel. A L8 passou a esperar texto claro no editor sobre o tema preto, porque o editor não tem mais campo próprio. A L4, a L6 e a L7 não rodaram: o estado Fixo, o ciclo de vida e o instalador não mudaram, e o fechamento da 0.0.2 roda a matriz da L7 de novo. O item Reposicionar toolbar do tray não foi acionado pelo E2E, pelo mesmo motivo do resto do tray.
 
-O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar nova levaram o JavaScript de 345,55 kB para 359,78 kB minificado (de 118,87 kB para 124,03 kB com gzip).
+O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar nova levaram o JavaScript de 345,55 kB para 360,01 kB minificado (de 118,87 kB para 124,09 kB com gzip).
 
 ### Pendências manuais da L7
 

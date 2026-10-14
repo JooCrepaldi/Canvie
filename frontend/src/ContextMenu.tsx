@@ -32,6 +32,13 @@ function moveFocus(menu: HTMLElement, key: string) {
   items[next]?.focus()
 }
 
+// Tab stays inside the open menu and also reaches the zoom field.
+function cycleFocus(menu: HTMLElement, backwards: boolean) {
+  const controls = [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"], input')]
+  const index = controls.findIndex((control) => control === document.activeElement)
+  controls[(index + (backwards ? -1 : 1) + controls.length) % controls.length]?.focus()
+}
+
 export function ContextMenu(props: ContextMenuProps) {
   const { x, y, background, zoom, onClose } = props
   const menuRef = useRef<HTMLDivElement>(null)
@@ -59,7 +66,13 @@ export function ContextMenu(props: ContextMenuProps) {
       onClose()
       return
     }
-    if (event.target instanceof HTMLInputElement || !menuRef.current) return
+    if (!menuRef.current) return
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      cycleFocus(menuRef.current, event.shiftKey)
+      return
+    }
+    if (event.target instanceof HTMLInputElement) return
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
     event.preventDefault()
     moveFocus(menuRef.current, event.key)

@@ -32,7 +32,7 @@ Ação que salva a alteração atual e devolve a área de Edição para o estado
 
 ## Nota
 
-Bloco de texto em Markdown colocado no canvas, com um de três tamanhos: pequeno, médio ou grande.
+Bloco de texto em Markdown colocado no canvas, em uma de três fontes (Serifa, Sem serifa ou Mono) e um de seis tamanhos, de muito pequeno a extra grande.
 
 ## Post-it
 
@@ -40,7 +40,11 @@ Nota em Markdown sobre um cartão amarelo.
 
 ## Traço
 
-Sequência de pontos criada pelo pincel, em preto, azul ou vermelho. A borracha remove traços e notas em uma ação que pode ser desfeita.
+Sequência de pontos criada pelo pincel, com a caneta ou o marca-texto, em uma de seis tintas. A borracha remove traços e notas em uma ação que pode ser desfeita.
+
+## Marca-texto
+
+Pincel largo e translúcido, que deixa ver o que está embaixo. Ele fica abaixo das notas e nunca esconde o texto.
 
 ## Seleção
 

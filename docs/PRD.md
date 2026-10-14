@@ -16,8 +16,8 @@ O produto tem uma área, um canvas e um documento, locais e no monitor principal
 
 - área definida ao arrastar um retângulo, salva e redefinível;
 - tema da área em bege, branco, preto, amarelo ou transparente;
-- um pincel em preto, azul ou vermelho;
-- notas em Markdown com uma fonte em três tamanhos;
+- um pincel com caneta e marca-texto, em seis tintas;
+- notas em Markdown em três fontes e seis tamanhos;
 - post-its;
 - editar, mover e apagar notas;
 - borracha;
@@ -59,11 +59,12 @@ O frontend recebe o evento de estado do backend. Ele não inventa Edição em Re
 - O editor mostra o Markdown bruto, sem caixa: só o cursor aparece, no lugar onde a nota vai ficar. Ctrl + Enter ou um clique fora conclui; Esc cancela. Uma nota esvaziada é removida.
 - Fora do editor, a nota mostra o Markdown renderizado: títulos, listas, ênfase, código, citações e tabelas. HTML escrito pelo usuário aparece como texto, e links não navegam.
 - Edição começa em Seleção, o estado sem ferramenta pressionada. Em Seleção, um clique seleciona uma nota ou um post-it, arrastar move, Delete ou Backspace apaga, e uma barra acima da nota alinha o texto. Um duplo clique no canvas vazio, em Seleção ou com a Mão, começa uma nota de texto; um duplo clique numa nota a edita. A Mão (H) arrasta só a câmera. A letra da ferramenta ativa, ou um clique nela, volta para Seleção, e criar uma nota ou um post-it também volta, com o item selecionado. Escolher uma tinta escolhe o Pincel ([0010](../decisions/0010-implicit-selection-and-hand.md)).
-- O tamanho fica no popover do Texto e do Post-it, que também aparece enquanto qualquer nota está sendo escrita. Ele vale para a próxima nota e para a nota em edição.
+- Fonte e tamanho ficam no popover do Texto e do Post-it, que também aparece enquanto qualquer nota está sendo escrita. Eles valem para a próxima nota e para a nota em edição. As fontes são Serifa (Georgia), Sem serifa (Segoe UI Variable) e Mono (Cascadia Mono, com Consolas de reserva); os tamanhos vão de 12 a 48 px.
+- O Pincel desenha com a Caneta, opaca, ou com o Marca-texto, largo e a 35% de opacidade, em seis tintas: preta, azul, vermelha, verde, amarela e branca. Os traços ficam abaixo das notas, então o marca-texto nunca esconde o texto.
 
 ### Toolbar e menu
 
-- A toolbar tem [Texto, Post-it, Pincel, Mão] e [Fixar]. O Pincel abre um popover com Caneta, Borracha e as três tintas. Desfazer e Refazer ficam só no teclado ([0009](../decisions/0009-toolbar-tab-and-icons.md)).
+- A toolbar tem [Texto, Post-it, Pincel, Mão] e [Fixar]. O Pincel abre um popover com Caneta, Marca-texto, Borracha e as seis tintas. Desfazer e Refazer ficam só no teclado ([0009](../decisions/0009-toolbar-tab-and-icons.md)).
 - A toolbar abre centralizada acima da taskbar. A aba acima dela aparece com o ponteiro ou com o foco e arrasta a toolbar. A posição arrastada fica salva como preferência. Uma posição inválida ou fora da tela volta ao padrão e registra um aviso. **Reposicionar toolbar**, no menu ou no tray, volta ao padrão.
 - O botão direito dentro da área, Shift + F10 ou a tecla de menu abrem o menu do canvas: Reposicionar toolbar, Tema, Redefinir área, Ajustar à tela, Zoom e Limpar canvas. O Zoom tem 50%, 100%, 200% e um campo, limitado de 25% a 400%. Ajustar à tela enquadra todo o conteúdo com margem; num canvas vazio, volta à câmera padrão.
 - Limpar canvas pede confirmação, mantém a área, o tema e a câmera, e Ctrl + Z desfaz. O botão direito nunca desenha, apaga nem escreve.
@@ -121,7 +122,7 @@ O produto não usa Win + T porque o Explorer reserva a combinação.
     Stroke { id, points, color, width, brush: 'pen' | 'highlighter' }
     Note { id, x, y, text, size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', font: 'serif' | 'sans' | 'mono', align: 'left' | 'center' | 'right', kind: 'text' | 'postit' }
 
-O formato é o v2 desde a L8 da 0.0.2. A interface usa os cinco temas desde a L10, o alinhamento desde a L9, e só `sm`, `md` e `lg`, a caneta e `sans` até a L12. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
+O formato é o v2 desde a L8 da 0.0.2. A interface oferece todos os valores desde a L12: os cinco temas, o alinhamento, as três fontes, os seis tamanhos e os dois pincéis. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
 
 A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
 

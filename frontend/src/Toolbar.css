@@ -168,6 +168,11 @@
   white-space: nowrap;
 }
 
+.toolbar-popover.is-below {
+  top: calc(100% + 12px);
+  bottom: auto;
+}
+
 .toolbar-popover {
   display: grid;
   gap: 10px;
@@ -233,7 +238,7 @@
 }
 
 .popover-size {
-  width: 46px;
+  width: 40px;
   height: 40px;
   padding: 0;
   border: 0;
@@ -245,6 +250,10 @@
   cursor: pointer;
 }
 
+.popover-size-xs {
+  font-size: 10px;
+}
+
 .popover-size-sm {
   font-size: 12px;
 }
@@ -254,7 +263,33 @@
 }
 
 .popover-size-lg {
-  font-size: 19px;
+  font-size: 18px;
+}
+
+.popover-size-xl {
+  font-size: 22px;
+}
+
+.popover-size-xxl {
+  font-size: 27px;
+}
+
+/* Each font button previews its own font, with the note's fallbacks. */
+.popover-font {
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.popover-font-serif {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.popover-font-sans {
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+.popover-font-mono {
+  font-family: "Cascadia Mono", Consolas, monospace;
 }
 
 .toolbar-status {

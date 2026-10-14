@@ -30,7 +30,9 @@ O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 | Token | Valor | Uso |
 | --- | --- | --- |
 | font.ui | Segoe UI Variable, Segoe UI, sans-serif | Toolbar e mensagens |
-| font.content | Segoe UI Variable, Segoe UI, sans-serif | Notas e texto no canvas |
+| font.content | Segoe UI Variable, Segoe UI, sans-serif | Notas em Sem serifa, a fonte padrão |
+| font.serif | Georgia, Times New Roman, serif | Notas em Serifa |
+| font.mono | Cascadia Mono, Consolas, monospace | Notas em Mono |
 | size.sm | 12 px | Label auxiliar |
 | size.md | 14 px | Botões e texto padrão |
 | size.lg | 16 px | Texto de nota |
@@ -58,11 +60,19 @@ O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 | color.inkBlack | #1F2328 | Tinta preta e texto das notas |
 | color.inkBlue | #2563EB | Tinta azul |
 | color.inkRed | #DC2626 | Tinta vermelha |
+| color.inkGreen | #16A34A | Tinta verde |
+| color.inkYellow | #FACC15 | Tinta amarela, a do marca-texto clássico |
+| color.inkWhite | #F8FAFC | Tinta branca, legível sobre o tema preto |
+| brush.pen | 3 px, opaca | Caneta |
+| brush.highlighter | 18 px, 35% de opacidade | Marca-texto |
 | color.postit | #FDE68A | Cartão do post-it |
 | color.dim | rgba(0,0,0,0.32) | Escurecimento fora da área em Edição |
+| note.xs | 12 px | Nota muito pequena |
 | note.small | 14 px | Nota pequena |
-| note.medium | 18 px | Nota média |
+| note.medium | 18 px | Nota média, o tamanho padrão |
 | note.large | 24 px | Nota grande |
+| note.xl | 32 px | Nota muito grande |
+| note.xxl | 48 px | Nota extra grande |
 
 Use a fonte e a escala do Windows. Respeite alto contraste e redução de movimento.
 
@@ -90,8 +100,10 @@ A aba é uma lingueta de 64 × 24 px que sai da borda de cima da barra, com o í
 
 Os popovers abrem 40 px acima da barra, em color.surfaceRaised e radius.lg:
 
-- **Pincel e Borracha:** Caneta e Borracha, um divisor e as amostras de tinta de 26 px. A opção ativa usa color.selected com um contorno interno branco; a tinta ativa ganha um anel branco de 2 px.
-- **Texto e Post-it:** os três tamanhos, como botões "A" de 46 × 40 px. Os tamanhos também aparecem enquanto qualquer nota está sendo escrita, nova ou existente.
+- **Pincel e Borracha:** Caneta, Marca-texto e Borracha, um divisor e as seis amostras de tinta de 26 px. A opção ativa usa color.selected com um contorno interno branco; a tinta ativa ganha um anel branco de 2 px.
+- **Texto e Post-it:** Serifa, Sem serifa e Mono, cada botão escrito na própria fonte, um divisor e os seis tamanhos, como botões "A" de 40 × 40 px. Fonte e tamanho também aparecem enquanto qualquer nota está sendo escrita, nova ou existente.
+
+Um popover é mais largo que a barra. Perto de uma lateral da tela, ele desliza para ficar a 8 px da borda. Perto do topo, abre 12 px abaixo da barra.
 
 ## Menu do canvas
 
@@ -108,7 +120,7 @@ O menu do botão direito guarda as ações do canvas que saíram da barra.
 
 A área é o único lugar pintado. No estado Fixo, ela mostra o fundo escolhido e o conteúdo, sem moldura. Em Edição, ganha uma borda fina, e o resto da tela recebe o dim.
 
-Notas usam a fonte de conteúdo, texto em color.inkBlack e um dos três tamanhos. Sobre o tema preto, o texto das notas usa color.ink. Títulos do Markdown crescem a partir desse tamanho. Tabelas têm bordas finas. Post-its são cartões color.postit com sombra curta e texto em color.inkBlack. Sobre o fundo transparente, a legibilidade depende do wallpaper; o post-it é a opção para texto sempre legível.
+Notas usam uma das três fontes, texto em color.inkBlack e um dos seis tamanhos. Sobre o tema preto, o texto das notas usa color.ink. Títulos do Markdown crescem a partir desse tamanho. Tabelas têm bordas finas. Post-its são cartões color.postit com sombra curta e texto em color.inkBlack. Sobre o fundo transparente, a legibilidade depende do wallpaper; o post-it é a opção para texto sempre legível.
 
 Escrever uma nota não mostra caixa. O editor fica no lugar exato da nota, sem borda, fundo, contorno ou texto de exemplo, e só o cursor pisca. O texto cresce no lugar em que a nota vai aparecer. O post-it mantém o próprio cartão enquanto é escrito.
 

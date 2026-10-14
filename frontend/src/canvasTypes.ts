@@ -66,19 +66,31 @@ export type CanvasDoc = {
 // select is the state with no tool pressed (decision 0010).
 export type Tool = 'select' | 'hand' | 'brush' | 'text' | 'postit' | 'eraser'
 
+// Six inks, with at least one readable on every theme (decision 0008).
 export const INK_COLORS = [
   { id: 'black', label: 'preta', value: '#1F2328' },
   { id: 'blue', label: 'azul', value: '#2563EB' },
   { id: 'red', label: 'vermelha', value: '#DC2626' },
+  { id: 'green', label: 'verde', value: '#16A34A' },
+  { id: 'yellow', label: 'amarela', value: '#FACC15' },
+  { id: 'white', label: 'branca', value: '#F8FAFC' },
 ] as const
 
-export type Ink = (typeof INK_COLORS)[number]['value']
+// The six note sizes; their pixel sizes live in App.css.
+export const NOTE_SIZES: ReadonlyArray<{ id: NoteSize; label: string }> = [
+  { id: 'xs', label: 'muito pequeno' },
+  { id: 'sm', label: 'pequeno' },
+  { id: 'md', label: 'médio' },
+  { id: 'lg', label: 'grande' },
+  { id: 'xl', label: 'muito grande' },
+  { id: 'xxl', label: 'extra grande' },
+]
 
-// The sizes the toolbar offers; the six pixel sizes live in App.css.
-export const NOTE_SIZES: ReadonlyArray<{ id: NoteSize; short: string; label: string }> = [
-  { id: 'sm', short: 'P', label: 'pequeno' },
-  { id: 'md', short: 'M', label: 'médio' },
-  { id: 'lg', short: 'G', label: 'grande' },
+// Fonts that Windows installs; each falls back within its family in App.css.
+export const NOTE_FONT_OPTIONS: ReadonlyArray<{ id: NoteFont; label: string }> = [
+  { id: 'serif', label: 'Serifa' },
+  { id: 'sans', label: 'Sem serifa' },
+  { id: 'mono', label: 'Mono' },
 ]
 
 export const BACKGROUND_LABELS: Record<Background, string> = {

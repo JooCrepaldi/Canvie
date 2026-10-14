@@ -1,18 +1,21 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { Eraser, GripHorizontal, Hand, Pen, PenTool, Pin, StickyNote, Type, type LucideIcon } from 'lucide-react'
-import { INK_COLORS, NOTE_SIZES, type NoteSize, type Tool } from './canvasTypes'
+import { Eraser, GripHorizontal, Hand, Highlighter, Pen, PenTool, Pin, StickyNote, Type, type LucideIcon } from 'lucide-react'
+import { INK_COLORS, NOTE_FONT_OPTIONS, NOTE_SIZES, type Brush, type NoteFont, type NoteSize, type Tool } from './canvasTypes'
 import { reportIssue } from './diagnostics'
 import type { ToolbarPosition } from './preferences'
 import './Toolbar.css'
 
-// Brush holds Caneta, Borracha and the inks; size holds the text sizes.
+// Brush holds Caneta, Marca-texto, Borracha and the inks; size holds the
+// fonts and the sizes of the text.
 export type ToolbarPopover = 'brush' | 'size' | null
 
 type ToolbarProps = {
   tool: Tool
   ink: string
+  brush: Brush
   noteSize: NoteSize
+  noteFont: NoteFont
   popover: ToolbarPopover
   // null is the default place, centered above the taskbar.
   position: ToolbarPosition | null
@@ -20,8 +23,10 @@ type ToolbarProps = {
   canPin: boolean
   onToolChange: (tool: Tool) => void
   onDrawingToolChange: (tool: 'brush' | 'eraser') => void
+  onBrushChange: (brush: Brush) => void
   onInkChange: (ink: string) => void
   onNoteSizeChange: (size: NoteSize) => void
+  onNoteFontChange: (font: NoteFont) => void
   onPositionChange: (position: ToolbarPosition | null) => void
   onPin: () => void
 }
@@ -45,6 +50,10 @@ const TAB_HEIGHT = 31
 const TAB_OUTLINE = 'M0 24 A10 10 0 0 0 10 14 L10 10 A10 10 0 0 1 20 0 L64 0 A10 10 0 0 1 74 10 L74 14 A10 10 0 0 0 84 24'
 const TAB_FILL = `${TAB_OUTLINE} L84 25 L0 25 Z`
 const EDGE = 8
+// Space between the bar and a popover above it, clear of the tab.
+const POPOVER_GAP = 40
+
+type PopoverPlace = { shift: number; below: boolean }
 
 // The window covers the whole monitor, so the screen's available area tells
 // where the taskbar starts, in CSS pixels.
@@ -60,16 +69,34 @@ function clamp(left: number, top: number, width: number, height: number): Toolba
   }
 }
 
-// Size buttons keep focus in an open note editor, so the size applies to it.
+// Font and size buttons keep focus in an open note editor, so they apply to it.
 function keepEditorFocus(event: ReactMouseEvent<HTMLButtonElement>) {
   event.preventDefault()
 }
 
 export function Toolbar(props: ToolbarProps) {
-  const { tool, ink, noteSize, popover, position, pinning, canPin, onPositionChange } = props
+  const { tool, ink, brush, noteSize, noteFont, popover, position, pinning, canPin, onPositionChange } = props
   const rootRef = useRef<HTMLElement>(null)
   const dragRef = useRef<Drag | null>(null)
   const [dragPosition, setDragPosition] = useState<ToolbarPosition | null>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const [popoverPlace, setPopoverPlace] = useState<PopoverPlace>({ shift: 0, below: false })
+
+  // A popover is wider than the bar. Near a side of the screen it slides to
+  // stay inside; near the top it opens below the bar. It runs after every
+  // render, because the toolbar moves during a drag, and only sets state on
+  // a change.
+  useLayoutEffect(() => {
+    const element = popoverRef.current
+    const root = rootRef.current
+    if (!element || !root) return
+    const bar = root.getBoundingClientRect()
+    const { width, height } = element.getBoundingClientRect()
+    const centered = bar.left + bar.width / 2 - width / 2
+    const left = Math.min(window.innerWidth - width - EDGE, Math.max(EDGE, centered))
+    const next = { shift: Math.round(left - centered), below: bar.top - POPOVER_GAP - height < EDGE }
+    if (next.shift !== popoverPlace.shift || next.below !== popoverPlace.below) setPopoverPlace(next)
+  })
 
   // A saved place that no longer fits the screen, after a resolution change
   // for example, goes back to the default and leaves a line in the log.
@@ -113,6 +140,9 @@ export function Toolbar(props: ToolbarProps) {
   const style = placed
     ? { left: placed.left, top: placed.top }
     : { left: '50%', bottom: window.innerHeight - workAreaBottom() + DOCK_MARGIN, transform: 'translateX(-50%)' }
+
+  const popoverClass = popoverPlace.below ? 'toolbar-popover is-below' : 'toolbar-popover'
+  const popoverStyle = { translate: `${popoverPlace.shift}px 0` }
 
   return (
     <section ref={rootRef} className={dragPosition ? 'toolbar is-dragging' : 'toolbar'} aria-label="Ferramentas do canvas" data-tool={tool} style={style}>
@@ -165,11 +195,15 @@ export function Toolbar(props: ToolbarProps) {
         </div>
       </div>
       {popover === 'brush' && (
-        <div className="toolbar-popover" role="group" aria-label="Opções do pincel">
+        <div ref={popoverRef} className={popoverClass} style={popoverStyle} role="group" aria-label="Opções do pincel">
           <div className="popover-row">
-            <button className="popover-option" type="button" aria-label="Caneta" aria-pressed={tool === 'brush'} onClick={() => props.onDrawingToolChange('brush')}>
+            <button className="popover-option" type="button" aria-label="Caneta" aria-pressed={tool === 'brush' && brush === 'pen'} onClick={() => props.onBrushChange('pen')}>
               <Pen aria-hidden="true" />
               Caneta
+            </button>
+            <button className="popover-option" type="button" aria-label="Marca-texto" aria-pressed={tool === 'brush' && brush === 'highlighter'} onClick={() => props.onBrushChange('highlighter')}>
+              <Highlighter aria-hidden="true" />
+              Marca-texto
             </button>
             <button className="popover-option" type="button" aria-label="Borracha, atalho E" aria-pressed={tool === 'eraser'} title="Borracha · E" onClick={() => props.onDrawingToolChange('eraser')}>
               <Eraser aria-hidden="true" />
@@ -194,7 +228,24 @@ export function Toolbar(props: ToolbarProps) {
         </div>
       )}
       {popover === 'size' && (
-        <div className="toolbar-popover" role="group" aria-label="Tamanho do texto">
+        <div ref={popoverRef} className={popoverClass} style={popoverStyle} role="group" aria-label="Opções do texto">
+          <div className="popover-row">
+            {NOTE_FONT_OPTIONS.map((font) => (
+              <button
+                key={font.id}
+                className={`popover-option popover-font popover-font-${font.id}`}
+                type="button"
+                aria-label={`Fonte ${font.label}`}
+                aria-pressed={noteFont === font.id}
+                title={`Fonte ${font.label}`}
+                onMouseDown={keepEditorFocus}
+                onClick={() => props.onNoteFontChange(font.id)}
+              >
+                {font.label}
+              </button>
+            ))}
+          </div>
+          <div className="popover-divider" />
           <div className="popover-row">
             {NOTE_SIZES.map((size) => (
               <button

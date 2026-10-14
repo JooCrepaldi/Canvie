@@ -75,7 +75,7 @@ A camada registra uma decisão sobre onde guardar o v2: na chave atual, com a c�
 
 **Inclui:**
 
-- aba de arrastar em cima, grupo [Texto, Post-it, Pincel, Mão] e grupo [Fixar];
+- aba de arrastar em cima, que aparece só com o ponteiro sobre a toolbar ou com foco nela, grupo [Texto, Post-it, Pincel, Mão] e grupo [Fixar];
 - ícones do `lucide-react`, com nome acessível e tooltip com o atalho;
 - Fixar com alfinete e destaque, e o aviso de Salvando… e Tentar novamente junto da toolbar;
 - popover do Texto com os três tamanhos atuais e popover do Pincel com as três cores atuais e a Borracha;
@@ -87,7 +87,7 @@ A camada registra uma decisão sobre onde guardar o v2: na chave atual, com a c�
 
 **Falha tratada:** uma preferência inválida volta à posição padrão e registra um aviso no log. Um clique numa ferramenta nunca move a toolbar.
 
-**Done:** primeira abertura com a toolbar centralizada acima da taskbar; arrastar pela aba e ver a posição restaurada depois de matar e abrir o processo; uma preferência fora da tela voltar ao padrão; Reposicionar pelo menu; a ordem do Tab percorrer aba, ferramentas e Fixar; o aumento do bundle registrado.
+**Done:** primeira abertura com a toolbar centralizada acima da taskbar; a aba escondida em repouso e visível com o ponteiro na barra e com o foco do Tab; arrastar pela aba e ver a posição restaurada depois de matar e abrir o processo; uma preferência fora da tela voltar ao padrão; Reposicionar pelo menu; a ordem do Tab percorrer aba, ferramentas e Fixar; o aumento do bundle registrado.
 
 ## L12 — Valores prontos de texto e pincel
 

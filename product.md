@@ -57,7 +57,7 @@ Estas versões entram depois que a troca entre Fixo e Edição funcionar em uma 
 
 Continua uma área, um canvas e um documento. A ordem das camadas está em [ROADMAP-0.0.2.md](docs/ROADMAP-0.0.2.md).
 
-- toolbar de ícones com aba de arrastar em cima, centralizada no rodapé, com posição salva e **Reposicionar toolbar** ([0009](decisions/0009-toolbar-tab-and-icons.md));
+- toolbar de ícones com aba de arrastar em cima, que só aparece com o ponteiro sobre a toolbar, centralizada no rodapé, com posição salva e **Reposicionar toolbar** ([0009](decisions/0009-toolbar-tab-and-icons.md));
 - Seleção sem botão, Mão só para a câmera e duplo clique no canvas para escrever ([0010](decisions/0010-implicit-selection-and-hand.md));
 - alinhamento à esquerda, ao centro e à direita na nota selecionada;
 - popover do Texto com Serifa, Sem serifa e Mono e seis tamanhos;

@@ -138,18 +138,62 @@ export function pressLetter(page, letter, modifiers = 0) {
 export const pressEnter = (page, modifiers = 0) => press(page, 'Enter', { code: 'Enter', keyCode: 13, text: modifiers === 0 ? '\r' : undefined, modifiers })
 export const pressEscape = (page) => press(page, 'Escape', { code: 'Escape', keyCode: 27 })
 export const pressDelete = (page) => press(page, 'Delete', { code: 'Delete', keyCode: 46 })
+export const pressShiftF10 = (page) => press(page, 'F10', { code: 'F10', keyCode: 121, modifiers: 8 })
 
-const TOOL_KEYS = { 'Mão': 'h', Pincel: 'b', Nota: 't', 'Post-it': 'p', Borracha: 'e' }
+const TOOLS = {
+  Texto: { id: 'text', letter: 't' },
+  'Post-it': { id: 'postit', letter: 'p' },
+  Pincel: { id: 'brush', letter: 'b' },
+  Borracha: { id: 'eraser', letter: 'e' },
+  'Mão': { id: 'hand', letter: 'h' },
+}
+const LETTERS = Object.fromEntries(Object.values(TOOLS).map(({ id, letter }) => [id, letter]))
+
+// The toolbar mirrors the active tool; Seleção is 'select'.
+export const activeTool = (page) => page.evaluate("document.querySelector('.toolbar')?.dataset.tool ?? null")
 
 // Tools are toggles: the letter of the active tool goes back to Seleção.
 // Letters reach the app through the page, so they work under the area selector.
 export async function chooseTool(page, name) {
-  if ((await pressed(page, `${name},`)) !== 'true') await pressLetter(page, TOOL_KEYS[name])
+  if ((await activeTool(page)) !== TOOLS[name].id) await pressLetter(page, TOOLS[name].letter)
 }
 
-// Seleção is the state with no tool pressed.
 export async function selectionMode(page) {
-  for (const [name, letter] of Object.entries(TOOL_KEYS)) if ((await pressed(page, `${name},`)) === 'true') await pressLetter(page, letter)
+  const tool = await activeTool(page)
+  if (tool && tool !== 'select') await pressLetter(page, LETTERS[tool])
+}
+
+// Inks live in the Pincel popover; choosing one also chooses the Caneta.
+export async function chooseInk(page, label) {
+  if (!(await page.evaluate(`document.querySelector('button[aria-label=${JSON.stringify(label)}]') !== null`))) await chooseTool(page, 'Pincel')
+  await clickElement(page, `button[aria-label=${JSON.stringify(label)}]`)
+}
+
+// Sizes live in the Texto and Post-it popover.
+export async function chooseSize(page, label) {
+  if (!(await page.evaluate(`document.querySelector('button[aria-label=${JSON.stringify(label)}]') !== null`))) await chooseTool(page, 'Texto')
+  await clickElement(page, `button[aria-label=${JSON.stringify(label)}]`)
+}
+
+// Opens the right-click menu with a real right button inside the area.
+export async function openMenu(page, point = null) {
+  const at = point ?? (await center(page, '.canvas-area'))
+  await mouse(page, 'mousePressed', at.x, at.y, { button: 'right', buttons: 2, clickCount: 1 })
+  await mouse(page, 'mouseReleased', at.x, at.y, { button: 'right', buttons: 0, clickCount: 1 })
+  await page.waitFor("document.querySelector('.context-menu') !== null", 5_000)
+}
+
+// Runs one item of the right-click menu, by its visible text.
+export async function menuAction(page, text) {
+  await openMenu(page)
+  const point = await page.evaluate(`(() => {
+    const item = [...document.querySelectorAll('.context-menu [role^="menuitem"]')].find((element) => element.textContent.trim() === ${JSON.stringify(text)})
+    const rect = item?.getBoundingClientRect()
+    return rect ? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 } : null
+  })()`)
+  if (!point) throw new Error(`menu item not found: ${text}`)
+  await click(page, point.x, point.y)
+  await page.waitFor("document.querySelector('.context-menu') === null", 5_000)
 }
 
 export async function typeText(page, text) {

@@ -1,7 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 
 // Fixed codes, so the release log never receives canvas content.
-export type FrontendIssue = 'save_failed' | 'document_recovered' | 'saving_blocked'
+export type FrontendIssue = 'save_failed' | 'document_recovered' | 'saving_blocked' | 'toolbar_position_reset'
 
 // Copies a failure to the release log; the console keeps the details. A
 // failed report only warns, because logging must never get in the way of saving.

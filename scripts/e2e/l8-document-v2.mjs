@@ -197,14 +197,14 @@ async function everyNewValue() {
   await editNow(page)
   report.check('a document with every new value opens without the recovery notice', (await notice(page)) === null)
 
-  // The editor keeps dark text on its light field over the black background.
+  // The editor has no field of its own, so it writes in the light text of a note on black.
   await reloadWith(page, [[DOC_KEY, JSON.stringify(doc)]])
   await editNow(page)
   await selectionMode(page)
   await clickElement(page, '.note-text', 2)
   await page.waitFor(editorOpen)
   const editor = await page.evaluate("(() => { const style = getComputedStyle(document.activeElement); return { color: style.color, font: style.fontFamily, size: style.fontSize } })()")
-  report.check('the editor on the black background keeps dark text and the note font', editor.color === 'rgb(31, 35, 40)' && editor.font.startsWith('Georgia') && editor.size === '12px', JSON.stringify(editor))
+  report.check('the editor on the black background writes in light text, in the note font', editor.color === 'rgb(243, 244, 246)' && editor.font.startsWith('Georgia') && editor.size === '12px', JSON.stringify(editor))
   await pressEscape(page)
 }
 

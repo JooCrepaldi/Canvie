@@ -32,8 +32,8 @@
   background: #fef3c7;
 }
 
-/* Post-its keep their dark text on yellow, and the editor on its light field. */
-.canvas-area.background-black .note-text:not(.note-editor) {
+/* Post-its keep their dark text on yellow. */
+.canvas-area.background-black .note-text {
   color: #f3f4f6;
 }
 
@@ -296,18 +296,23 @@
   color: #2563eb;
 }
 
+/* Writing shows only the caret: the editor has no box of its own and sits
+   where the note renders. A post-it keeps its card. */
 .note-editor {
-  min-width: 220px;
-  min-height: 2.6em;
-  border: 1px solid #60a5fa;
-  border-radius: 4px;
+  min-width: 2px;
+  border: 0;
   outline: 0;
-  background: rgba(255, 255, 255, 0.94);
+  background: transparent;
   field-sizing: content;
   line-height: 1.4;
+  overflow: hidden;
   pointer-events: auto;
   resize: none;
   user-select: text;
+}
+
+.note-editor:focus-visible {
+  outline: 0;
 }
 
 .note-editor.note-postit {
@@ -411,127 +416,4 @@
 .notice-action:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 1px;
-}
-
-.toolbar {
-  position: absolute;
-  z-index: 5;
-  top: 16px;
-  left: 50%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 6px;
-  width: max-content;
-  max-width: calc(100vw - 32px);
-  padding: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(32, 33, 35, 0.94);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-  transform: translateX(-50%);
-}
-
-.toolbar-handle {
-  width: 24px;
-  min-height: 32px;
-  margin: 0;
-  padding: 0;
-  border-top: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0;
-  background: transparent;
-  cursor: grab;
-}
-
-.toolbar-handle:focus-visible {
-  outline: 2px solid #60a5fa;
-  outline-offset: 1px;
-}
-
-.toolbar-group {
-  display: flex;
-  gap: 4px;
-  padding-right: 6px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.toolbar-group:last-child {
-  padding-right: 0;
-  border-right: 0;
-}
-
-.toolbar-button {
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #a7a9b0;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.toolbar-button:hover:not(:disabled) {
-  background: #2b2d31;
-  color: #f3f4f6;
-}
-
-.toolbar-button:focus-visible,
-.toolbar-swatch:focus-visible {
-  outline: 2px solid #60a5fa;
-  outline-offset: 1px;
-}
-
-.toolbar-button.is-active {
-  background: #10a37f;
-  color: #fff;
-}
-
-.toolbar-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.toolbar-pin {
-  border: 1px solid #10a37f;
-  color: #f3f4f6;
-  font-weight: 600;
-}
-
-.toolbar-pin:hover:not(:disabled) {
-  background: #10a37f;
-}
-
-.toolbar-swatch {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  place-items: center;
-}
-
-.toolbar-swatch::before {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
-  content: "";
-}
-
-.toolbar-swatch:hover {
-  background: #2b2d31;
-}
-
-.toolbar-swatch.is-active::before {
-  box-shadow: 0 0 0 2px #202123, 0 0 0 4px #f3f4f6;
 }

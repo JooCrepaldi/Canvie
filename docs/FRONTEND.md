@@ -1,27 +1,30 @@
 # Frontend
 
-Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, L5 the transition between Fixo and Edição, and L6 the persistence failures in the release log.
+Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, L5 the transition between Fixo and Edição, and L6 the persistence failures in the release log. In 0.0.2, L8 delivered the v2 document, L9 Seleção and the Mão, L10 the right-click menu and L11 the icon toolbar.
 
 ## Files
 
 | File | Dono |
 | --- | --- |
-| App.tsx | Shell transparente, histórico, ferramenta, tinta, tamanho, fundo e composição da tela |
+| App.tsx | Shell transparente, histórico, ferramenta, tinta, tamanho, tema, popover aberto, menu e composição da tela |
 | canvas/Canvas.tsx | Área, Canvas 2D dos traços, camada de notas, câmera e interação com elementos |
 | canvas/NoteView.tsx e canvas/NoteEditor.tsx | Nota e post-it renderizados e o editor de Markdown |
 | canvas/ContextBar.tsx | Barra de alinhamento acima da nota selecionada |
+| canvas/camera.ts | Ajustar à tela e zoom por porcentagem |
 | canvas/AreaSelector.tsx e canvas/area.ts | Arraste da área, tamanho mínimo e ajuste ao viewport |
 | canvas/markdown.ts | markdown-it sem HTML bruto nem imagens |
 | canvasTypes.ts | Tipos e limites do documento, paleta de tinta e tamanhos de texto |
 | persistence.ts | load, save, saveNow, validação e backup local |
 | diagnostics.ts | Ponte para report_frontend_issue, com códigos fixos de falha |
 | placement.ts | Ponte Tauri para Wall e Edit |
-| Toolbar.tsx | Pegador, ferramentas, cores, tamanhos, fundo, área, histórico e Fixar no desktop |
-| index.css e App.css | Transparência, área, notas, dim, toolbar, foco e escala |
+| Toolbar.tsx e Toolbar.css | Aba de arrastar, ferramentas, popovers do Pincel e do Texto e Fixar no desktop |
+| ContextMenu.tsx e ContextMenu.css | Menu do botão direito e diálogo de limpeza |
+| preferences.ts | Posição da toolbar, fora do documento |
+| index.css e App.css | Transparência, área, notas, dim, foco e escala |
 
 ## Documento
 
-CanvasDoc v2, desde a L8, contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper`, `white`, `black`, `yellow` ou `transparent`. Cada traço guarda a cor em hexadecimal, a largura e o pincel (`pen` ou `highlighter`, desenhado com 35% de opacidade). Cada nota guarda o Markdown, o tamanho (`xs`, `sm`, `md`, `lg`, `xl` ou `xxl`, de 12 a 48 px em App.css), a fonte (`serif`, `sans` ou `mono`), o alinhamento (`left`, `center` ou `right`) e o tipo (`text` ou `postit`). As listas de valores ficam em canvasTypes.ts e valem para o validador. A toolbar ainda oferece só três tamanhos, dois fundos e a caneta; o resto chega com as camadas da 0.0.2. O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
+CanvasDoc v2, desde a L8, contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper`, `white`, `black`, `yellow` ou `transparent`. Cada traço guarda a cor em hexadecimal, a largura e o pincel (`pen` ou `highlighter`, desenhado com 35% de opacidade). Cada nota guarda o Markdown, o tamanho (`xs`, `sm`, `md`, `lg`, `xl` ou `xxl`, de 12 a 48 px em App.css), a fonte (`serif`, `sans` ou `mono`), o alinhamento (`left`, `center` ou `right`) e o tipo (`text` ou `postit`). As listas de valores ficam em canvasTypes.ts e valem para o validador. O menu oferece os cinco temas desde a L10; a interface ainda oferece só três tamanhos e a caneta, e o resto chega na L12. O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
 
 App.tsx é o único lugar que muda a revisão: cada traço, nota, borracha, pan, zoom, área, fundo, undo e redo recebe a revisão seguinte e vai para o saver. Pan, borracha e edição sem efeito não criam entrada no histórico nem save.
 
@@ -41,7 +44,7 @@ Os limites de nota (20 000 caracteres), pontos por traço (50 000), zoom (0,25 a
 
 ## Área
 
-Sem área no documento, App.tsx mostra o AreaSelector: a tela escurece e o arraste com o botão esquerdo desenha o retângulo. Ao soltar, um retângulo de pelo menos 160 × 120 vira a área e entra no histórico. Um retângulo menor mostra o aviso e espera outro arraste. A ação Área abre o mesmo seletor, que Esc cancela quando já existe uma área. Desfazer até antes da primeira área volta ao seletor.
+Sem área no documento, App.tsx mostra o AreaSelector: a tela escurece e o arraste com o botão esquerdo desenha o retângulo. Ao soltar, um retângulo de pelo menos 160 × 120 vira a área e entra no histórico. Um retângulo menor mostra o aviso e espera outro arraste. Redefinir área, no menu do botão direito, abre o mesmo seletor, que Esc cancela quando já existe uma área. Desfazer até antes da primeira área volta ao seletor.
 
 fitArea limita a área à janela na hora de desenhar, sem mudar o documento. Em Edição, a área ganha borda fina e um box-shadow escurece o resto da tela.
 
@@ -54,28 +57,44 @@ Desde a L9, o canvas tem a Seleção, o estado sem ferramenta, e cinco ferrament
 - Seleção, o padrão de Edição: um clique numa nota a seleciona e arrastar a move; um clique no fundo limpa a seleção. A seleção é estado do App, fora do documento e do histórico; mover, apagar e alinhar entram no histórico. A barra contextual (canvas/ContextBar.tsx) fica acima da nota selecionada, em coordenadas de tela, e alinha o texto;
 - Mão: arrastar move só a câmera, inclusive sobre uma nota, porque as notas não recebem ponteiro com a Mão;
 - Pincel: traço na tinta selecionada (preto, azul ou vermelho). Escolher uma tinta escolhe o Pincel;
-- Nota e Post-it: um clique no fundo abre o editor de uma nova nota, e um clique em uma nota abre a nota;
+- Texto e Post-it: um clique no fundo abre o editor de uma nova nota, e um clique em uma nota abre a nota;
 - Borracha: remove os traços e as notas que o caminho toca.
 
-Um duplo clique no canvas vazio, em Seleção ou com a Mão, abre o editor de uma nota de texto. Uma nota nova, criada por qualquer caminho, devolve o canvas à Seleção com ela selecionada. Space + arrastar move a câmera em qualquer ferramenta.
+O botão direito nunca começa um traço, uma borracha ou uma nota, porque ele abre o menu. Um duplo clique no canvas vazio, em Seleção ou com a Mão, abre o editor de uma nota de texto. Uma nota nova, criada por qualquer caminho, devolve o canvas à Seleção com ela selecionada. Space + arrastar move a câmera em qualquer ferramenta.
 
 Os traços ficam no Canvas 2D. As notas são HTML em uma camada com um único transform CSS da câmera, atualizado junto com o redraw; por isso pan e zoom não renderizam React. O Markdown passa pelo markdown-it com `html: false` e sem a regra de imagem ([0007](../decisions/0007-markdown-notes.md)). Um clique em link não navega.
 
-O editor é um textarea com `field-sizing: content`. Ctrl + Enter ou um clique fora conclui, Esc cancela e um texto vazio remove a nota. Duplo clique ou Enter com a nota focada abre o editor. Os botões de tamanho não tiram o foco do editor, então o tamanho escolhido vale para a nota em edição.
+O editor é um textarea com `field-sizing: content`, sem borda, fundo, contorno nem placeholder: só o cursor aparece, na posição e com o padding da nota renderizada, então o texto não salta ao concluir. O post-it mantém o cartão. Ctrl + Enter ou um clique fora conclui, Esc cancela e um texto vazio remove a nota. Duplo clique ou Enter com a nota focada abre o editor. Canvas avisa o App por onEditorChange enquanto um editor está aberto, e o App mostra o popover de tamanhos. Os botões de tamanho não tiram o foco do editor, então o tamanho escolhido vale para a nota em edição.
 
 Toda mudança atualiza a ref do documento antes de chegar ao App, para que um traço ou nota iniciado pelo mesmo evento receba um id além dela.
 
 ## Toolbar
 
-Toolbar, dim, borda da área, seletor de área e avisos só existem quando placement é Edit. **Fixar no desktop** fica sempre visível na toolbar; enquanto o save da transição corre, o botão mostra Salvando… e fica desativado, e o canvas continua editável. Sem área, o botão fica desativado e o seletor pede o arraste.
+Toolbar, dim, borda da área, menu, seletor de área e avisos só existem quando placement é Edit. Toolbar.tsx segue a [0009](../decisions/0009-toolbar-tab-and-icons.md): [Texto, Post-it, Pincel, Mão] e [Fixar], com ícones do `lucide-react` importados um a um. **Fixar no desktop** fica sempre visível na toolbar; enquanto o save da transição corre, o botão fica desativado e um aviso Salvando… aparece acima da barra, e o canvas continua editável. Sem área, o botão fica desativado e o seletor pede o arraste.
 
-Os atalhos B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou Meta e fora de campos de texto.
+O App escolhe o popover: o do Pincel, com Caneta, Borracha e tintas, para `brush` e `eraser`; o de tamanhos para `text` e `postit`, ou enquanto um editor de nota está aberto. Esc fecha o popover até a próxima escolha de ferramenta.
 
-O pegador tem um ponteiro separado. Arrastar qualquer botão não move a toolbar. A posição dura a sessão; salvar posição e monitor, como pede a decisão [0004](../decisions/0004-toolbar-movable-and-persistent.md), ainda não foi entregue.
+Os atalhos H, B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou Meta e fora de campos de texto.
+
+A aba é o único controle de arraste, com pointer capture, e a posição fica limitada à janela com a aba visível. Arrastar qualquer botão não move a toolbar. Ao soltar, preferences.ts grava `{ left, top }` em `canvie.toolbar` no localStorage, fora do documento e do histórico. Sem preferência, a toolbar fica centralizada, 20 px acima do fim da área de trabalho do monitor (`screen.availTop + screen.availHeight`). Uma preferência inválida ou fora da janela é removida, registra `toolbar_position_reset` por report_frontend_issue e volta ao padrão. Reposicionar toolbar, no menu ou no tray, apaga a preferência. O canvas fica no monitor principal e a toolbar é só horizontal, então monitor e orientação da [0004](../decisions/0004-toolbar-movable-and-persistent.md) não são gravados.
+
+## Menu do botão direito
+
+ContextMenu.tsx abre em Edit no ponto do clique, quando o botão direito cai dentro da área, ou no centro da área com Shift + F10 e a tecla de menu. Um listener de `contextmenu` no window impede o menu do WebView em Edit, exceto em campos de texto, que mantêm recortar, copiar e colar.
+
+O menu tem `role="menu"`, foco no primeiro item, setas, Home e End. Tab e Shift + Tab ficam presos no menu e chegam ao campo do zoom. Esc fecha o menu e para a propagação, para não fixar a área. Com o menu ou o diálogo aberto, o listener de teclado do App não age.
+
+- Tema faz commit do background.
+- Redefinir área abre o seletor.
+- Ajustar à tela usa fitCamera, de canvas/camera.ts, com o tamanho das notas medido no DOM e margem de 32 px. Um canvas vazio volta à câmera padrão.
+- Zoom usa zoomCamera, limitado de 0,25 a 4.
+- Limpar canvas abre ClearDialog, um `alertdialog` com o foco em Cancelar e o Tab preso aos dois botões. Confirmar remove traços e notas e mantém área, tema e câmera.
+
+Todas essas ações entram no histórico, então Ctrl + Z desfaz cada uma.
 
 ## Ponte de estado
 
-placement.ts expõe getPlacement, enterEdit, pinToWall, quitApp, onPlacementChanged, onPinRequested e onCloseRequested. No boot:
+placement.ts expõe getPlacement, enterEdit, pinToWall, quitApp, onPlacementChanged, onPinRequested, onCloseRequested e onToolbarReset. No boot:
 
 1. o App assina canvie-placement e chama getPlacement; um evento vence uma resposta mais lenta;
 2. em Tauri, o App mostra Wall até o backend confirmar Edit;

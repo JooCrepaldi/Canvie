@@ -1,34 +1,64 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { BACKGROUND_LABELS, INK_COLORS, NOTE_SIZES, type Background, type NoteSize, type Tool } from './canvasTypes'
+import { Eraser, GripHorizontal, Hand, Pen, PenTool, Pin, StickyNote, Type, type LucideIcon } from 'lucide-react'
+import { INK_COLORS, NOTE_SIZES, type NoteSize, type Tool } from './canvasTypes'
+import { reportIssue } from './diagnostics'
+import type { ToolbarPosition } from './preferences'
+import './Toolbar.css'
+
+// Brush holds Caneta, Borracha and the inks; size holds the text sizes.
+export type ToolbarPopover = 'brush' | 'size' | null
 
 type ToolbarProps = {
   tool: Tool
   ink: string
   noteSize: NoteSize
-  background: Background
-  canUndo: boolean
-  canRedo: boolean
-  onToolChange: (tool: Tool) => void
-  onInkChange: (ink: string) => void
-  onNoteSizeChange: (size: NoteSize) => void
-  onBackgroundToggle: () => void
-  onSelectArea: () => void
-  onUndo: () => void
-  onRedo: () => void
+  popover: ToolbarPopover
+  // null is the default place, centered above the taskbar.
+  position: ToolbarPosition | null
   pinning: boolean
   canPin: boolean
+  onToolChange: (tool: Tool) => void
+  onDrawingToolChange: (tool: 'brush' | 'eraser') => void
+  onInkChange: (ink: string) => void
+  onNoteSizeChange: (size: NoteSize) => void
+  onPositionChange: (position: ToolbarPosition | null) => void
   onPin: () => void
 }
 
-// Seleção has no button: it is the state with no tool pressed (decision 0010).
-const tools: Array<{ id: Tool; label: string; shortcut: string }> = [
-  { id: 'hand', label: 'Mão', shortcut: 'H' },
-  { id: 'brush', label: 'Pincel', shortcut: 'B' },
-  { id: 'text', label: 'Nota', shortcut: 'T' },
-  { id: 'postit', label: 'Post-it', shortcut: 'P' },
-  { id: 'eraser', label: 'Borracha', shortcut: 'E' },
+type Drag = { pointerId: number; x: number; y: number; left: number; top: number; width: number; height: number }
+
+// Formas and Novo canvas join the bar in 0.0.3, with their functions (decision 0009).
+const TOOLS: ReadonlyArray<{ id: Tool; label: string; shortcut: string; Icon: LucideIcon }> = [
+  { id: 'text', label: 'Texto', shortcut: 'T', Icon: Type },
+  { id: 'postit', label: 'Post-it', shortcut: 'P', Icon: StickyNote },
+  { id: 'brush', label: 'Pincel', shortcut: 'B', Icon: PenTool },
+  { id: 'hand', label: 'Mão', shortcut: 'H', Icon: Hand },
 ]
+
+// Space between the toolbar and the top of the taskbar.
+const DOCK_MARGIN = 20
+// The drag tab's target reaches this far above the bar.
+const TAB_HEIGHT = 31
+// The tab, 24 px tall and 64 px wide, with 10 px concave corners where it
+// meets the bar's top edge at y = 24. The fill runs 1 px into the bar.
+const TAB_OUTLINE = 'M0 24 A10 10 0 0 0 10 14 L10 10 A10 10 0 0 1 20 0 L64 0 A10 10 0 0 1 74 10 L74 14 A10 10 0 0 0 84 24'
+const TAB_FILL = `${TAB_OUTLINE} L84 25 L0 25 Z`
+const EDGE = 8
+
+// The window covers the whole monitor, so the screen's available area tells
+// where the taskbar starts, in CSS pixels.
+function workAreaBottom(): number {
+  const screen = window.screen as Screen & { availTop?: number }
+  return Math.min(window.innerHeight, (screen.availTop ?? 0) + screen.availHeight)
+}
+
+function clamp(left: number, top: number, width: number, height: number): ToolbarPosition {
+  return {
+    left: Math.min(window.innerWidth - width - EDGE, Math.max(EDGE, left)),
+    top: Math.min(window.innerHeight - height - EDGE, Math.max(TAB_HEIGHT + EDGE, top)),
+  }
+}
 
 // Size buttons keep focus in an open note editor, so the size applies to it.
 function keepEditorFocus(event: ReactMouseEvent<HTMLButtonElement>) {
@@ -36,35 +66,58 @@ function keepEditorFocus(event: ReactMouseEvent<HTMLButtonElement>) {
 }
 
 export function Toolbar(props: ToolbarProps) {
-  const { tool, ink, noteSize, background, canUndo, canRedo } = props
-  const [position, setPosition] = useState<{ left: number | null; top: number }>({ left: null, top: 16 })
-  const dragRef = useRef<{ pointerId: number; x: number; y: number; left: number; top: number } | null>(null)
+  const { tool, ink, noteSize, popover, position, pinning, canPin, onPositionChange } = props
+  const rootRef = useRef<HTMLElement>(null)
+  const dragRef = useRef<Drag | null>(null)
+  const [dragPosition, setDragPosition] = useState<ToolbarPosition | null>(null)
+
+  // A saved place that no longer fits the screen, after a resolution change
+  // for example, goes back to the default and leaves a line in the log.
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!position || !root) return
+    const { width, height } = root.getBoundingClientRect()
+    const fits = position.left >= 0 && position.top >= TAB_HEIGHT && position.left + width <= window.innerWidth && position.top + height <= window.innerHeight
+    if (fits) return
+    console.warn('Canvie: saved toolbar position is off screen; using the default')
+    reportIssue('toolbar_position_reset')
+    onPositionChange(null)
+  }, [position, onPositionChange])
 
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const rect = rootRef.current?.getBoundingClientRect()
+    if (!rect || event.button !== 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    const toolbarLeft = event.currentTarget.parentElement?.getBoundingClientRect().left ?? window.innerWidth / 2
-    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: position.left ?? toolbarLeft, top: position.top }
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+    setDragPosition({ left: rect.left, top: rect.top })
   }
+
+  const draggedTo = (drag: Drag, event: ReactPointerEvent<HTMLButtonElement>) =>
+    clamp(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y, drag.width, drag.height)
 
   const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    const left = Math.min(window.innerWidth - 180, Math.max(8, drag.left + event.clientX - drag.x))
-    const top = Math.min(window.innerHeight - 60, Math.max(8, drag.top + event.clientY - drag.y))
-    setPosition({ left, top })
+    if (drag?.pointerId === event.pointerId) setDragPosition(draggedTo(drag, event))
   }
 
   const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-      dragRef.current = null
-    }
+    const drag = dragRef.current
+    if (drag?.pointerId !== event.pointerId) return
+    event.currentTarget.releasePointerCapture(event.pointerId)
+    dragRef.current = null
+    setDragPosition(null)
+    onPositionChange(draggedTo(drag, event))
   }
 
+  const placed = dragPosition ?? position
+  const style = placed
+    ? { left: placed.left, top: placed.top }
+    : { left: '50%', bottom: window.innerHeight - workAreaBottom() + DOCK_MARGIN, transform: 'translateX(-50%)' }
+
   return (
-    <section className="toolbar" aria-label="Ferramentas do canvas" style={{ left: position.left ?? '50%', top: position.top, transform: position.left === null ? 'translateX(-50%)' : undefined }}>
+    <section ref={rootRef} className={dragPosition ? 'toolbar is-dragging' : 'toolbar'} aria-label="Ferramentas do canvas" data-tool={tool} style={style}>
       <button
-        className="toolbar-handle"
+        className="toolbar-tab"
         type="button"
         aria-label="Mover toolbar"
         title="Arraste para mover a toolbar"
@@ -72,79 +125,99 @@ export function Toolbar(props: ToolbarProps) {
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-      />
-      <div className="toolbar-group" role="toolbar" aria-label="Ferramentas">
-        {tools.map((item) => (
+      >
+        <svg className="toolbar-tab-shape" viewBox="0 0 84 25" aria-hidden="true">
+          <path className="toolbar-tab-fill" d={TAB_FILL} />
+          <path className="toolbar-tab-edge" d={TAB_OUTLINE} transform="translate(0 -0.5)" />
+        </svg>
+        <GripHorizontal className="toolbar-tab-grip" aria-hidden="true" />
+      </button>
+      <div className="toolbar-bar">
+        <div className="toolbar-group" role="toolbar" aria-label="Ferramentas">
+          {TOOLS.map(({ id, label, shortcut, Icon }) => {
+            const active = tool === id || (id === 'brush' && tool === 'eraser')
+            return (
+              <button
+                key={id}
+                className="toolbar-tool"
+                type="button"
+                aria-label={`${label}, atalho ${shortcut}`}
+                aria-pressed={active}
+                title={`${label} · ${shortcut}`}
+                onClick={() => props.onToolChange(active ? 'select' : id)}
+              >
+                <Icon aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
+        <div className="toolbar-group" role="group" aria-label="Fixar">
           <button
-            key={item.id}
-            className={tool === item.id ? 'toolbar-button is-active' : 'toolbar-button'}
+            className="toolbar-tool toolbar-pin"
             type="button"
-            aria-label={`${item.label}, atalho ${item.shortcut}`}
-            aria-pressed={tool === item.id}
-            onClick={() => props.onToolChange(item.id)}
+            aria-label="Fixar no desktop, atalho Ctrl + Alt + T"
+            title="Fixar no desktop · Ctrl + Alt + T"
+            disabled={pinning || !canPin}
+            onClick={props.onPin}
           >
-            {item.label}
+            <Pin aria-hidden="true" />
           </button>
-        ))}
+        </div>
       </div>
-      <div className="toolbar-group" role="group" aria-label="Cor da tinta">
-        {INK_COLORS.map((color) => (
-          <button
-            key={color.id}
-            className={ink === color.value ? 'toolbar-swatch is-active' : 'toolbar-swatch'}
-            type="button"
-            aria-label={`Tinta ${color.label}`}
-            aria-pressed={ink === color.value}
-            title={`Tinta ${color.label}`}
-            style={{ color: color.value }}
-            onClick={() => props.onInkChange(color.value)}
-          />
-        ))}
-      </div>
-      <div className="toolbar-group" role="group" aria-label="Tamanho do texto">
-        {NOTE_SIZES.map((size) => (
-          <button
-            key={size.id}
-            className={noteSize === size.id ? 'toolbar-button is-active' : 'toolbar-button'}
-            type="button"
-            aria-label={`Texto ${size.label}`}
-            aria-pressed={noteSize === size.id}
-            title={`Texto ${size.label}`}
-            onMouseDown={keepEditorFocus}
-            onClick={() => props.onNoteSizeChange(size.id)}
-          >
-            {size.short}
-          </button>
-        ))}
-      </div>
-      <div className="toolbar-group" role="group" aria-label="Área">
-        <button className="toolbar-button" type="button" aria-label={`Fundo ${BACKGROUND_LABELS[background]}, trocar`} onClick={props.onBackgroundToggle}>
-          {`Fundo ${BACKGROUND_LABELS[background]}`}
-        </button>
-        <button className="toolbar-button" type="button" aria-label="Redefinir área do canvas" onClick={props.onSelectArea}>
-          Área
-        </button>
-      </div>
-      <div className="toolbar-group" role="group" aria-label="Histórico">
-        <button className="toolbar-button" type="button" aria-label="Desfazer" disabled={!canUndo} onClick={props.onUndo}>
-          Desfazer
-        </button>
-        <button className="toolbar-button" type="button" aria-label="Refazer" disabled={!canRedo} onClick={props.onRedo}>
-          Refazer
-        </button>
-      </div>
-      <div className="toolbar-group" role="group" aria-label="Fixar">
-        <button
-          className="toolbar-button toolbar-pin"
-          type="button"
-          aria-label="Fixar no desktop, atalho Ctrl + Alt + T"
-          title="Salva e devolve o canvas ao desktop (Ctrl + Alt + T ou Esc)"
-          disabled={props.pinning || !props.canPin}
-          onClick={props.onPin}
-        >
-          {props.pinning ? 'Salvando…' : 'Fixar no desktop'}
-        </button>
-      </div>
+      {popover === 'brush' && (
+        <div className="toolbar-popover" role="group" aria-label="Opções do pincel">
+          <div className="popover-row">
+            <button className="popover-option" type="button" aria-label="Caneta" aria-pressed={tool === 'brush'} onClick={() => props.onDrawingToolChange('brush')}>
+              <Pen aria-hidden="true" />
+              Caneta
+            </button>
+            <button className="popover-option" type="button" aria-label="Borracha, atalho E" aria-pressed={tool === 'eraser'} title="Borracha · E" onClick={() => props.onDrawingToolChange('eraser')}>
+              <Eraser aria-hidden="true" />
+              Borracha
+            </button>
+          </div>
+          <div className="popover-divider" />
+          <div className="popover-row popover-swatches">
+            {INK_COLORS.map((color) => (
+              <button
+                key={color.id}
+                className="popover-swatch"
+                type="button"
+                aria-label={`Tinta ${color.label}`}
+                aria-pressed={ink === color.value}
+                title={`Tinta ${color.label}`}
+                style={{ background: color.value }}
+                onClick={() => props.onInkChange(color.value)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {popover === 'size' && (
+        <div className="toolbar-popover" role="group" aria-label="Tamanho do texto">
+          <div className="popover-row">
+            {NOTE_SIZES.map((size) => (
+              <button
+                key={size.id}
+                className={`popover-size popover-size-${size.id}`}
+                type="button"
+                aria-label={`Texto ${size.label}`}
+                aria-pressed={noteSize === size.id}
+                title={`Texto ${size.label}`}
+                onMouseDown={keepEditorFocus}
+                onClick={() => props.onNoteSizeChange(size.id)}
+              >
+                A
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {pinning && (
+        <p className="toolbar-status" role="status">
+          Salvando…
+        </p>
+      )}
     </section>
   )
 }

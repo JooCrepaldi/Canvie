@@ -11,6 +11,7 @@ export type PlacementSnapshot = {
 const PLACEMENT_EVENT = 'canvie-placement'
 const PIN_REQUESTED_EVENT = 'canvie-pin-requested'
 const CLOSE_REQUESTED_EVENT = 'canvie-close-requested'
+const TOOLBAR_RESET_EVENT = 'canvie-toolbar-reset'
 
 // The browser has no desktop to pin to: an in-memory adapter switches the
 // view between Wall and Edit, and Ctrl + Alt + T stands in for the global
@@ -114,6 +115,12 @@ export function onPinRequested(listener: () => void): () => void {
     }
   }
   return subscribe<null>(PIN_REQUESTED_EVENT, () => listener()).unsubscribe
+}
+
+// Reposicionar toolbar in the tray. The browser has no tray.
+export function onToolbarReset(listener: () => void): () => void {
+  if (!isTauri()) return () => undefined
+  return subscribe<null>(TOOLBAR_RESET_EVENT, () => listener()).unsubscribe
 }
 
 // Alt + F4 or WM_CLOSE during Edit. The browser has no window to close.

@@ -8,12 +8,12 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { parseArgs } from 'node:util'
 import { CanvieApp, placementOf, waitForPlacement } from './lib/app.mjs'
-import { areaRect, center, chooseTool, click, clickElement, defineArea, drag, pressDelete, pressEnter, pressEscape, pressLetter, pressed, readRaw, screenshot, typeText } from './lib/devtools.mjs'
+import { activeTool, areaRect, center, chooseTool, click, clickElement, defineArea, drag, pressDelete, pressEnter, pressEscape, pressLetter, pressed, readRaw, screenshot, typeText } from './lib/devtools.mjs'
 import { Report } from './lib/report.mjs'
 
 const DOC_KEY = 'canvie.document'
 const SETTLE_MS = 350 + 400
-const TOOLS = ['Mão', 'Pincel', 'Nota', 'Post-it', 'Borracha']
+const TOOL_NAMES = { hand: 'Mão', brush: 'Pincel', text: 'Texto', postit: 'Post-it', eraser: 'Borracha' }
 const editorOpen = "document.activeElement?.classList.contains('note-editor') === true"
 
 const { values: options } = parseArgs({
@@ -34,10 +34,10 @@ const profileDir = mkdtempSync(join(tmpdir(), 'canvie-e2e-profile-'))
 const app = new CanvieApp({ exe, port: Number(options.port), profileDir, onReady: (label, ms) => report.measure(`launch ready ms (${label})`, ms) })
 
 const readDoc = async (page) => JSON.parse(await readRaw(page, DOC_KEY))
+// The active tool by name; Seleção is no tool at all.
 const pressedTools = async (page) => {
-  const active = []
-  for (const name of TOOLS) if ((await pressed(page, `${name},`)) === 'true') active.push(name)
-  return active
+  const tool = await activeTool(page)
+  return tool in TOOL_NAMES ? [TOOL_NAMES[tool]] : []
 }
 const selectedText = (page) => page.evaluate("document.querySelector('.note.is-selected')?.textContent.trim() ?? null")
 const contextBar = (page) => page.evaluate("document.querySelector('.context-bar') !== null")
@@ -128,12 +128,15 @@ async function toggles() {
   const brush = await pressedTools(page)
   await pressLetter(page, 'b')
   const afterSecond = await pressedTools(page)
-  await clickElement(page, 'button[aria-label^="Borracha,"]')
+  await pressLetter(page, 'e')
   const eraser = await pressedTools(page)
-  await clickElement(page, 'button[aria-label^="Borracha,"]')
+  const pincelShown = await pressed(page, 'Pincel,')
+  await clickElement(page, 'button[aria-label^="Pincel,"]')
   const afterClick = await pressedTools(page)
   report.check('repeating a tool letter or clicking the active tool goes back to Seleção', brush.join() === 'Pincel' && afterSecond.length === 0 && eraser.join() === 'Borracha' && afterClick.length === 0, JSON.stringify([brush, afterSecond, eraser, afterClick]))
+  report.check('the Borracha keeps the Pincel pressed in the toolbar', pincelShown === 'true')
 
+  await pressLetter(page, 'e')
   await clickElement(page, 'button[aria-label="Tinta azul"]')
   report.check('choosing an ink chooses the Pincel', (await pressedTools(page)).join() === 'Pincel')
   const rect = await areaRect(page)

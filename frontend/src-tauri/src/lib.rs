@@ -20,6 +20,7 @@ use wallpaper::Desktop;
 
 const PIN_REQUESTED_EVENT: &str = "canvie-pin-requested";
 const CLOSE_REQUESTED_EVENT: &str = "canvie-close-requested";
+const TOOLBAR_RESET_EVENT: &str = "canvie-toolbar-reset";
 const DESKTOP_CHECK_INTERVAL: Duration = Duration::from_secs(1);
 // Checks without the icon layer before the watchdog embeds in Progman anyway.
 const ICON_LAYER_PATIENCE: u32 = 10;
@@ -398,6 +399,7 @@ enum FrontendIssue {
   SaveFailed,
   DocumentRecovered,
   SavingBlocked,
+  ToolbarPositionReset,
 }
 
 #[tauri::command]
@@ -422,6 +424,7 @@ fn report_frontend_issue(issue: FrontendIssue) {
     FrontendIssue::SaveFailed => "document save failed; the last valid document stays in storage",
     FrontendIssue::DocumentRecovered => "invalid stored document replaced by an empty canvas; a copy was kept",
     FrontendIssue::SavingBlocked => "stored document could not be read or copied; saving is off for this session",
+    FrontendIssue::ToolbarPositionReset => "saved toolbar position was invalid or off screen; using the default",
   };
   log::warn!("frontend: {message}");
 }
@@ -433,8 +436,9 @@ fn edit_shortcut() -> Shortcut {
 fn build_tray(app: &App) -> tauri::Result<()> {
   let edit = MenuItem::with_id(app, "edit", "Editar", true, None::<&str>)?;
   let pin = MenuItem::with_id(app, "pin", "Fixar no desktop", true, None::<&str>)?;
+  let toolbar = MenuItem::with_id(app, "toolbar", "Reposicionar toolbar", true, None::<&str>)?;
   let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-  let menu = Menu::with_items(app, &[&edit, &pin, &quit])?;
+  let menu = Menu::with_items(app, &[&edit, &pin, &toolbar, &quit])?;
   let mut tray = TrayIconBuilder::with_id("main")
     .tooltip("Canvie")
     .menu(&menu)
@@ -446,6 +450,17 @@ fn build_tray(app: &App) -> tauri::Result<()> {
         }
       }
       "pin" if app.state::<PlacementState>().snapshot().placement == Placement::Edit => request_pin(app, "tray"),
+      // The way back for a toolbar the user can no longer reach: show Edit
+      // and put the toolbar at its default place.
+      "toolbar" => {
+        log::info!("tray: toolbar reset requested");
+        if let Err(error) = enter_edit_now(app) {
+          log::warn!("tray: enter_edit failed: {error}");
+        }
+        if let Err(error) = app.emit(TOOLBAR_RESET_EVENT, ()) {
+          log::warn!("tray: toolbar reset event failed: {error}");
+        }
+      }
       "quit" => {
         log::info!("tray: quit");
         app.state::<Lifecycle>().quit();

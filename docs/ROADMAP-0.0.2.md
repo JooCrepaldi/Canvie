@@ -109,7 +109,7 @@ A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fic
 
 ## Fechamento
 
-- A matriz da L7 roda de novo na build instalada da 0.0.2, e as suítes L2 a L5 continuam passando.
+- A matriz da L7 roda de novo na build instalada da 0.0.2, instalada de fora do pacote do Claude ([OPERATIONS.md](OPERATIONS.md#instalar-fora-de-um-app-empacotado)), e as suítes L2 a L5 continuam passando.
 - A versão 0.0.2 entra em package.json, Cargo.toml e tauri.conf.json.
 - product.md, o PRD e CONTEXT.md descrevem o comportamento entregue.
 

@@ -3,7 +3,7 @@ import { fitArea, type Viewport } from './canvas/area'
 import { AreaSelector } from './canvas/AreaSelector'
 import { fitCamera, measureNotes, zoomCamera } from './canvas/camera'
 import { Canvas } from './canvas/Canvas'
-import { INK_COLORS, type Area, type Background, type CanvasDoc, type NoteSize, type Tool } from './canvasTypes'
+import { DEFAULT_NOTE_FONT, INK_COLORS, type Area, type Background, type Brush, type CanvasDoc, type NoteFont, type NoteSize, type Tool } from './canvasTypes'
 import { ClearDialog, ContextMenu } from './ContextMenu'
 import type { DocumentPersistence, LoadResult } from './persistence'
 import { enterEdit, getPlacement, initialPlacement, onCloseRequested, onPinRequested, onPlacementChanged, onToolbarReset, pinToWall, quitApp, type Placement } from './placement'
@@ -126,6 +126,8 @@ export default function App({ persistence, initialLoad }: AppProps) {
   const [tool, setTool] = useState<Tool>('select')
   const [selection, setSelection] = useState<number | null>(null)
   const [ink, setInk] = useState<string>(INK_COLORS[0].value)
+  const [brush, setBrush] = useState<Brush>('pen')
+  const [noteFont, setNoteFont] = useState<NoteFont>(DEFAULT_NOTE_FONT)
   const [noteSize, setNoteSize] = useState<NoteSize>('md')
   const [selectingArea, setSelectingArea] = useState(initialLoad.document.area === null)
   const viewport = useViewport()
@@ -215,6 +217,15 @@ export default function App({ persistence, initialLoad }: AppProps) {
     setSelection(null)
     setPopoverClosed(false)
   }, [])
+
+  // Caneta and Marca-texto choose how the Pincel draws, and draw with it.
+  const chooseBrush = useCallback(
+    (next: Brush) => {
+      setBrush(next)
+      chooseDrawingTool('brush')
+    },
+    [chooseDrawingTool],
+  )
 
   // Choosing an ink means drawing with it.
   const chooseInk = useCallback(
@@ -412,10 +423,13 @@ export default function App({ persistence, initialLoad }: AppProps) {
             area={area}
             tool={tool}
             ink={ink}
+            brush={brush}
             noteSize={noteSize}
+            noteFont={noteFont}
             selection={editing ? selection : null}
             onChange={commit}
             onNoteSizeChange={setNoteSize}
+            onNoteFontChange={setNoteFont}
             onSelect={setSelection}
             onNoteCreated={noteCreated}
             onEditorChange={setNoteEditorOpen}
@@ -438,15 +452,19 @@ export default function App({ persistence, initialLoad }: AppProps) {
           <Toolbar
             tool={tool}
             ink={ink}
+            brush={brush}
             noteSize={noteSize}
+            noteFont={noteFont}
             popover={popover}
             position={toolbarPosition}
             pinning={pinning}
             canPin={doc.area !== null}
             onToolChange={chooseTool}
             onDrawingToolChange={chooseDrawingTool}
+            onBrushChange={chooseBrush}
             onInkChange={chooseInk}
             onNoteSizeChange={setNoteSize}
+            onNoteFontChange={setNoteFont}
             onPositionChange={changeToolbarPosition}
             onPin={() => void requestPin()}
           />

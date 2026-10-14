@@ -58,6 +58,10 @@ A L10 e a L11 provam o menu do botão direito e a toolbar nova:
 
 Desde a L11, as suítes leem a ferramenta ativa em `.toolbar[data-tool]` com `activeTool(page)`. As tintas ficam no popover do Pincel, e `chooseInk(page, 'Tinta azul')` abre o popover quando preciso. Tema e Redefinir área ficam no menu, e `menuAction(page, 'Redefinir área')` abre o menu com o botão direito real e clica no item. Com o Pincel, o primeiro Esc fecha o popover e o segundo fixa.
 
+A L12 prova as fontes, os seis tamanhos, o marca-texto e as seis tintas, e a leitura de uma tinta em cada tema:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l12-preset-values.ps1
+
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
 Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
@@ -245,6 +249,22 @@ Na build anterior, só com a aba antiga, a regressão passou: L2 41 de 41, L3 27
 
 O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar nova levaram o JavaScript de 345,55 kB para 360,01 kB minificado (de 118,87 kB para 124,09 kB com gzip).
 
+## Evidência registrada em 2026-10-14: L12
+
+`scripts/e2e/l12-preset-values.ps1` passou 18 de 18 na build release:
+
+- o popover do Pincel ofereceu Caneta, Marca-texto, Borracha e as seis tintas, na ordem;
+- seis traços de caneta foram gravados com a cor de cada tinta e 3 px. O traço do marca-texto foi gravado em amarelo, com 18 px e `brush: highlighter`;
+- no canvas, a caneta azul ficou opaca (alfa 255), e o marca-texto ficou com alfa 89, cerca de 35%;
+- seis notas, uma em cada tamanho, alternando Serifa, Sem serifa e Mono, renderizaram em 12, 14, 18, 24, 32 e 48 px. Cada família manteve a reserva da mesma família, e as três fontes estavam instaladas na máquina;
+- abrir uma nota mostrou a fonte dela no popover; trocar para Mono gravou `mono`, e Ctrl + Z voltou para `serif`;
+- a melhor tinta teve contraste de 13,4:1 no bege, 15,8:1 no branco, 16,3:1 no preto e 14,2:1 no amarelo;
+- depois de matar o processo, o documento voltou idêntico, com as notas nos mesmos tamanhos e o marca-texto ainda translúcido.
+
+Na mesma build, a L3 passou 27 de 27 e a L10 e a L11 passaram 52 de 52. Duas rodadas anteriores da L10 e da L11 falharam em checagens de hover, de foco e do arraste da aba, porque o mouse real se mexeu durante a suíte. Com o mouse parado, tudo passou.
+
+O JavaScript foi de 360,01 kB para 361,88 kB minificado (de 124,09 kB para 124,66 kB com gzip).
+
 ### Pendências manuais da L7
 
 Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso ficam com quem usa a máquina, e a L7 só fecha depois deles:
@@ -263,6 +283,7 @@ Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso
 - O click-through do tao liga WS_EX_LAYERED sem SetLayeredWindowAttributes. Sem os atributos, a janela não aparece no desktop, embora o hit-test funcione.
 - Quando o Explorer reinicia, a janela filha do Progman é destruída. Numa queda, o Windows não manda WM_DESTROY, e o Tauri fica com um HWND morto que IsWindow detecta. O watchdog da L6 reinicia o Canvie nos dois casos; veja [BACKEND.md](BACKEND.md#reinício-do-explorer).
 - Uma janela de outro processo criada com `UseShellExecute = false` herda os handles de quem a criou. Um explorer.exe iniciado assim segurou o pipe de saída do E2E, e o `execFileSync` do Node nunca terminou. `restart-explorer.ps1` usa CreateProcess sem herança de handles.
+- Em Edição, a janela do Canvie fica à frente de tudo e recebe o mouse real. Mexer o mouse durante uma suíte muda o hover e o alvo do ponteiro, e quebra checagens de hover, de foco e de arraste. Rode as suítes com o mouse e o teclado parados.
 - A checagem de long tasks da L2 falhou uma vez logo depois de outra suíte, com tarefas de 714 ms, e passou sem nenhuma ao repetir. Repita a suíte antes de investigar.
 - O log do release roda em 40 KB e descarta o arquivo anterior (padrão do tauri-plugin-log, RotationStrategy::KeepOne). Uma suíte que cruza a rotação perde as linhas de antes e falha nas checagens de log, embora o app tenha registrado tudo. Rode de novo com o log menor.
 - A simulação com um formulário WinForms como pai, morto à força, deixou a janela filha viva e órfã. Com o Explorer real, a janela morre. Teste o shell de verdade.

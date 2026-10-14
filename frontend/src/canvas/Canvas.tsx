@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import {
   DEFAULT_NOTE_ALIGN,
-  DEFAULT_NOTE_FONT,
   MAX_STROKE_POINTS,
   MAX_ZOOM,
   MIN_ZOOM,
   type Area,
+  type Brush,
   type Camera,
   type CanvasDoc,
   type Note,
@@ -27,11 +27,14 @@ type CanvasProps = {
   area: Area
   tool: Tool
   ink: string
+  brush: Brush
   noteSize: NoteSize
+  noteFont: NoteFont
   // The selected note, shown only while tool is select.
   selection: number | null
   onChange: (doc: CanvasDoc) => void
   onNoteSizeChange: (size: NoteSize) => void
+  onNoteFontChange: (font: NoteFont) => void
   onSelect: (id: number | null) => void
   // A new note was committed; the app returns to Seleção with it selected.
   onNoteCreated: (id: number) => void
@@ -44,9 +47,11 @@ type PointerDraft =
   | { kind: 'note'; pointerId: number; note: Note; start: Point; element: HTMLDivElement; moved: boolean }
 
 // id is null while a new note has not been committed yet.
-type EditingNote = { id: number | null; x: number; y: number; kind: NoteKind; font: NoteFont; align: NoteAlign; text: string }
+// Size and font come from the toolbar while the note is written.
+type EditingNote = { id: number | null; x: number; y: number; kind: NoteKind; align: NoteAlign; text: string }
 
-const BRUSH_WIDTH = 3
+// The pen draws a fine line; the highlighter a wide band.
+const BRUSH_WIDTHS: Record<Brush, number> = { pen: 3, highlighter: 18 }
 // Highlighter ink lets what is under it show through.
 const HIGHLIGHTER_ALPHA = 0.35
 const ERASER_RADIUS = 26
@@ -91,7 +96,7 @@ function nextId(doc: CanvasDoc): number {
   return ids.length === 0 ? 1 : Math.max(...ids) + 1
 }
 
-export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, onNoteSizeChange, onSelect, onNoteCreated, onEditorChange }: CanvasProps) {
+export function Canvas({ doc, area, tool, ink, brush, noteSize, noteFont, selection, onChange, onNoteSizeChange, onNoteFontChange, onSelect, onNoteCreated, onEditorChange }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const notesLayerRef = useRef<HTMLDivElement>(null)
   const noteElements = useRef(new Map<number, HTMLDivElement>())
@@ -200,7 +205,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     if (note.id === null) {
       if (text.trim() === '') return
       const id = nextId(current)
-      change({ ...current, notes: [...current.notes, { id, x: note.x, y: note.y, text, size: noteSize, font: note.font, align: note.align, kind: note.kind }] })
+      change({ ...current, notes: [...current.notes, { id, x: note.x, y: note.y, text, size: noteSize, font: noteFont, align: note.align, kind: note.kind }] })
       onNoteCreated(id)
       return
     }
@@ -208,8 +213,8 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     if (!original) return
     if (text.trim() === '') {
       change({ ...current, notes: current.notes.filter((candidate) => candidate.id !== note.id) })
-    } else if (text !== original.text || noteSize !== original.size) {
-      change({ ...current, notes: current.notes.map((candidate) => (candidate.id === note.id ? { ...candidate, text, size: noteSize } : candidate)) })
+    } else if (text !== original.text || noteSize !== original.size || noteFont !== original.font) {
+      change({ ...current, notes: current.notes.map((candidate) => (candidate.id === note.id ? { ...candidate, text, size: noteSize, font: noteFont } : candidate)) })
     }
   }
 
@@ -223,7 +228,8 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
   const startEditing = (note: Note) => {
     finishEditing(true)
     onNoteSizeChange(note.size)
-    setEditing({ id: note.id, x: note.x, y: note.y, kind: note.kind, font: note.font, align: note.align, text: note.text })
+    onNoteFontChange(note.font)
+    setEditing({ id: note.id, x: note.x, y: note.y, kind: note.kind, align: note.align, text: note.text })
   }
 
   const canvasPoint = (event: { clientX: number; clientY: number }): Point => {
@@ -249,7 +255,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
 
     if ((tool === 'text' || tool === 'postit') && !shouldPan) {
       // The first click outside an open editor only closes it.
-      if (!hadEditor) setEditing({ id: null, x: world.x, y: world.y, kind: tool === 'postit' ? 'postit' : 'text', font: DEFAULT_NOTE_FONT, align: DEFAULT_NOTE_ALIGN, text: '' })
+      if (!hadEditor) setEditing({ id: null, x: world.x, y: world.y, kind: tool === 'postit' ? 'postit' : 'text', align: DEFAULT_NOTE_ALIGN, text: '' })
       return
     }
 
@@ -257,7 +263,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     if (shouldPan) {
       draftRef.current = { kind: 'pan', pointerId: event.pointerId, start: position, camera: docRef.current.camera }
     } else {
-      draftRef.current = { kind: 'stroke', pointerId: event.pointerId, stroke: { id: nextId(docRef.current), points: [world], color: ink, width: BRUSH_WIDTH, brush: 'pen' } }
+      draftRef.current = { kind: 'stroke', pointerId: event.pointerId, stroke: { id: nextId(docRef.current), points: [world], color: ink, width: BRUSH_WIDTHS[brush], brush } }
     }
   }
 
@@ -356,7 +362,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
     if (tool !== 'select' && tool !== 'hand') return
     const canvas = event.currentTarget
     const world = screenToWorld(canvasPoint(event), docRef.current.camera, canvas.clientWidth, canvas.clientHeight)
-    setEditing({ id: null, x: world.x, y: world.y, kind: 'text', font: DEFAULT_NOTE_FONT, align: DEFAULT_NOTE_ALIGN, text: '' })
+    setEditing({ id: null, x: world.x, y: world.y, kind: 'text', align: DEFAULT_NOTE_ALIGN, text: '' })
   }
 
   const notesInteractive = tool === 'select' || tool === 'text' || tool === 'postit'
@@ -390,7 +396,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, selection, onChange, on
             y={editing.y}
             kind={editing.kind}
             size={noteSize}
-            font={editing.font}
+            font={noteFont}
             align={editing.align}
             text={editing.text}
             onTextChange={(text) => setEditing(editingRef.current && { ...editingRef.current, text })}

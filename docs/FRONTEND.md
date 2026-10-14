@@ -24,7 +24,7 @@ Frontend is implemented in layers. Paths are relative to frontend/src. L1 delive
 
 ## Documento
 
-CanvasDoc v2, desde a L8, contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper`, `white`, `black`, `yellow` ou `transparent`. Cada traço guarda a cor em hexadecimal, a largura e o pincel (`pen` ou `highlighter`, desenhado com 35% de opacidade). Cada nota guarda o Markdown, o tamanho (`xs`, `sm`, `md`, `lg`, `xl` ou `xxl`, de 12 a 48 px em App.css), a fonte (`serif`, `sans` ou `mono`), o alinhamento (`left`, `center` ou `right`) e o tipo (`text` ou `postit`). As listas de valores ficam em canvasTypes.ts e valem para o validador. O menu oferece os cinco temas desde a L10; a interface ainda oferece só três tamanhos e a caneta, e o resto chega na L12. O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
+CanvasDoc v2, desde a L8, contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper`, `white`, `black`, `yellow` ou `transparent`. Cada traço guarda a cor em hexadecimal, a largura e o pincel (`pen` ou `highlighter`, desenhado com 35% de opacidade). Cada nota guarda o Markdown, o tamanho (`xs`, `sm`, `md`, `lg`, `xl` ou `xxl`, de 12 a 48 px em App.css), a fonte (`serif`, `sans` ou `mono`), o alinhamento (`left`, `center` ou `right`) e o tipo (`text` ou `postit`). As listas de valores ficam em canvasTypes.ts e valem para o validador. Desde a L12, a interface oferece todos esses valores: os temas no menu, e as fontes, os tamanhos e os pincéis nos popovers. O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
 
 App.tsx é o único lugar que muda a revisão: cada traço, nota, borracha, pan, zoom, área, fundo, undo e redo recebe a revisão seguinte e vai para o saver. Pan, borracha e edição sem efeito não criam entrada no histórico nem save.
 
@@ -56,7 +56,7 @@ Desde a L9, o canvas tem a Seleção, o estado sem ferramenta, e cinco ferrament
 
 - Seleção, o padrão de Edição: um clique numa nota a seleciona e arrastar a move; um clique no fundo limpa a seleção. A seleção é estado do App, fora do documento e do histórico; mover, apagar e alinhar entram no histórico. A barra contextual (canvas/ContextBar.tsx) fica acima da nota selecionada, em coordenadas de tela, e alinha o texto;
 - Mão: arrastar move só a câmera, inclusive sobre uma nota, porque as notas não recebem ponteiro com a Mão;
-- Pincel: traço na tinta selecionada (preto, azul ou vermelho). Escolher uma tinta escolhe o Pincel;
+- Pincel: traço na tinta selecionada, uma das seis de INK_COLORS. A Caneta desenha com 3 px; o Marca-texto, com 18 px e 35% de opacidade. Escolher uma tinta, a Caneta ou o Marca-texto escolhe o Pincel;
 - Texto e Post-it: um clique no fundo abre o editor de uma nova nota, e um clique em uma nota abre a nota;
 - Borracha: remove os traços e as notas que o caminho toca.
 
@@ -64,7 +64,7 @@ O botão direito nunca começa um traço, uma borracha ou uma nota, porque ele a
 
 Os traços ficam no Canvas 2D. As notas são HTML em uma camada com um único transform CSS da câmera, atualizado junto com o redraw; por isso pan e zoom não renderizam React. O Markdown passa pelo markdown-it com `html: false` e sem a regra de imagem ([0007](../decisions/0007-markdown-notes.md)). Um clique em link não navega.
 
-O editor é um textarea com `field-sizing: content`, sem borda, fundo, contorno nem placeholder: só o cursor aparece, na posição e com o padding da nota renderizada, então o texto não salta ao concluir. O post-it mantém o cartão. Ctrl + Enter ou um clique fora conclui, Esc cancela e um texto vazio remove a nota. Duplo clique ou Enter com a nota focada abre o editor. Canvas avisa o App por onEditorChange enquanto um editor está aberto, e o App mostra o popover de tamanhos. Os botões de tamanho não tiram o foco do editor, então o tamanho escolhido vale para a nota em edição.
+O editor é um textarea com `field-sizing: content`, sem borda, fundo, contorno nem placeholder: só o cursor aparece, na posição e com o padding da nota renderizada, então o texto não salta ao concluir. O post-it mantém o cartão. Ctrl + Enter ou um clique fora conclui, Esc cancela e um texto vazio remove a nota. Duplo clique ou Enter com a nota focada abre o editor. Canvas avisa o App por onEditorChange enquanto um editor está aberto, e o App mostra o popover do texto. Fonte e tamanho são estado do App: abrir uma nota existente copia a fonte e o tamanho dela para o popover, e concluir grava os dois. Os botões de fonte e tamanho não tiram o foco do editor, então a escolha vale para a nota em edição.
 
 Toda mudança atualiza a ref do documento antes de chegar ao App, para que um traço ou nota iniciado pelo mesmo evento receba um id além dela.
 
@@ -72,7 +72,7 @@ Toda mudança atualiza a ref do documento antes de chegar ao App, para que um tr
 
 Toolbar, dim, borda da área, menu, seletor de área e avisos só existem quando placement é Edit. Toolbar.tsx segue a [0009](../decisions/0009-toolbar-tab-and-icons.md): [Texto, Post-it, Pincel, Mão] e [Fixar], com ícones do `lucide-react` importados um a um. **Fixar no desktop** fica sempre visível na toolbar; enquanto o save da transição corre, o botão fica desativado e um aviso Salvando… aparece acima da barra, e o canvas continua editável. Sem área, o botão fica desativado e o seletor pede o arraste.
 
-O App escolhe o popover: o do Pincel, com Caneta, Borracha e tintas, para `brush` e `eraser`; o de tamanhos para `text` e `postit`, ou enquanto um editor de nota está aberto. Esc fecha o popover até a próxima escolha de ferramenta.
+O App escolhe o popover: o do Pincel, com Caneta, Marca-texto, Borracha e tintas, para `brush` e `eraser`; o do texto, com fontes e tamanhos, para `text` e `postit`, ou enquanto um editor de nota está aberto. Esc fecha o popover até a próxima escolha de ferramenta. Depois de cada render, a Toolbar mede o popover: perto de uma lateral, ele desliza para caber na janela; perto do topo, abre abaixo da barra.
 
 Os atalhos H, B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou Meta e fora de campos de texto.
 

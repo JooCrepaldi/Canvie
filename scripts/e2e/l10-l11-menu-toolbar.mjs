@@ -136,7 +136,8 @@ async function firstRun() {
   report.check('no tool is pressed in Seleção and no popover is open', (await activeTool(page)) === 'select' && (await popoverName(page)) === null)
   report.check('the drag tab is hidden while the pointer is away', (await tabOpacity(page)) === '0')
   await hoverToolbar(page)
-  report.check('the drag tab shows while the pointer is over the toolbar', (await tabOpacity(page)) === '1')
+  const hovered = await tabOpacity(page)
+  report.check('the drag tab shows while the pointer is over the toolbar', hovered === '1', `opacity ${hovered}`)
   await photo(page, 'l11-01-toolbar-hover.png', { x: bar.x - 40, y: bar.y - 300, width: bar.width + 80, height: bar.height + 340 })
   await leaveToolbar(page)
 
@@ -177,7 +178,7 @@ async function popovers() {
   await sleep(200)
   report.check('the first Esc closes the popover and keeps the tool and Edit', (await popoverName(page)) === null && (await activeTool(page)) === 'brush' && (await placementOf(page)).placement === 'edit')
   await pressLetter(page, 't')
-  report.check('Texto opens the sizes, with the current one pressed', (await popoverName(page)) === 'Tamanho do texto' && (await pressed(page, 'Texto médio')) === 'true')
+  report.check('Texto opens the sizes, with the current one pressed', (await popoverName(page)) === 'Opções do texto' && (await pressed(page, 'Texto médio')) === 'true')
   await pressLetter(page, 't')
   report.check('repeating the letter closes the tool and its popover', (await activeTool(page)) === 'select' && (await popoverName(page)) === null)
 }
@@ -195,7 +196,7 @@ async function caretOnlyEditor() {
     return { border: style.borderTopWidth, background: style.backgroundColor, outline: style.outlineStyle, placeholder: editor.getAttribute('placeholder') }
   })()`)
   report.check('writing shows only the caret: no border, field, outline or placeholder', look.border === '0px' && look.background === 'rgba(0, 0, 0, 0)' && look.outline === 'none' && look.placeholder === null, JSON.stringify(look))
-  report.check('the sizes show while an existing or new note is written in Seleção', (await activeTool(page)) === 'select' && (await popoverName(page)) === 'Tamanho do texto')
+  report.check('the sizes show while an existing or new note is written in Seleção', (await activeTool(page)) === 'select' && (await popoverName(page)) === 'Opções do texto')
   await typeText(page, 'Plano da semana')
   const editor = await rectOf(page, '.note-editor')
   await clickElement(page, 'button[aria-label="Texto grande"]')

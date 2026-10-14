@@ -23,7 +23,8 @@ A [0004](0004-toolbar-movable-and-persistent.md) define o pegador separado, a po
 - Fundo e Área saem da toolbar e vão para o menu do botão direito, como Tema e Área.
 - A posição padrão é centralizada no rodapé do monitor, acima da taskbar. A posição continua salva como preferência, como na 0004. **Reposicionar toolbar** fica no menu do botão direito e no tray.
 - A toolbar só tem orientação horizontal.
-- O cinza do wireframe é provisório. O visual segue [design_system.md](../design_system.md) até um novo registro.
+- A toolbar é preto e branco, sem cor de destaque; o verde `color.accent` sai dela. Ferramenta ativa e opção selecionada nos popovers usam um branco translúcido. Fixar, a ação principal, usa branco sólido com ícone preto na variante escura e preto sólido com ícone branco na clara. A seleção de uma nota também fica sem cor. Só as amostras de tinta têm cor.
+- A escolha entre a variante escura e a clara do wireframe fica para a L11, registrada em [design_system.md](../design_system.md).
 
 ## Consequências
 

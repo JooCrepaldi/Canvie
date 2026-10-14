@@ -11,6 +11,17 @@ const READY = "document.querySelector('.canvie-shell') !== null && (document.que
 
 export const placementOf = (page) => page.evaluate("window.__TAURI_INTERNALS__.invoke('get_placement')")
 
+// WM_CLOSE in Edit pins when there is an area and quits when there is none.
+async function settleClose(page, pid, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!isRunning(pid)) return 'exited'
+    if ((await placementOf(page).catch(() => null))?.placement === 'wall') return 'wall'
+    await sleep(50)
+  }
+  throw new Error('WM_CLOSE in Edit neither pinned nor quit')
+}
+
 export async function waitForPlacement(page, placement, timeoutMs = 10_000) {
   const started = Date.now()
   while (Date.now() - started < timeoutMs) {
@@ -128,16 +139,14 @@ export class CanvieApp {
   // mode: 'kill' ends canvie.exe only, 'tree' also ends its WebView2
   // processes, 'close' sends WM_CLOSE to the Canvie window, like Alt + F4.
   // WM_CLOSE in Edit saves and pins, so a second one, in Wall, ends the app.
+  // Without an area the first one already ends it.
   async stop(mode) {
     const { child, page, exited } = this.current
     this.current = null
     if (mode === 'close') {
       const editing = (await placementOf(page).catch(() => null))?.placement === 'edit'
       closeWindow(child.pid)
-      if (editing) {
-        await waitForPlacement(page, 'wall')
-        closeWindow(child.pid)
-      }
+      if (editing && (await settleClose(page, child.pid)) === 'wall') closeWindow(child.pid)
       page.close()
     } else {
       page.close()

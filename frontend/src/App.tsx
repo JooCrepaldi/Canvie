@@ -221,14 +221,19 @@ export default function App({ persistence, initialLoad }: AppProps) {
   useEffect(() => onPinRequested(() => void requestPin()), [requestPin])
 
   // Closing the window in Edit pins the area. Before the first area there is
-  // nothing to save or pin, so closing quits.
+  // nothing to pin, so closing quits. Undoing back past the first area leaves
+  // a debounced save, which is written before the app exits.
   useEffect(
     () =>
       onCloseRequested(() => {
-        if (docRef.current.area !== null) void requestPin()
-        else quitApp().catch((error: unknown) => console.warn('Canvie: quit_app failed', error))
+        if (docRef.current.area !== null) {
+          void requestPin()
+          return
+        }
+        persistence.flush()
+        quitApp().catch((error: unknown) => console.warn('Canvie: quit_app failed', error))
       }),
-    [requestPin],
+    [persistence, requestPin],
   )
 
   // The first launch has no area, so it opens Edit to drag one.

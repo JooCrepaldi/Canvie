@@ -382,7 +382,7 @@ fn on_close_requested(app: &AppHandle, api: &CloseRequestApi) {
 }
 
 /// Called by the frontend for a close request before any area exists, when
-/// there is nothing to save or pin.
+/// there is nothing to pin. The frontend writes any pending save first.
 #[tauri::command]
 fn quit_app(app: AppHandle) {
   log::info!("close requested without an area: quit");

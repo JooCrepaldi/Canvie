@@ -75,7 +75,7 @@ Não use WorkerW, hooks do Explorer ou DefView patching.
 
 - single-instance registra primeiro; a segunda abertura encerra e traz a área da primeira para Edit;
 - Sair marca `Lifecycle` como encerrando e termina o processo; um save ainda no debounce de 350 ms pode se perder;
-- Alt + F4, ou qualquer WM_CLOSE, em Edit não fecha a janela: o backend emite canvie-close-requested, porque só o frontend sabe se existe uma área. Com área, o frontend salva e fixa, como em Fixar no desktop. Sem área, não há o que salvar nem fixar, e o frontend chama quit_app, que encerra o app como Sair;
+- Alt + F4, ou qualquer WM_CLOSE, em Edit não fecha a janela: o backend emite canvie-close-requested, porque só o frontend sabe se existe uma área. Com área, o frontend salva e fixa, como em Fixar no desktop. Sem área, não há o que fixar: o frontend grava o save pendente e chama quit_app, que encerra o app como Sair;
 - WM_CLOSE em Wall encerra o app, como Sair. Em Wall a janela não tem foco, então só um programa manda esse pedido.
 
 ### Reinício do Explorer

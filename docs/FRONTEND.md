@@ -84,7 +84,7 @@ Fixar no desktop, Esc fora do editor e do seletor, e canvie-pin-requested (envia
 3. chama saveNow com o documento atual; se falhar, fica em Edit e o aviso de save oferece Tentar novamente;
 4. chama pinToWall; se o backend recusar, fica em Edit e mostra O canvas foi salvo, mas não voltou ao desktop, com Tentar novamente.
 
-canvie-close-requested (Alt + F4 ou WM_CLOSE durante Edit) chama a mesma função quando existe área. Antes da primeira área não há o que salvar nem fixar, e o App chama quitApp, que encerra o app. No navegador não existe esse pedido.
+canvie-close-requested (Alt + F4 ou WM_CLOSE durante Edit) chama a mesma função quando existe área. Antes da primeira área não há o que fixar: o App grava um save que ainda esteja no debounce, como o de desfazer a primeira área, e chama quitApp, que encerra o app. No navegador não existe esse pedido.
 
 O frontend não chama set_always_on_top, set_ignore_cursor_events ou SetParent. Essas operações pertencem ao backend e a wallpaper.rs.
 

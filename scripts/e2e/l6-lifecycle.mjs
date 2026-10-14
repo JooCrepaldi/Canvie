@@ -104,6 +104,15 @@ async function altF4WithoutAreaQuits() {
   report.check('Alt + F4 before the first area quits the app', code === 0, `exit code ${code}`)
 }
 
+// The harness close must handle Edit without an area, where WM_CLOSE quits.
+async function harnessCloseWithoutArea() {
+  const page = await app.launch('harness close without an area')
+  await waitForPlacement(page, 'edit')
+  const pid = app.child.pid
+  const outcome = await app.stop('close').then(() => 'exited', (error) => error.message)
+  report.check('stop(close) ends the app in Edit without an area', outcome === 'exited' && !isRunning(pid), outcome)
+}
+
 async function firstRun() {
   const page = await app.launch('first area')
   await waitForPlacement(page, 'edit')
@@ -208,7 +217,7 @@ async function closeInWallQuits() {
 // --skip-explorer leaves the shell alone, for a rerun while someone works on the machine.
 const explorerScenarios = options['skip-explorer'] ? [] : [explorerCrash, explorerCleanExit]
 if (options['skip-explorer']) report.measure('Explorer restarts', 'skipped by --skip-explorer')
-const scenarios = [altF4WithoutAreaQuits, firstRun, altF4Pins, saveFailureReachesLog, outsideProgmanReEmbeds, ...explorerScenarios, idleKeepsPlace, closeInWallQuits]
+const scenarios = [altF4WithoutAreaQuits, harnessCloseWithoutArea, firstRun, altF4Pins, saveFailureReachesLog, outsideProgmanReEmbeds, ...explorerScenarios, idleKeepsPlace, closeInWallQuits]
 try {
   for (const scenario of scenarios) {
     console.log(`\n== ${scenario.name}`)

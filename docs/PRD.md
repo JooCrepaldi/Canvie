@@ -63,7 +63,7 @@ O frontend recebe o evento de estado do backend. Ele não inventa Edição em Re
 
 ### Fixar no desktop
 
-O botão **Fixar no desktop**, Esc fora do editor, Ctrl + Alt + T e Alt + F4 iniciam a mesma transição. Antes de existir uma área, Alt + F4 encerra o app, porque não há o que salvar nem fixar:
+O botão **Fixar no desktop**, Esc fora do editor, Ctrl + Alt + T e Alt + F4 iniciam a mesma transição. Antes de existir uma área, Alt + F4 grava o save pendente e encerra o app, porque não há o que fixar:
 
 1. o frontend conclui a nota em edição e mostra Salvando;
 2. persistence.ts conclui saveNow;

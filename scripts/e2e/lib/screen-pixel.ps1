@@ -9,13 +9,15 @@ Add-Type -Namespace CanviePixel -Name Dpi -MemberDefinition '[DllImport("user32.
 $bitmap = New-Object System.Drawing.Bitmap(1, 1)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 try {
-  $colors = foreach ($pair in $Points.Split(';')) {
+  # A list, because PowerShell flattens a pipeline that yields one array.
+  $colors = New-Object System.Collections.Generic.List[object]
+  foreach ($pair in $Points.Split(';')) {
     $x, $y = $pair.Split(',') | ForEach-Object { [int]$_ }
     $graphics.CopyFromScreen($x, $y, 0, 0, $bitmap.Size)
     $pixel = $bitmap.GetPixel(0, 0)
-    , @($pixel.R, $pixel.G, $pixel.B)
+    $colors.Add(@($pixel.R, $pixel.G, $pixel.B))
   }
-  ConvertTo-Json -InputObject @($colors) -Compress
+  ConvertTo-Json -InputObject $colors.ToArray() -Compress
 } finally {
   $graphics.Dispose()
   $bitmap.Dispose()

@@ -26,6 +26,23 @@ export function closeWindow(pid) {
   execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(import.meta.dirname, 'close-window.ps1'), '-ProcessId', String(pid)], { stdio: 'ignore' })
 }
 
+// Signal 0 only checks that the process exists.
+export function isRunning(pid) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function canviePids() {
+  return execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', 'Get-Process canvie -ErrorAction SilentlyContinue | ForEach-Object { $_.Id }'], { encoding: 'utf8' })
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map(Number)
+}
+
 export function webviewCommandLines() {
   const script = "Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | ForEach-Object { $_.CommandLine }"
   return execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' })
@@ -84,15 +101,46 @@ export class CanvieApp {
     return page
   }
 
+  // The backend restarts Canvie when Explorer took its window. The new
+  // process inherits the test environment but is not a child of the driver,
+  // so it is followed by PID, and its page is a new DevTools target.
+  async adoptRestart(timeoutMs = 60_000) {
+    const previous = this.current
+    await withTimeout(previous.exited, timeoutMs, 'Canvie did not exit to restart')
+    previous.page.close()
+    const deadline = Date.now() + timeoutMs
+    let pid
+    while (!(pid = canviePids().find((candidate) => candidate !== previous.child.pid))) {
+      if (Date.now() > deadline) throw new Error('the restarted Canvie process did not appear')
+      await sleep(250)
+    }
+    const page = await DevTools.attach(this.port, timeoutMs, previous.page.url)
+    await page.waitFor(READY)
+    const exited = (async () => {
+      while (isRunning(pid)) await sleep(250)
+      return null
+    })()
+    this.launches += 1
+    this.current = { child: { pid }, page, exited }
+    return page
+  }
+
   // mode: 'kill' ends canvie.exe only, 'tree' also ends its WebView2
   // processes, 'close' sends WM_CLOSE to the Canvie window, like Alt + F4.
+  // WM_CLOSE in Edit saves and pins, so a second one, in Wall, ends the app.
   async stop(mode) {
     const { child, page, exited } = this.current
     this.current = null
-    page.close()
     if (mode === 'close') {
+      const editing = (await placementOf(page).catch(() => null))?.placement === 'edit'
       closeWindow(child.pid)
+      if (editing) {
+        await waitForPlacement(page, 'wall')
+        closeWindow(child.pid)
+      }
+      page.close()
     } else {
+      page.close()
       execFileSync('taskkill', ['/PID', String(child.pid), ...(mode === 'tree' ? ['/T', '/F'] : ['/F'])], { stdio: 'ignore' })
     }
     await withTimeout(exited, 20_000, `Canvie did not exit after ${mode}`)

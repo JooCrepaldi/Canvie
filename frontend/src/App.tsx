@@ -4,7 +4,7 @@ import { AreaSelector } from './canvas/AreaSelector'
 import { Canvas } from './canvas/Canvas'
 import { INK_COLORS, type Area, type CanvasDoc, type NoteSize, type Tool } from './canvasTypes'
 import type { DocumentPersistence, LoadResult } from './persistence'
-import { enterEdit, getPlacement, initialPlacement, onPinRequested, onPlacementChanged, pinToWall, type Placement } from './placement'
+import { enterEdit, getPlacement, initialPlacement, onCloseRequested, onPinRequested, onPlacementChanged, pinToWall, quitApp, type Placement } from './placement'
 import { Toolbar } from './Toolbar'
 
 const TOOL_SHORTCUTS: Record<string, Tool | undefined> = {
@@ -219,6 +219,17 @@ export default function App({ persistence, initialLoad }: AppProps) {
   }, [persistence])
 
   useEffect(() => onPinRequested(() => void requestPin()), [requestPin])
+
+  // Closing the window in Edit pins the area. Before the first area there is
+  // nothing to save or pin, so closing quits.
+  useEffect(
+    () =>
+      onCloseRequested(() => {
+        if (docRef.current.area !== null) void requestPin()
+        else quitApp().catch((error: unknown) => console.warn('Canvie: quit_app failed', error))
+      }),
+    [requestPin],
+  )
 
   // The first launch has no area, so it opens Edit to drag one.
   useEffect(() => {

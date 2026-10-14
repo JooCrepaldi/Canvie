@@ -52,9 +52,9 @@ Não há save nessa transição. O documento já está confirmado pela persistê
 
 ### Edit → Wall
 
-Fonte: **Fixar no desktop**, Esc, Ctrl + Alt + T ou tray Fixar no desktop.
+Fonte: **Fixar no desktop**, Esc, Ctrl + Alt + T, Alt + F4 ou tray Fixar no desktop.
 
-1. O botão e Esc entram direto neste fluxo. O atalho e o tray emitem canvie-pin-requested, que o frontend recebe e transforma neste mesmo fluxo.
+1. O botão e Esc entram direto neste fluxo. O atalho e o tray emitem canvie-pin-requested, e o pedido de fechamento da janela (Alt + F4) emite canvie-close-requested. O frontend transforma os dois neste mesmo fluxo; sem área, o fechamento chama quit_app e encerra o app.
 2. O frontend bloqueia a ação duplicada, conclui a nota em edição pelo blur e mostra Salvando.
 3. persistence.ts chama saveNow e recebe sucesso ou erro.
 4. Em caso de erro, o frontend desbloqueia a ação, mantém Edit e mostra Tentar novamente.
@@ -95,7 +95,9 @@ placement.ts expõe:
 - enterEdit(): Promise<void>;
 - pinToWall(): Promise<void>;
 - onPlacementChanged(listener): Subscription, com `ready` e `unsubscribe`;
-- onPinRequested(listener): Unsubscribe.
+- onPinRequested(listener): Unsubscribe;
+- onCloseRequested(listener): Unsubscribe;
+- quitApp(): Promise<void>, só para um fechamento antes de existir uma área.
 
 Cada wrapper usa invoke quando existe Tauri e um adapter em memória no navegador. O adapter permite testar desenho e toolbar sem Windows. O App lê getPlacement só depois de `ready`: um evento emitido antes de o listener existir se perde, e a primeira abertura pede enter_edit logo no boot.
 
@@ -103,7 +105,7 @@ O tray e o atalho global nunca chamam pin_to_wall em Edit. Eles emitem canvie-pi
 
 ## Capabilities
 
-A capability da janela principal concede só allow-get-placement, allow-enter-edit, allow-pin-to-wall, core:event:allow-listen e core:event:allow-unlisten. Global-shortcut, single-instance e tray rodam no Rust e não expõem comandos à WebView. O AppManifest em build.rs faz cada comando do app depender de permissão explícita.
+A capability da janela principal concede só allow-get-placement, allow-enter-edit, allow-pin-to-wall, allow-quit-app, allow-report-frontend-issue, core:event:allow-listen e core:event:allow-unlisten. Global-shortcut, single-instance e tray rodam no Rust e não expõem comandos à WebView. O AppManifest em build.rs faz cada comando do app depender de permissão explícita.
 
 ## Segurança e logs
 
@@ -112,7 +114,8 @@ Logs registram:
 - startup e versão;
 - atalho registrado ou recusado;
 - Wall → Edit e Edit → Wall;
-- falha de saveNow, hoje no console da WebView; o log do backend recebe essas falhas na L6;
+- falha de save, documento recuperado e salvamento desativado, que o frontend envia por report_frontend_issue como códigos fixos;
+- Alt + F4 em Edit e o encerramento sem área, a janela perdida ou fora do Progman, o reinício pelo watchdog e o fechamento que encerra o app;
 - falha de parent, foco, click-through ou re-embed;
 - segunda instância.
 

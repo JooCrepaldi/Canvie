@@ -4,7 +4,7 @@
 // sends real input events. WEBVIEW2_USER_DATA_FOLDER moves the WebView2
 // profile to a throwaway folder, so the user's canvas is never read or
 // written. The run stops before any write when that redirect is not in effect.
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdtempSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -319,8 +319,15 @@ async function realProfileLocation() {
   }
   app.launches += 1
   report.check('default launch keeps the WebView2 profile under %APPDATA%\\com.canvie.app', found)
+  // A real profile without an area opens in Edit, where the frontend answers
+  // WM_CLOSE, and it may still be loading. Nothing was edited, so ending the
+  // process writes nothing to the real profile.
   closeWindow(child.pid)
-  await withTimeout(exited, 20_000, 'Canvie did not exit after close')
+  const closed = await withTimeout(exited, 5_000, 'still running').then(() => true, () => false)
+  if (!closed) {
+    execFileSync('taskkill', ['/PID', String(child.pid), '/F'], { stdio: 'ignore' })
+    await withTimeout(exited, 20_000, 'Canvie did not exit after taskkill')
+  }
 }
 
 const scenarios = [freshBoot, l1Workload, killAndRestore, writeFailure, invalidPayloads, closeRightAfterEdit, treeKillDurability, editDuringSave]

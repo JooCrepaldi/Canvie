@@ -12,7 +12,7 @@ use windows::{
     Foundation::{COLORREF, HWND, POINT, RECT},
     Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, ScreenToClient, MONITORINFO, MONITOR_DEFAULTTOPRIMARY},
     UI::WindowsAndMessaging::{
-      FindWindowW, GetAncestor, GetWindowLongPtrW, SetForegroundWindow, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW,
+      FindWindowExW, FindWindowW, GetAncestor, GetWindowLongPtrW, IsWindow, SetForegroundWindow, SetLayeredWindowAttributes, SetParent, SetWindowLongPtrW,
       SetWindowPos, GA_PARENT, GWL_STYLE, HWND_TOP, HWND_TOPMOST, LWA_ALPHA, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_SHOWWINDOW,
       WS_CHILD, WS_POPUP,
     },
@@ -21,6 +21,28 @@ use windows::{
 
 fn find_progman() -> Result<HWND, String> {
   unsafe { FindWindowW(w!("Progman"), None) }.map_err(|error| format!("Progman not found: {error}"))
+}
+
+/// How far Explorer has come in building the desktop.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Desktop {
+  Missing,
+  WithoutIcons,
+  Ready,
+}
+
+/// Explorer creates Progman first and its icon layer, SHELLDLL_DefView, a
+/// moment later. A window embedded before the icon layer exists ends up
+/// under it. Some wallpaper apps move the icon layer out of Progman, so a
+/// caller may stop waiting for it.
+pub fn desktop() -> Desktop {
+  let Ok(progman) = find_progman() else {
+    return Desktop::Missing;
+  };
+  match unsafe { FindWindowExW(Some(progman), None, w!("SHELLDLL_DefView"), None) } {
+    Ok(_) => Desktop::Ready,
+    Err(_) => Desktop::WithoutIcons,
+  }
 }
 
 /// Full rectangle of the primary monitor in physical screen pixels.
@@ -112,6 +134,13 @@ pub fn bring_to_front(window: HWND) -> Result<(), String> {
     }
   }
   Ok(())
+}
+
+/// False once Windows destroyed the window. When Explorer crashes, Windows
+/// destroys the child of Progman without sending it WM_DESTROY, so tao and
+/// Tauri keep a window whose handle is dead.
+pub fn is_alive(window: HWND) -> bool {
+  unsafe { IsWindow(Some(window)) }.as_bool()
 }
 
 /// True when the window's parent is the current Progman.

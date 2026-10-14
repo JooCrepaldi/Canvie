@@ -63,7 +63,7 @@ O frontend recebe o evento de estado do backend. Ele não inventa Edição em Re
 
 ### Fixar no desktop
 
-O botão **Fixar no desktop**, Esc fora do editor e Ctrl + Alt + T iniciam a mesma transição:
+O botão **Fixar no desktop**, Esc fora do editor, Ctrl + Alt + T e Alt + F4 iniciam a mesma transição. Antes de existir uma área, Alt + F4 encerra o app, porque não há o que salvar nem fixar:
 
 1. o frontend conclui a nota em edição e mostra Salvando;
 2. persistence.ts conclui saveNow;
@@ -81,6 +81,7 @@ O app não confirma a troca antes de salvar. Sem área definida, a transição p
 | --- | --- | --- |
 | Ctrl + Alt + T | Chama ou fixa a área | Global |
 | Esc | Salva e fixa; cancela a nota em edição | Edição |
+| Alt + F4 | Salva e fixa, sem encerrar o app; sem área, encerra o app | Edição |
 | B | Pincel | Edição |
 | T | Nota | Edição |
 | P | Post-it | Edição |
@@ -121,7 +122,7 @@ A área usa pixels CSS do monitor principal. O documento não guarda o estado da
 | área fora da tela depois de mudar a resolução | Limitar a área ao monitor principal |
 | atalho ocupado | Iniciar o app, registrar aviso e manter Editar no tray |
 | capacidade negada | Iniciar com o recurso afetado desativado e registrar a causa |
-| Explorer reinicia | Reparentar no próximo enter_edit ou pin_to_wall |
+| Explorer reinicia | Esperar o novo Progman e a camada de ícones e reiniciar o Canvie, que volta ao desktop com o documento salvo |
 | API Tauri ausente | Usar fallback de navegador para editar e testar o canvas |
 
 ## 8. Critérios de aceite

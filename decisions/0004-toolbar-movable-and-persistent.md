@@ -1,6 +1,6 @@
 # 0004: tornar a toolbar móvel pelo pegador e persistir sua posição
 
-- **Status:** aceito
+- **Status:** aceito; orientação vertical e posição padrão revistas em [0009](0009-toolbar-tab-and-icons.md)
 - **Data:** 2026-09-25
 - **Escopo:** interação e design system
 

@@ -64,6 +64,8 @@ Use a fonte e a escala do Windows. Respeite alto contraste e redução de movime
 
 ## Toolbar
 
+Esta seção descreve a toolbar da 0.0.1. A toolbar de ícones da [0009](decisions/0009-toolbar-tab-and-icons.md) substitui esta ordem quando a L11 do [roadmap da 0.0.2](docs/ROADMAP-0.0.2.md) for entregue.
+
 A toolbar:
 
 - aparece apenas em Edição;

@@ -28,7 +28,7 @@ export function NoteView({ note, interactive, elementRef, onPointerDown, onEdit 
   return (
     <div
       ref={(element) => elementRef(note.id, element)}
-      className={`note note-${note.kind} note-${note.size}${interactive ? ' is-interactive' : ''}`}
+      className={`note note-${note.kind} note-${note.size} note-font-${note.font} note-align-${note.align}${interactive ? ' is-interactive' : ''}`}
       style={{ left: note.x, top: note.y }}
       role="note"
       tabIndex={interactive ? 0 : -1}

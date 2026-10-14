@@ -20,16 +20,16 @@ Frontend is implemented in layers. Paths are relative to frontend/src. L1 delive
 
 ## Documento
 
-CanvasDoc v1 contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper` ou `transparent`. Cada traço guarda a cor em hexadecimal; cada nota guarda o Markdown, o tamanho (`small`, `medium` ou `large`) e o tipo (`text` ou `postit`). O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
+CanvasDoc v2, desde a L8, contém revision, area, background, strokes, notes e camera. area é o retângulo em pixels CSS da janela, ou null antes do primeiro arraste. background é `paper`, `white`, `black`, `yellow` ou `transparent`. Cada traço guarda a cor em hexadecimal, a largura e o pincel (`pen` ou `highlighter`, desenhado com 35% de opacidade). Cada nota guarda o Markdown, o tamanho (`xs`, `sm`, `md`, `lg`, `xl` ou `xxl`, de 12 a 48 px em App.css), a fonte (`serif`, `sans` ou `mono`), o alinhamento (`left`, `center` ou `right`) e o tipo (`text` ou `postit`). As listas de valores ficam em canvasTypes.ts e valem para o validador. A toolbar ainda oferece só três tamanhos, dois fundos e a caneta; o resto chega com as camadas da 0.0.2. O estado de janela não entra no documento. O histórico de undo e redo fica em memória.
 
 App.tsx é o único lugar que muda a revisão: cada traço, nota, borracha, pan, zoom, área, fundo, undo e redo recebe a revisão seguinte e vai para o saver. Pan, borracha e edição sem efeito não criam entrada no histórico nem save.
 
 main.tsx cria a persistência e carrega o documento antes do primeiro render. O carregador:
 
-1. lê `canvie.document.v1` do localStorage;
-2. valida a versão, a revisão, cada traço, nota e câmera, os limites e a unicidade dos ids;
-3. retorna um documento vazio quando o payload é inválido;
-4. guarda o payload inválido em `canvie.document.invalid.v1` e só o substitui na primeira edição;
+1. lê `canvie.document` do localStorage; se essa chave não existe, lê o documento da 0.0.1 em `canvie.document.v1`;
+2. valida a versão, a revisão, cada traço, nota e câmera, os limites e a unicidade dos ids; um v1 válido é migrado em memória para o v2, como descreve a [decisão 0011](../decisions/0011-document-v2-storage.md);
+3. retorna um documento vazio quando o payload é inválido ou de uma versão futura;
+4. guarda o payload inválido de `canvie.document` em `canvie.document.invalid` e só o substitui na primeira edição; a chave da 0.0.1 nunca é escrita, então ela mesma é a cópia do v1;
 5. bloqueia o save da sessão quando não consegue ler o payload ou guardar a cópia, para nunca sobrescrever o que não foi preservado.
 
 Os novos ids são sempre o maior id do documento atual mais um, então continuam além dos ids restaurados.

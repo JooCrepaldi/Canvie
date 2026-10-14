@@ -87,16 +87,16 @@ Nenhum componente React chama diretamente a API de janela. Nenhuma função de W
 O documento local usa a forma:
 
     CanvasDoc {
-      version: 1,
+      version: 2,
       revision: number,
       area: { x, y, width, height } | null,
-      background: 'paper' | 'transparent',
+      background: 'paper' | 'white' | 'black' | 'yellow' | 'transparent',
       strokes: Stroke[],
       notes: Note[],
       camera: { x: number, y: number, zoom: number }
     }
 
-Notas e post-its guardam Markdown, tamanho e tipo. A área usa pixels CSS da janela, que cobre o monitor principal a partir da L4.
+Traços guardam o pincel. Notas e post-its guardam Markdown, tamanho, fonte, alinhamento e tipo. A área usa pixels CSS da janela, que cobre o monitor principal a partir da L4. O documento fica na chave `canvie.document`; um documento v1 da 0.0.1 é migrado na carga e fica intocado na chave antiga como cópia ([0011](decisions/0011-document-v2-storage.md)).
 
 O WebView2 localStorage é suficiente para o primeiro ciclo e evita uma API Rust de arquivo. lib.rs cria a janela principal com o perfil do WebView2 em %APPDATA%/com.canvie.app, ao lado do resto dos dados do usuário. O padrão do Tauri e o dataDirectory relativo resolvem para %LOCALAPPDATA%. persistence.ts:
 

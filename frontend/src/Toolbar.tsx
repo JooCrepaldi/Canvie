@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { INK_COLORS, NOTE_SIZES, type Background, type NoteSize, type Tool } from './canvasTypes'
+import { BACKGROUND_LABELS, INK_COLORS, NOTE_SIZES, type Background, type NoteSize, type Tool } from './canvasTypes'
 
 type ToolbarProps = {
   tool: Tool
@@ -117,8 +117,8 @@ export function Toolbar(props: ToolbarProps) {
         ))}
       </div>
       <div className="toolbar-group" role="group" aria-label="Área">
-        <button className="toolbar-button" type="button" aria-label={`Fundo ${background === 'paper' ? 'bege' : 'transparente'}, trocar`} onClick={props.onBackgroundToggle}>
-          {background === 'paper' ? 'Fundo bege' : 'Fundo transparente'}
+        <button className="toolbar-button" type="button" aria-label={`Fundo ${BACKGROUND_LABELS[background]}, trocar`} onClick={props.onBackgroundToggle}>
+          {`Fundo ${BACKGROUND_LABELS[background]}`}
         </button>
         <button className="toolbar-button" type="button" aria-label="Redefinir área do canvas" onClick={props.onSelectArea}>
           Área

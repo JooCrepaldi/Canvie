@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import {
+  DEFAULT_NOTE_ALIGN,
+  DEFAULT_NOTE_FONT,
   MAX_STROKE_POINTS,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -8,6 +10,8 @@ import {
   type Camera,
   type CanvasDoc,
   type Note,
+  type NoteAlign,
+  type NoteFont,
   type NoteKind,
   type NoteSize,
   type Point,
@@ -33,9 +37,11 @@ type PointerDraft =
   | { kind: 'note'; pointerId: number; note: Note; start: Point; element: HTMLDivElement; moved: boolean }
 
 // id is null while a new note has not been committed yet.
-type EditingNote = { id: number | null; x: number; y: number; kind: NoteKind; text: string }
+type EditingNote = { id: number | null; x: number; y: number; kind: NoteKind; font: NoteFont; align: NoteAlign; text: string }
 
 const BRUSH_WIDTH = 3
+// Highlighter ink lets what is under it show through.
+const HIGHLIGHTER_ALPHA = 0.35
 const ERASER_RADIUS = 26
 const DRAG_THRESHOLD = 3
 
@@ -66,7 +72,9 @@ function drawStroke(context: CanvasRenderingContext2D, stroke: Stroke, camera: C
   context.lineWidth = stroke.width * camera.zoom
   context.lineCap = 'round'
   context.lineJoin = 'round'
+  context.globalAlpha = stroke.brush === 'highlighter' ? HIGHLIGHTER_ALPHA : 1
   context.stroke()
+  context.globalAlpha = 1
 }
 
 function nextId(doc: CanvasDoc): number {
@@ -176,7 +184,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
     const text = note.text.trimEnd()
     if (note.id === null) {
       if (text.trim() === '') return
-      change({ ...current, notes: [...current.notes, { id: nextId(current), x: note.x, y: note.y, text, size: noteSize, kind: note.kind }] })
+      change({ ...current, notes: [...current.notes, { id: nextId(current), x: note.x, y: note.y, text, size: noteSize, font: note.font, align: note.align, kind: note.kind }] })
       return
     }
     const original = current.notes.find((candidate) => candidate.id === note.id)
@@ -198,7 +206,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
   const startEditing = (note: Note) => {
     finishEditing(true)
     onNoteSizeChange(note.size)
-    setEditing({ id: note.id, x: note.x, y: note.y, kind: note.kind, text: note.text })
+    setEditing({ id: note.id, x: note.x, y: note.y, kind: note.kind, font: note.font, align: note.align, text: note.text })
   }
 
   const canvasPoint = (event: { clientX: number; clientY: number }): Point => {
@@ -216,7 +224,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
 
     if ((tool === 'text' || tool === 'postit') && !shouldPan) {
       // The first click outside an open editor only closes it.
-      if (!hadEditor) setEditing({ id: null, x: world.x, y: world.y, kind: tool === 'postit' ? 'postit' : 'text', text: '' })
+      if (!hadEditor) setEditing({ id: null, x: world.x, y: world.y, kind: tool === 'postit' ? 'postit' : 'text', font: DEFAULT_NOTE_FONT, align: DEFAULT_NOTE_ALIGN, text: '' })
       return
     }
 
@@ -224,7 +232,7 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
     if (shouldPan) {
       draftRef.current = { kind: 'pan', pointerId: event.pointerId, start: position, camera: docRef.current.camera }
     } else {
-      draftRef.current = { kind: 'stroke', pointerId: event.pointerId, stroke: { id: nextId(docRef.current), points: [world], color: ink, width: BRUSH_WIDTH } }
+      draftRef.current = { kind: 'stroke', pointerId: event.pointerId, stroke: { id: nextId(docRef.current), points: [world], color: ink, width: BRUSH_WIDTH, brush: 'pen' } }
     }
   }
 
@@ -339,6 +347,8 @@ export function Canvas({ doc, area, tool, ink, noteSize, onChange, onNoteSizeCha
             y={editing.y}
             kind={editing.kind}
             size={noteSize}
+            font={editing.font}
+            align={editing.align}
             text={editing.text}
             onTextChange={(text) => setEditing(editingRef.current && { ...editingRef.current, text })}
             onCommit={() => finishEditing(true)}

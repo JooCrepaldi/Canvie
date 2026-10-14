@@ -20,6 +20,23 @@
   background: transparent;
 }
 
+.canvas-area.background-white {
+  background: #ffffff;
+}
+
+.canvas-area.background-black {
+  background: #1c1c1e;
+}
+
+.canvas-area.background-yellow {
+  background: #fef3c7;
+}
+
+/* Post-its keep their dark text on yellow, and the editor on its light field. */
+.canvas-area.background-black .note-text:not(.note-editor) {
+  color: #f3f4f6;
+}
+
 .canvas-surface {
   position: absolute;
   inset: 0;
@@ -79,16 +96,52 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
-.note-small {
+.note-xs {
+  font-size: 12px;
+}
+
+.note-sm {
   font-size: 14px;
 }
 
-.note-medium {
+.note-md {
   font-size: 18px;
 }
 
-.note-large {
+.note-lg {
   font-size: 24px;
+}
+
+.note-xl {
+  font-size: 32px;
+}
+
+.note-xxl {
+  font-size: 48px;
+}
+
+.note-font-serif {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.note-font-sans {
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+.note-font-mono {
+  font-family: "Cascadia Mono", Consolas, monospace;
+}
+
+.note-align-left {
+  text-align: left;
+}
+
+.note-align-center {
+  text-align: center;
+}
+
+.note-align-right {
+  text-align: right;
 }
 
 .note.is-interactive {

@@ -59,6 +59,15 @@ Verificações:
 
 Consulte docs/OPERATIONS.md antes de testar a integração com o desktop.
 
+## Instalação
+
+A build release gera um instalador NSIS para o usuário atual, sem pedir permissão de administrador:
+
+    Set-Location frontend
+    npm run tauri build
+
+O instalador fica em `%LOCALAPPDATA%\canvie-target\release\bundle\nsis\Canvie_<versão>_x64-setup.exe`, fora do repositório. Ele instala o Canvie em `%LOCALAPPDATA%\Canvie` e cria o atalho no menu Iniciar. Para desinstalar, use Configurações > Aplicativos ou o `uninstall.exe` da pasta de instalação. O canvas em `%APPDATA%\com.canvie.app` continua no computador depois da desinstalação.
+
 ## Licença
 
 O Canvie é open source sob a [licença MIT](LICENSE).

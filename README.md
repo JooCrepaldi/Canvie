@@ -2,15 +2,16 @@
 
 Canvie é uma área de anotação fixa no desktop do Windows. Você arrasta um retângulo no desktop e ele vira um canvas para desenhos, notas em Markdown e post-its. Quando precisa anotar algo, use Ctrl + Alt + T: a área vem para a frente com uma toolbar compacta e volta ao desktop, salva, quando você usa o atalho de novo ou clica em **Fixar no desktop**.
 
-A versão 0.0.1 entrega as camadas L0 a L5: a área, o conteúdo, o estado Fixo e a transição para Edição. A L6 e a L7 fecham o primeiro ciclo, e a 0.0.2 segue o [roadmap próprio](docs/ROADMAP-0.0.2.md).
+A versão atual é a 0.2. A 0.0.1 entregou o primeiro ciclo, nas camadas L0 a L7: a área, o conteúdo, o estado Fixo, a transição para Edição e o instalador. A 0.2 entregou as camadas L8 a L13 do [roadmap próprio](docs/ROADMAP-0.2.md): a toolbar de ícones, o menu do botão direito, as fontes, os tamanhos, as tintas, o marca-texto, os temas e o movimento.
 
 ## Proposta atual
 
 - uma área retangular escolhida pelo usuário e um documento;
-- fundo bege ou transparente;
-- um pincel em preto, azul ou vermelho;
-- notas e post-its em Markdown, com três tamanhos de texto;
-- Fixo como estado normal e Edição em primeiro plano quando o usuário chama;
+- temas bege, branco, preto, amarelo e transparente;
+- um pincel com caneta e marca-texto, em seis tintas;
+- notas e post-its em Markdown, em três fontes e seis tamanhos, escritos com um duplo clique;
+- toolbar de ícones com aba de arrastar e menu do botão direito;
+- Fixo como estado normal e Edição em primeiro plano quando o usuário chama, com uma transição curta;
 - salvamento local;
 - tray e instância única;
 - Windows como único alvo.
@@ -33,7 +34,7 @@ Leia o documento que responde à pergunta:
 | CONTEXT.md | Vocabulário do domínio |
 | docs/PRD.md | Contrato funcional do primeiro ciclo |
 | docs/MVP-0-ROADMAP.md | Camadas L0 a L7 do primeiro ciclo e evidência de done |
-| docs/ROADMAP-0.0.2.md | Camadas L8 a L12 da 0.0.2 |
+| docs/ROADMAP-0.2.md | Camadas L8 a L13 da 0.2 e o fechamento |
 | docs/ARCHITECTURE.md | Detalhe do runtime e da transição |
 | docs/FRONTEND.md | Canvas, persistência, toolbar e fallback de navegador |
 | docs/BACKEND.md | Rust, Tauri, tray, atalhos e Win32 |

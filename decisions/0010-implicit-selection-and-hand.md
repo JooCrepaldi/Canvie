@@ -16,14 +16,14 @@ Na 0.0.1, a ferramenta Mover arrasta uma nota quando o clique começa nela e mov
 - Depois de criar uma nota ou um post-it, o canvas volta para Seleção. Clicar de novo na ferramenta ativa, ou repetir a letra dela, também volta.
 - A Mão, com atalho H, arrasta só a câmera. Space + arrastar continua movendo a câmera em qualquer ferramenta.
 - Esc cancela o editor aberto. Sem editor, Esc limpa a seleção. Sem editor e sem seleção, Esc salva e fixa.
-- Na 0.0.2, a seleção vale para um elemento. Seleção múltipla e traços selecionáveis entram com as formas na 0.0.3.
+- Na 0.2, a seleção vale para um elemento. Seleção múltipla e traços selecionáveis entram com as formas na 0.3.
 
 **Revisão de 2026-10-14 (L11):** com o popover de uma ferramenta aberto, Esc primeiro fecha o popover, depois limpa a seleção e só então fixa. Com o Pincel, fixar pelo Esc pede dois toques. O menu do botão direito e o diálogo de limpeza tratam o próprio Esc e nunca fixam.
 
 ## Consequências
 
 - A seleção é estado de interação do frontend. Ela não entra no documento nem no histórico. Mover, apagar e alinhar entram no histórico.
-- A tabela de atalhos em [product.md](../product.md) e no [PRD](../docs/PRD.md) muda quando a L9 da [0.0.2](../docs/ROADMAP-0.0.2.md) for entregue.
+- A tabela de atalhos em [product.md](../product.md) e no [PRD](../docs/PRD.md) muda quando a L9 da [0.2](../docs/ROADMAP-0.2.md) for entregue.
 - Com um elemento selecionado, fixar pelo Esc pede dois toques. O atalho global e o botão Fixar continuam fixando com um toque.
 - O botão Texto vira a configuração da próxima nota, e não o único jeito de criá-la.
 

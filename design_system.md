@@ -48,7 +48,7 @@ O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 | color.inkMuted | #A7A9B0 | Texto auxiliar |
 | color.selected | rgba(255,255,255,0.14) | Ferramenta ativa e opção escolhida |
 | color.border | rgba(255,255,255,0.12) | Bordas |
-| color.accent | #10A37F | Sem uso na 0.0.2: a toolbar é preto e branco ([0009](decisions/0009-toolbar-tab-and-icons.md)) |
+| color.accent | #10A37F | Sem uso na 0.2: a toolbar é preto e branco ([0009](decisions/0009-toolbar-tab-and-icons.md)) |
 | color.danger | #EF4444 | Falha e exclusão |
 | color.focus | #60A5FA | Foco de teclado nas notas e nos avisos |
 | radius.lg | 14 px | Toolbar e popovers |

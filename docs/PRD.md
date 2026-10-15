@@ -124,7 +124,7 @@ O produto não usa Win + T porque o Explorer reserva a combinação.
     Stroke { id, points, color, width, brush: 'pen' | 'highlighter' }
     Note { id, x, y, text, size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', font: 'serif' | 'sans' | 'mono', align: 'left' | 'center' | 'right', kind: 'text' | 'postit' }
 
-O formato é o v2 desde a L8 da 0.0.2. A interface oferece todos os valores desde a L12: os cinco temas, o alinhamento, as três fontes, os seis tamanhos e os dois pincéis. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
+O formato é o v2 desde a L8 da 0.2. A interface oferece todos os valores desde a L12: os cinco temas, o alinhamento, as três fontes, os seis tamanhos e os dois pincéis. Um documento v1 é migrado sem perda ([0011](../decisions/0011-document-v2-storage.md)).
 
 A área usa pixels CSS do monitor principal. O documento não guarda o estado da janela: Fixo e Edição são estado de runtime. A posição da toolbar é uma preferência separada.
 

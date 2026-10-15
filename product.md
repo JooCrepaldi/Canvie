@@ -20,7 +20,7 @@ O primeiro usuário é o próprio criador do Canvie: alguém que passa o dia no 
 
 - **Desktop primeiro.** O estado normal é a área quieta e fixa no desktop.
 - **Edição sob demanda.** A toolbar aparece apenas quando o usuário traz a área para a frente.
-- **Um canvas.** Uma área e um documento reduzem decisões, memória e tempo de recuperação. A 0.0.3 revê este princípio para vários canvases.
+- **Um canvas.** Uma área e um documento reduzem decisões, memória e tempo de recuperação. A 0.3 revê este princípio para vários canvases.
 - **Local.** O conteúdo fica na máquina. Não há conta, servidor, sincronização ou telemetria.
 - **MVP cru.** O primeiro ciclo entrega uma opção de cada coisa e cresce depois que a troca entre desktop e edição funcionar.
 - **Valores prontos.** Depois da 0.0.1, tamanhos, fontes, cores e temas crescem como listas curtas e fixas. Escolher é um clique, não um ajuste. A decisão está em [0008](decisions/0008-preset-values.md).
@@ -53,9 +53,9 @@ O canvas fica no monitor principal no primeiro ciclo.
 
 Estas versões entram depois que a troca entre Fixo e Edição funcionar em uma instalação real, com a L6 e a L7 do [primeiro ciclo](docs/MVP-0-ROADMAP.md) concluídas.
 
-### 0.0.2: escrever mais rápido
+### 0.2: escrever mais rápido (entregue em 2026-10-15)
 
-Continua uma área, um canvas e um documento. A ordem das camadas está em [ROADMAP-0.0.2.md](docs/ROADMAP-0.0.2.md).
+Continua uma área, um canvas e um documento. A ordem das camadas e a evidência estão em [ROADMAP-0.2.md](docs/ROADMAP-0.2.md).
 
 - toolbar de ícones com aba de arrastar em cima, que só aparece com o ponteiro sobre a toolbar, centralizada no rodapé, com posição salva e **Reposicionar toolbar** ([0009](decisions/0009-toolbar-tab-and-icons.md));
 - Seleção sem botão, Mão só para a câmera e duplo clique no canvas para escrever ([0010](decisions/0010-implicit-selection-and-hand.md));
@@ -64,9 +64,10 @@ Continua uma área, um canvas e um documento. A ordem das camadas está em [ROAD
 - popover do Pincel com caneta, marca-texto, borracha e seis cores;
 - menu do botão direito em Edição com Reposicionar toolbar, Tema, Área, Ajustar à tela, Zoom e Limpar canvas;
 - temas bege, branco, preto, amarelo e transparente;
-- documento v2, que migra o documento da 0.0.1 sem perder conteúdo.
+- documento v2, que migra o documento da 0.0.1 sem perder conteúdo;
+- movimento curto na troca entre Fixo e Edição, nas camadas e nos botões, e um editor que não redesenha o canvas a cada tecla.
 
-### 0.0.3: vários canvases e formas
+### 0.3: vários canvases e formas
 
 - ferramenta Novo canvas, que cria outra área no desktop, cada uma com fundo e câmera próprios;
 - formas básicas: seta, linha, retângulo e círculo, com seleção, mover e redimensionar;

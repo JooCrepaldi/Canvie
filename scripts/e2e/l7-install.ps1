@@ -77,7 +77,10 @@ $log = Join-Path $env:LOCALAPPDATA 'com.canvie.app\logs\Canvie.log'
 $logBefore = if (Test-Path $log) { (Get-Content $log -Raw).Length } else { 0 }
 if ($shortcut) { Start-Process -FilePath $shortcut.FullName }
 $started = Wait-Until { Get-Process -Name canvie -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } } 15000
-$logged = Wait-Until { (Test-Path $log) -and ((Get-Content $log -Raw).Length -lt $logBefore -or (Get-Content $log -Raw).Substring($logBefore) -match 'Canvie startup') } 15000
+# Setup ends with the shortcut line. A WM_CLOSE sent while setup still embeds
+# the window destroys it, and the watchdog restarts Canvie (OPERATIONS.md).
+$logged = Wait-Until { (Test-Path $log) -and ((Get-Content $log -Raw).Length -lt $logBefore -or (Get-Content $log -Raw).Substring($logBefore) -match 'Canvie startup[\s\S]*shortcut') } 15000
+Start-Sleep -Milliseconds 500
 Check 'the shortcut opens the installed Canvie, which logs its startup' ($started -and $logged)
 $running = Get-Process -Name canvie -ErrorAction SilentlyContinue
 foreach ($process in $running) {

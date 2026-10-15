@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { MAX_NOTE_LENGTH, type NoteAlign, type NoteFont, type NoteKind, type NoteSize } from '../canvasTypes'
 
 type NoteEditorProps = {
@@ -16,8 +16,11 @@ type NoteEditorProps = {
 
 export function NoteEditor({ x, y, kind, size, font, align, text, onTextChange, onCommit, onCancel }: NoteEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Typing renders only this editor; the canvas reads the text on commit.
+  const [value, setValue] = useState(text)
 
-  useEffect(() => {
+  // Focus lands before the first paint, so the first key is never lost.
+  useLayoutEffect(() => {
     const textarea = textareaRef.current
     if (!textarea) return
     textarea.focus()
@@ -31,8 +34,11 @@ export function NoteEditor({ x, y, kind, size, font, align, text, onTextChange, 
       style={{ left: x, top: y }}
       aria-label={kind === 'postit' ? 'Texto do post-it em Markdown' : 'Texto da nota em Markdown'}
       maxLength={MAX_NOTE_LENGTH}
-      value={text}
-      onChange={(event) => onTextChange(event.target.value)}
+      value={value}
+      onChange={(event) => {
+        setValue(event.target.value)
+        onTextChange(event.target.value)
+      }}
       onBlur={onCommit}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {

@@ -78,6 +78,16 @@ Os atalhos H, B, T, P e E trocam de ferramenta apenas em Edit, sem Ctrl, Alt ou 
 
 A aba é o único controle de arraste, com pointer capture, e a posição fica limitada à janela com a aba visível. Arrastar qualquer botão não move a toolbar. Ao soltar, preferences.ts grava `{ left, top }` em `canvie.toolbar` no localStorage, fora do documento e do histórico. Sem preferência, a toolbar fica centralizada, 20 px acima do fim da área de trabalho do monitor (`screen.availTop + screen.availHeight`). Uma preferência inválida ou fora da janela é removida, registra `toolbar_position_reset` por report_frontend_issue e volta ao padrão. Reposicionar toolbar, no menu ou no tray, apaga a preferência. O canvas fica no monitor principal e a toolbar é só horizontal, então monitor e orientação da [0004](../decisions/0004-toolbar-movable-and-persistent.md) não são gravados.
 
+## Movimento e escrita
+
+motion.css guarda os tokens de movimento, as animações e as microinterações; motion.ts guarda o tempo da saída. O shell tem a classe `is-edit` ou `is-wall`, e `is-leaving` durante a saída. Uma animação CSS recomeça quando o nome dela muda, então cada troca de classe toca a entrada, a saída ou o pouso.
+
+requestPin salva primeiro. Só com o save confirmado ele liga `is-leaving`, espera o `animationend` da descida do canvas (`waitForExit`, com limite de 1 s e sem espera com redução de movimento) e chama pin_to_wall. As transições seguem as animações, não um relógio: a janela nunca sai antes do último quadro. O evento Wall desliga `is-leaving`. Um pin que falha também desliga a saída, e o canvas volta ao lugar.
+
+A subida liga `is-entering` só quando Edit vem de Wall com uma área e sem redução de movimento, e o `animationend` dela desliga a classe. Uma área recém-desenhada não sobe: ela fica onde o ponteiro a deixou.
+
+O NoteEditor guarda o texto no próprio estado. O Canvas recebe cada mudança por uma ref, sem renderizar, e lê o texto ao concluir. O foco entra num `useLayoutEffect`, antes do primeiro quadro. O escurecimento (`.area-frame`) tem `will-change: opacity`, que o põe numa camada própria; assim a digitação não repinta a sombra de tela inteira.
+
 ## Menu do botão direito
 
 ContextMenu.tsx abre em Edit no ponto do clique, quando o botão direito cai dentro da área, ou no centro da área com Shift + F10 e a tecla de menu. Um listener de `contextmenu` no window impede o menu do WebView em Edit, exceto em campos de texto, que mantêm recortar, copiar e colar.

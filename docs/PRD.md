@@ -81,6 +81,8 @@ O botão **Fixar no desktop**, Esc fora do editor, Ctrl + Alt + T e Alt + F4 ini
 6. o backend emite Wall;
 7. o frontend esconde a toolbar e o escurecimento.
 
+Desde a L13, entre o passo 2 e o passo 4 o canvas desce e esmaece por 180 ms, e ao chegar no desktop ele pousa com um fade. Ao entrar em Edição, o canvas aparece com fade e sobe. A redução de movimento do Windows tira essas animações.
+
 O app não confirma a troca antes de salvar. Sem área definida, a transição pede o arraste antes de fixar.
 
 ## 5. Atalhos

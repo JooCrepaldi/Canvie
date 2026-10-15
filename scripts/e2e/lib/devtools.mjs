@@ -223,7 +223,12 @@ export async function defineArea(page, start, end) {
   }))
   await drag(page, points)
   await page.waitFor("document.querySelector('.area-selector') === null && document.querySelector('.canvas-area') !== null")
+  await motionSettled(page)
 }
+
+// Since L13, entering Edit and opening layers animate. Geometry read before
+// the motion ends is off by the movement, so suites wait for it.
+export const motionSettled = (page) => page.waitFor("document.getAnimations().every((animation) => animation.playState !== 'running')", 5_000)
 
 export const readRaw = (page, key) => page.evaluate(`localStorage.getItem(${JSON.stringify(key)})`)
 export const writeRaw = (page, key, value) => page.evaluate(`localStorage.setItem(${JSON.stringify(key)}, ${JSON.stringify(value)})`)

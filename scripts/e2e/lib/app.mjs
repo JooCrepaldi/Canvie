@@ -4,7 +4,7 @@ import { execFileSync, spawn } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { DevTools, withTimeout } from './devtools.mjs'
+import { DevTools, motionSettled, withTimeout } from './devtools.mjs'
 
 const WEBVIEW2_DEFAULT_ARGS = '--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection'
 const READY = "document.querySelector('.canvie-shell') !== null && (document.querySelector('.canvas-area') === null || (document.querySelector('canvas')?.width ?? 0) > 1)"
@@ -108,6 +108,7 @@ export class CanvieApp {
       if ((await placementOf(page))?.placement !== 'edit') await page.evaluate("window.__TAURI_INTERNALS__.invoke('enter_edit').catch(() => null)")
       await waitForPlacement(page, 'edit')
       await page.waitFor("document.querySelector('.toolbar') !== null")
+      await motionSettled(page)
     }
     return page
   }

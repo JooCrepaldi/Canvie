@@ -19,6 +19,10 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 use wallpaper::Desktop;
 
 const PIN_REQUESTED_EVENT: &str = "canvie-pin-requested";
+const EDIT_REQUESTED_EVENT: &str = "canvie-edit-requested";
+// The frontend poses the canvas and calls enter_edit within a frame or two.
+// Without an answer by then, the backend enters Edit by itself.
+const EDIT_REQUEST_PATIENCE: Duration = Duration::from_millis(300);
 const CLOSE_REQUESTED_EVENT: &str = "canvie-close-requested";
 const TOOLBAR_RESET_EVENT: &str = "canvie-toolbar-reset";
 const DESKTOP_CHECK_INTERVAL: Duration = Duration::from_secs(1);
@@ -350,13 +354,50 @@ fn pin_now(app: &AppHandle) -> Result<PlacementSnapshot, String> {
 /// save and pin, because only the frontend knows the unsaved revision.
 fn toggle(app: &AppHandle, source: &str) {
   match app.state::<PlacementState>().snapshot().placement {
-    Placement::Wall => {
-      if let Err(error) = enter_edit_now(app) {
-        log::warn!("{source}: enter_edit failed: {error}");
-      }
-    }
+    Placement::Wall => request_edit(app, source),
     Placement::Edit => request_pin(app, source),
   }
+}
+
+fn enter_edit_logged(app: &AppHandle, source: &str) {
+  if let Err(error) = enter_edit_now(app) {
+    log::warn!("{source}: enter_edit failed: {error}");
+  }
+}
+
+/// Wall to Edit from the shortcut, the tray or a second launch. Raising the
+/// window shows its last frame, the canvas as it sits on the desktop, in front
+/// of every window. So the frontend first draws the canvas in the pose its
+/// entrance starts from and then calls enter_edit. A frontend that does not
+/// answer must not cost the shortcut, so after EDIT_REQUEST_PATIENCE the
+/// backend enters Edit by itself.
+fn request_edit(app: &AppHandle, source: &str) {
+  if app.state::<PlacementState>().snapshot().placement == Placement::Edit {
+    enter_edit_logged(app, source);
+    return;
+  }
+  log::info!("{source}: edit requested");
+  if let Err(error) = app.emit(EDIT_REQUESTED_EVENT, ()) {
+    log::warn!("{source}: edit request event failed: {error}; entering Edit directly");
+    enter_edit_logged(app, source);
+    return;
+  }
+  let handle = app.clone();
+  let source = source.to_owned();
+  thread::spawn(move || {
+    thread::sleep(EDIT_REQUEST_PATIENCE);
+    let fallback = handle.clone();
+    let scheduled = handle.run_on_main_thread(move || {
+      let state = fallback.state::<PlacementState>();
+      if state.snapshot().placement == Placement::Wall && !state.is_moving() {
+        log::warn!("{source}: the frontend did not answer the edit request; entering Edit");
+        enter_edit_logged(&fallback, &source);
+      }
+    });
+    if let Err(error) = scheduled {
+      log::warn!("edit request fallback could not reach the main thread: {error}");
+    }
+  });
 }
 
 fn request_pin(app: &AppHandle, source: &str) {
@@ -444,19 +485,13 @@ fn build_tray(app: &App) -> tauri::Result<()> {
     .menu(&menu)
     .show_menu_on_left_click(false)
     .on_menu_event(|app, event| match event.id().as_ref() {
-      "edit" => {
-        if let Err(error) = enter_edit_now(app) {
-          log::warn!("tray: enter_edit failed: {error}");
-        }
-      }
+      "edit" => request_edit(app, "tray"),
       "pin" if app.state::<PlacementState>().snapshot().placement == Placement::Edit => request_pin(app, "tray"),
       // The way back for a toolbar the user can no longer reach: show Edit
       // and put the toolbar at its default place.
       "toolbar" => {
         log::info!("tray: toolbar reset requested");
-        if let Err(error) = enter_edit_now(app) {
-          log::warn!("tray: enter_edit failed: {error}");
-        }
+        request_edit(app, "tray");
         if let Err(error) = app.emit(TOOLBAR_RESET_EVENT, ()) {
           log::warn!("tray: toolbar reset event failed: {error}");
         }
@@ -500,9 +535,7 @@ pub fn run() {
     })
     .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
       log::info!("second instance blocked; bringing the canvas to Edit");
-      if let Err(error) = enter_edit_now(app) {
-        log::warn!("second instance: enter_edit failed: {error}");
-      }
+      request_edit(app, "second instance");
     }))
     .plugin(
       tauri_plugin_log::Builder::default()

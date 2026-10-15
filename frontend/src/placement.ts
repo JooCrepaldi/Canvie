@@ -10,6 +10,7 @@ export type PlacementSnapshot = {
 
 const PLACEMENT_EVENT = 'canvie-placement'
 const PIN_REQUESTED_EVENT = 'canvie-pin-requested'
+const EDIT_REQUESTED_EVENT = 'canvie-edit-requested'
 const CLOSE_REQUESTED_EVENT = 'canvie-close-requested'
 const TOOLBAR_RESET_EVENT = 'canvie-toolbar-reset'
 
@@ -20,6 +21,7 @@ const browser = {
   snapshot: { placement: 'edit', embedded: false } as PlacementSnapshot,
   placementListeners: new Set<(snapshot: PlacementSnapshot) => void>(),
   pinListeners: new Set<() => void>(),
+  editListeners: new Set<() => void>(),
 }
 
 function setBrowserPlacement(placement: Placement): void {
@@ -31,8 +33,9 @@ if (!isTauri()) {
   window.addEventListener('keydown', (event) => {
     if (!event.ctrlKey || !event.altKey || event.key.toLowerCase() !== 't') return
     event.preventDefault()
-    if (browser.snapshot.placement === 'wall') setBrowserPlacement('edit')
-    else for (const listener of browser.pinListeners) listener()
+    if (browser.snapshot.placement === 'edit') for (const listener of browser.pinListeners) listener()
+    else if (browser.editListeners.size === 0) setBrowserPlacement('edit')
+    else for (const listener of browser.editListeners) listener()
   })
 }
 
@@ -115,6 +118,18 @@ export function onPinRequested(listener: () => void): () => void {
     }
   }
   return subscribe<null>(PIN_REQUESTED_EVENT, () => listener()).unsubscribe
+}
+
+// The shortcut, the tray or a second launch asks to leave Wall. The app
+// poses the canvas for its entrance, then calls enterEdit.
+export function onEditRequested(listener: () => void): () => void {
+  if (!isTauri()) {
+    browser.editListeners.add(listener)
+    return () => {
+      browser.editListeners.delete(listener)
+    }
+  }
+  return subscribe<null>(EDIT_REQUESTED_EVENT, () => listener()).unsubscribe
 }
 
 // Reposicionar toolbar in the tray. The browser has no tray.

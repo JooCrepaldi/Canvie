@@ -44,17 +44,20 @@ O modo Salvando é um estado visual da transição no frontend. Ele não é uma 
 
 ## Fluxo de edição
 
-1. O atalho global ou o tray chama enter_edit quando o estado atual é Wall.
-2. Rust muda a janela para top-level, desativa click-through, aplica always-on-top, mostra a janela e dá foco.
-3. Rust emite canvie-placement com Edit.
-4. O frontend mostra a toolbar e o dim leve.
-5. O usuário edita o documento.
-6. O usuário clica em Fixar no desktop ou usa Esc. O atalho e o tray emitem canvie-pin-requested quando o estado atual é Edit.
-7. O frontend entra em Salvando e executa saveNow.
-8. Se saveNow falhar, o frontend continua em Edit e mostra Tentar novamente.
-9. Se saveNow passar, o frontend chama pin_to_wall.
-10. Rust limpa always-on-top, reativa click-through, reparenta a janela e reeleva a camada.
-11. Rust emite canvie-placement com Wall. O frontend esconde a toolbar.
+1. Em Wall, o atalho global, o tray ou uma segunda abertura fazem Rust emitir canvie-edit-requested.
+2. O frontend põe o canvas na pose de onde a entrada começa (invisível, 12 px abaixo), espera dois quadros e chama enter_edit. Sem resposta em 300 ms, Rust chama enter_edit sozinho.
+3. Rust muda a janela para top-level, desativa click-through, aplica always-on-top, mostra a janela e dá foco.
+4. Rust emite canvie-placement com Edit.
+5. O frontend mostra a toolbar e o dim leve, e o canvas sobe com fade.
+6. O usuário edita o documento.
+7. O usuário clica em Fixar no desktop ou usa Esc. O atalho e o tray emitem canvie-pin-requested quando o estado atual é Edit.
+8. O frontend entra em Salvando e executa saveNow.
+9. Se saveNow falhar, o frontend continua em Edit e mostra Tentar novamente.
+10. Se saveNow passar, o canvas desce com fade, e no fim da animação o frontend chama pin_to_wall.
+11. Rust limpa always-on-top, reativa click-through, reparenta a janela e reeleva a camada.
+12. Rust emite canvie-placement com Wall. O frontend esconde a toolbar, e o canvas pousa com fade.
+
+A janela, ao subir, mostra o último quadro que desenhou. Por isso o frontend desenha a pose de entrada antes de enter_edit: sem ela, o canvas do desktop piscaria à frente das outras janelas por um ou dois quadros. O estado continua só no backend; o frontend apenas escolhe o momento de pedir.
 
 O atalho Ctrl + Alt + T e o tray usam canvie-pin-requested durante Edit. Nenhum deles chama pin_to_wall diretamente, porque o backend não conhece a revisão em memória do frontend.
 

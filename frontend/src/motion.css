@@ -1,0 +1,214 @@
+/* Motion and micro-interactions (L13). Movement uses the individual
+   translate and scale properties, so it composes with the transforms and
+   inline translates that place the toolbar, its popovers and the dialog. */
+
+:root {
+  --motion-fast: 120ms;
+  --motion-enter: 220ms;
+  --motion-exit: 180ms;
+  --motion-settle: 160ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Edit: the canvas fades in as it rises; the dim fades in; the toolbar
+   follows a beat later. The rise plays only when Edit comes from the
+   desktop, never for an area that is just being drawn. */
+/* Asked to leave Wall: the canvas waits, hidden and low, for the window to
+   rise, so the desktop canvas never flashes in front of other windows. */
+.canvie-shell.is-preparing .canvas-area {
+  animation: none;
+  opacity: 0;
+  translate: 0 12px;
+}
+
+.canvie-shell.is-entering .canvas-area {
+  animation: canvas-rise var(--motion-enter) var(--ease-out) both;
+}
+
+.area-frame {
+  animation: fade-in var(--motion-enter) var(--ease-out) both;
+  /* Its own layer, so typing never repaints the full-screen dim. */
+  will-change: opacity;
+}
+
+.toolbar {
+  animation: toolbar-rise var(--motion-enter) var(--ease-out) 60ms both;
+}
+
+/* Fixar: after the save, everything sinks and fades before the window goes
+   back to the desktop, where the canvas settles in place. */
+.canvie-shell.is-wall .canvas-area {
+  animation: fade-in var(--motion-settle) var(--ease-out) both;
+}
+
+.canvie-shell.is-leaving {
+  pointer-events: none;
+}
+
+.canvie-shell.is-leaving .canvas-area {
+  animation: canvas-sink var(--motion-exit) var(--ease-in) both;
+}
+
+.canvie-shell.is-leaving .area-frame,
+.canvie-shell.is-leaving .canvas-notice {
+  animation: fade-out var(--motion-exit) var(--ease-in) both;
+}
+
+.canvie-shell.is-leaving .toolbar,
+.canvie-shell.is-leaving .context-bar {
+  animation: toolbar-sink 140ms var(--ease-in) both;
+}
+
+/* Layers that open on top of the canvas. */
+.toolbar-popover {
+  animation: pop-in 140ms var(--ease-out) both;
+  transform-origin: bottom center;
+}
+
+.toolbar-popover.is-below {
+  transform-origin: top center;
+}
+
+.context-menu {
+  animation: pop-in var(--motion-fast) var(--ease-out) both;
+  transform-origin: top left;
+}
+
+.clear-dialog {
+  animation: pop-in 140ms var(--ease-out) both;
+}
+
+.menu-backdrop.is-dim,
+.area-selector,
+.canvas-notice,
+.toolbar-status {
+  animation: fade-in 150ms var(--ease-out) both;
+}
+
+.context-bar {
+  animation: bar-in var(--motion-fast) var(--ease-out) both;
+}
+
+/* A note settles in when it is written, so the raw Markdown turns into the
+   rendered note without a jump; a post-it lands like a card. */
+.note-text:not(.note-editor) {
+  animation: fade-in 140ms var(--ease-out) both;
+}
+
+.note-postit:not(.note-editor) {
+  animation: card-in var(--motion-settle) var(--ease-out) both;
+  transform-origin: top left;
+}
+
+/* Selection: the ring grows out of the note. */
+.note {
+  transition: outline-offset var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
+}
+
+/* A note that can be grabbed shows a faint halo under the pointer. */
+.note.is-interactive:hover:not(.is-selected) {
+  box-shadow: 0 0 0 6px rgba(127, 127, 127, 0.12);
+}
+
+.note-postit.is-interactive:hover:not(.is-selected) {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18), 0 0 0 6px rgba(127, 127, 127, 0.12);
+}
+
+/* Buttons answer the press. */
+.toolbar-tool,
+.popover-option,
+.popover-size,
+.popover-swatch,
+.menu-item,
+.clear-button,
+.context-bar button {
+  transition: background-color var(--motion-fast) ease-out, box-shadow var(--motion-fast) ease-out, scale 80ms ease-out;
+}
+
+.toolbar-tool:active:not(:disabled),
+.popover-option:active,
+.popover-size:active,
+.menu-item:active,
+.clear-button:active,
+.context-bar button:active {
+  scale: 0.94;
+}
+
+.popover-swatch:hover {
+  scale: 1.08;
+}
+
+.popover-swatch:active {
+  scale: 0.92;
+}
+
+@keyframes canvas-rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+@keyframes canvas-sink {
+  to {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+@keyframes toolbar-rise {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+@keyframes toolbar-sink {
+  to {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+@keyframes bar-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+/* Reduced motion in Windows: no animation, no transition, no wait. */
+@media (prefers-reduced-motion: reduce) {
+  .canvie-shell,
+  .canvie-shell * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -76,6 +76,13 @@ A L12 prova as fontes, os seis tamanhos, o marca-texto e as seis tintas, e a lei
 
     powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l12-preset-values.ps1
 
+A L13 prova o movimento e mede a escrita. `-TypingOnly` roda só a medição da digitação, para comparar com outra build:
+
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l13-motion-typing.ps1
+    powershell -ExecutionPolicy Bypass -File ..\scripts\e2e\l13-motion-typing.ps1 -Exe "$env:LOCALAPPDATA\Canvie\canvie.exe" -TypingOnly
+
+Desde a L13, entrar em Edição e abrir camadas anima. `CanvieApp.launch` e `defineArea` esperam as animações terminarem (`motionSettled`) antes de medir posições.
+
 O E2E da L6 reinicia o Windows Explorer duas vezes, por queda e por saída normal, com `scripts/e2e/lib/restart-explorer.ps1`. Isso fecha as janelas abertas do Explorer de Arquivos e faz a taskbar piscar. Na saída normal, o script inicia o Explorer de novo com o ambiente de usuário criado por CreateEnvironmentBlock, para o shell não herdar as variáveis do terminal. Rode a suíte só com o computador livre e com o consentimento de quem usa a máquina. `-SkipExplorer` roda todo o resto sem reiniciar o shell, para repetir a suíte depois de uma mudança que não toca o watchdog.
 
 Com a L6, um WM_CLOSE em Edição salva e fixa em vez de encerrar. `CanvieApp.stop('close')` espera o app fixar ou encerrar. Se ele fixou, manda um segundo WM_CLOSE, que encerra o processo em Wall. Sem área, o primeiro WM_CLOSE já encerra.
@@ -278,6 +285,25 @@ O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar
 Na mesma build, a L3 passou 27 de 27 e a L10 e a L11 passaram 52 de 52. Duas rodadas anteriores da L10 e da L11 falharam em checagens de hover, de foco e do arraste da aba, porque o mouse real se mexeu durante a suíte. Com o mouse parado, tudo passou.
 
 O JavaScript foi de 360,01 kB para 361,88 kB minificado (de 124,09 kB para 124,66 kB com gzip).
+
+## Evidência registrada em 2026-10-14: L13
+
+`scripts/e2e/l13-motion-typing.ps1` passou 22 de 22 na build release final:
+
+- entrando em Edição: `canvas-rise` (220 ms) no canvas, `fade-in` (220 ms) no escurecimento e `toolbar-rise` (220 ms, 60 ms depois) na toolbar; depois disso, o canvas fica em opacidade 1, sem deslocamento, e a toolbar a 20 px da taskbar;
+- um Ctrl + Alt + T real, medido pixel a pixel na tela, sai da cor da janela de trás e vai só na direção do bege do canvas, sem voltar nenhum passo. Antes da correção, o canvas aparecia inteiro por um ou dois quadros, ficava escuro e só então fazia o fade;
+- Fixar: a saída começou 9 ms depois do clique, já com o último traço no documento salvo, e o desktop chegou aos 249 ms, depois do fim da descida;
+- o popover do Pincel e o menu abrem com `pop-in`; a barra de alinhamento entra com `bar-in`; a nota concluída entra com `fade-in`; o canvas pousa no desktop com `fade-in` de 160 ms;
+- com redução de movimento emulada, nenhuma animação roda, e o Fixar foi ao desktop em 94 ms;
+- quadros da tela real da entrada a 0,1× e da saída a 0,2×.
+
+**Digitação**, com 95 teclas a 25 ms de intervalo num canvas com 30 notas e 40 traços, medida pela Event Timing API (até o quadro seguinte, em passos de 8 ms):
+
+- na build da L12, em 4 rodadas, o pico foi de 32 a 48 ms, sem nenhuma tecla em 50 ms;
+- na build da L13, em 7 rodadas, o pico foi de 32 a 56 ms; 3 rodadas tiveram 1 ou 2 teclas em 56 ms;
+- a maioria das teclas aparece em um ou dois quadros nas duas builds. A mudança no editor tirou o canvas inteiro do caminho de cada tecla, mas o ganho não aparece em milissegundos com 30 notas. A checagem aceita até 2% das teclas em 50 ms e nenhuma em 100 ms.
+
+Na mesma build, a regressão passou: L3 27 de 27, L5 25 de 25, L9 25 de 25, L10 e L11 52 de 52 e L12 18 de 18.
 
 ### Pendências manuais da L7
 

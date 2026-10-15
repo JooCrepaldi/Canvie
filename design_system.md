@@ -55,7 +55,12 @@ O estado nunca depende apenas de cor. Use label, ícone, foco e posição.
 | radius.md | 12 px | Menu e diálogo |
 | radius.sm | 8 px | Botões |
 | shadow.toolbar | 0 10 px 28 px rgba(0,0,0,0.32) | Toolbar, popovers e menu sobre o desktop |
-| motion.fast | 120 ms | Hover e foco |
+| motion.fast | 120 ms | Hover, foco, menu e barra de alinhamento |
+| motion.enter | 220 ms, ease-out | Canvas, escurecimento e toolbar ao entrar em Edição |
+| motion.exit | 180 ms, ease-in | Canvas e escurecimento ao fixar |
+| motion.settle | 160 ms, ease-out | Canvas ao pousar no desktop, post-it novo |
+| ease.out | cubic-bezier(0.2, 0.8, 0.2, 1) | O que entra |
+| ease.in | cubic-bezier(0.4, 0, 1, 1) | O que sai |
 | color.paper | #F4ECDC | Fundo bege da área |
 | color.inkBlack | #1F2328 | Tinta preta e texto das notas |
 | color.inkBlue | #2563EB | Tinta azul |
@@ -123,6 +128,20 @@ A área é o único lugar pintado. No estado Fixo, ela mostra o fundo escolhido 
 Notas usam uma das três fontes, texto em color.inkBlack e um dos seis tamanhos. Sobre o tema preto, o texto das notas usa color.ink. Títulos do Markdown crescem a partir desse tamanho. Tabelas têm bordas finas. Post-its são cartões color.postit com sombra curta e texto em color.inkBlack. Sobre o fundo transparente, a legibilidade depende do wallpaper; o post-it é a opção para texto sempre legível.
 
 Escrever uma nota não mostra caixa. O editor fica no lugar exato da nota, sem borda, fundo, contorno ou texto de exemplo, e só o cursor pisca. O texto cresce no lugar em que a nota vai aparecer. O post-it mantém o próprio cartão enquanto é escrito.
+
+## Movimento
+
+O movimento conta de onde a coisa vem e para onde vai. Ele é curto, nunca bloqueia a escrita e some com a redução de movimento do Windows. As regras estão em motion.css.
+
+- **Entrar em Edição:** o canvas aparece com fade e sobe 12 px em motion.enter. O escurecimento entra junto, e a toolbar sobe 10 px 60 ms depois. Antes de a janela subir, o canvas já espera invisível na pose de partida, para nunca piscar à frente das outras janelas.
+- **Fixar:** o save vem primeiro. Depois, o canvas desce 12 px com fade em motion.exit, a toolbar e a barra de alinhamento descem 10 px em 140 ms, e o canvas não recebe ponteiro. Só então a janela volta ao desktop, onde o canvas pousa com fade em motion.settle.
+- **Camadas:** popovers, menu e diálogo abrem com fade e escala de 0,96 para 1, a partir do ponto de onde nascem. A barra de alinhamento sobe 4 px com fade. O fundo do diálogo, o seletor de área e os avisos entram com fade.
+- **Notas:** a nota concluída entra com fade em 140 ms; o post-it novo pousa com escala de 0,96 para 1. O anel da seleção cresce a partir da nota em motion.fast, e uma nota que pode ser arrastada mostra um halo neutro sob o ponteiro.
+- **Botões:** hover e estado ativo mudam em motion.fast. Ao clicar, um botão afunda para 0,94 em 80 ms. As amostras de tinta crescem para 1,08 no hover.
+- **Traço:** o desenho passa curvas pelos pontos médios das amostras do ponteiro.
+- **Redução de movimento:** nenhuma animação, nenhuma transição e nenhuma espera antes de fixar.
+
+O movimento usa as propriedades `translate` e `scale`, que se somam às transformações que posicionam a toolbar, os popovers e o diálogo.
 
 ## Interação
 

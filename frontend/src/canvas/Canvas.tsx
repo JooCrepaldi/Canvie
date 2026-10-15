@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react'
 import {
   DEFAULT_NOTE_ALIGN,
@@ -75,13 +75,19 @@ function worldToScreen(point: Point, camera: Camera, width: number, height: numb
 
 function drawStroke(context: CanvasRenderingContext2D, stroke: Stroke, camera: Camera, width: number, height: number) {
   if (stroke.points.length === 0) return
+  const points = stroke.points.map((point) => worldToScreen(point, camera, width, height))
 
+  // Curves through the midpoints of the pointer samples round off the corners
+  // between them; the stored points do not change.
   context.beginPath()
-  stroke.points.forEach((point, index) => {
-    const screenPoint = worldToScreen(point, camera, width, height)
-    if (index === 0) context.moveTo(screenPoint.x, screenPoint.y)
-    else context.lineTo(screenPoint.x, screenPoint.y)
-  })
+  context.moveTo(points[0].x, points[0].y)
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const point = points[index]
+    const next = points[index + 1]
+    context.quadraticCurveTo(point.x, point.y, (point.x + next.x) / 2, (point.y + next.y) / 2)
+  }
+  const last = points[points.length - 1]
+  if (points.length > 1) context.lineTo(last.x, last.y)
   context.strokeStyle = stroke.color
   context.lineWidth = stroke.width * camera.zoom
   context.lineCap = 'round'
@@ -113,8 +119,15 @@ export function Canvas({ doc, area, tool, ink, brush, noteSize, noteFont, select
     setEditingState(next)
   }
 
+  // The editor keeps its own text; the canvas only reads it on commit, so a
+  // key press never renders the whole canvas.
+  const updateEditingText = useCallback((text: string) => {
+    if (editingRef.current) editingRef.current = { ...editingRef.current, text }
+  }, [])
+
+  // Before paint, so the text options show in the same frame as the editor.
   const editorOpen = editing !== null
-  useEffect(() => {
+  useLayoutEffect(() => {
     onEditorChange(editorOpen)
     return () => onEditorChange(false)
   }, [editorOpen, onEditorChange])
@@ -399,7 +412,7 @@ export function Canvas({ doc, area, tool, ink, brush, noteSize, noteFont, select
             font={noteFont}
             align={editing.align}
             text={editing.text}
-            onTextChange={(text) => setEditing(editingRef.current && { ...editingRef.current, text })}
+            onTextChange={updateEditingText}
             onCommit={() => finishEditing(true)}
             onCancel={() => finishEditing(false)}
           />

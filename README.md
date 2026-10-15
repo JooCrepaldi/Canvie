@@ -2,6 +2,8 @@
 
 Canvie é uma área de anotação fixa no desktop do Windows. Você arrasta um retângulo no desktop e ele vira um canvas para desenhos, notas em Markdown e post-its. Quando precisa anotar algo, use Ctrl + Alt + T: a área vem para a frente com uma toolbar compacta e volta ao desktop, salva, quando você usa o atalho de novo ou clica em **Fixar no desktop**.
 
+<img width="1920" height="1080" alt="canvie-0 2" src="https://github.com/user-attachments/assets/48462b68-f299-4022-bea8-d3f1269adf26" />
+
 A versão atual é a 0.2. A 0.0.1 entregou o primeiro ciclo, nas camadas L0 a L7: a área, o conteúdo, o estado Fixo, a transição para Edição e o instalador. A 0.2 entregou as camadas L8 a L13 do [roadmap próprio](docs/ROADMAP-0.2.md): a toolbar de ícones, o menu do botão direito, as fontes, os tamanhos, as tintas, o marca-texto, os temas e o movimento.
 
 ## Proposta atual

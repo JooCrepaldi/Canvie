@@ -23,6 +23,20 @@ Desde a L7, essa build também gera o instalador NSIS por usuário em `%LOCALAPP
 
 O target do Rust deve ficar fora do OneDrive. Use CARGO_BUILD_JOBS=1 nesta máquina.
 
+### Instalar fora de um app empacotado
+
+O app desktop do Claude é um pacote MSIX. Todo processo aberto por ele, inclusive os terminais, escreve em `AppData` numa pasta virtual do pacote: `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache`. Dentro do pacote, essa pasta se sobrepõe à real, e o resto do Windows não a enxerga. Por isso:
+
+- Um instalador rodado de um terminal do Claude coloca o Canvie na pasta virtual. O atalho do menu Iniciar fica no lugar real, mas aponta para um `%LOCALAPPDATA%\Canvie\canvie.exe` que não existe fora do pacote.
+- O target do Rust e o instalador gerado também ficam na pasta virtual quando o build roda de um terminal do Claude.
+
+Para instalar de verdade:
+
+1. Copie o instalador para uma pasta fora de `AppData` e fora do OneDrive, por exemplo `C:\Users\<usuário>\canvie-instalador`.
+2. Rode o instalador com `/S` num processo fora do pacote: um terminal aberto pelo menu Iniciar, ou `Invoke-CimMethod -ClassName Win32_Process -MethodName Create`, que cria o processo pelo serviço do WMI.
+3. Confirme, também de fora do pacote, que `%LOCALAPPDATA%\Canvie\canvie.exe` existe e contém o bundle esperado.
+4. Abra o Canvie pelo atalho do menu Iniciar com `explorer.exe`, que lança o alvo fora do pacote.
+
 Um rustc que termina com `0xc0000409, STATUS_STACK_BUFFER_OVERRUN` aqui é falta de memória do LLVM: o log mostra `rustc-LLVM ERROR: out of memory` logo antes. A máquina tem 6 GB. Feche outros servidores de desenvolvimento e páginas pesadas e rode o build de novo; o Cargo reaproveita os crates já compilados.
 
 Os E2E das camadas rodam depois de `npm run tauri build`, um de cada vez, porque usam a mesma porta de DevTools e a instância única:
@@ -275,6 +289,8 @@ Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso
 4. **Alto contraste:** ligue com Alt esquerdo + Shift esquerdo + Print Screen. Em Edição, a toolbar e o contorno de foco precisam continuar visíveis.
 
 ## Falhas conhecidas
+
+- **A prova de instalação da L7 rodou dentro do pacote do Claude.** O instalador, o atalho e o desinstalador agiram sobre a pasta virtual. Até 2026-10-14, o Canvie não existia em `%LOCALAPPDATA%\Canvie` fora do pacote, e o atalho do menu Iniciar apontava para um arquivo inexistente. Nesse dia, a build da L12 foi instalada de fora do pacote, como descrito em [Instalar fora de um app empacotado](#instalar-fora-de-um-app-empacotado). A matriz da L7 precisa rodar de novo assim no fechamento da 0.0.2.
 
 - Win + T pertence ao Explorer. Use Ctrl + Alt + T.
 - Atrás de SHELLDLL_DefView não há input. Parede precisa de click-through.

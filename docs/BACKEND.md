@@ -50,7 +50,7 @@ O tray oferece:
 - Reposicionar toolbar, que chama enter_edit e emite canvie-toolbar-reset, para o frontend apagar a posição salva;
 - Sair.
 
-O clique esquerdo no ícone do tray alterna como o atalho; o menu abre com o clique direito. O tray chama enter_edit diretamente em Wall. Em Edit, o tray e o atalho global emitem canvie-pin-requested para o frontend. O frontend salva e chama pin_to_wall. Não existe uma terceira regra de transição.
+O clique esquerdo no ícone do tray alterna como o atalho; o menu abre com o clique direito. Em Wall, o atalho, o tray (Editar e Reposicionar toolbar) e uma segunda abertura passam por `request_edit`: emitem canvie-edit-requested, e o frontend posa o canvas e chama enter_edit. Se a Edição não começar em 300 ms (`EDIT_REQUEST_PATIENCE`), uma thread volta à thread principal e chama enter_edit, com um warn no log. Assim, um frontend travado não tira o atalho do usuário. Em Edit, o tray e o atalho global emitem canvie-pin-requested para o frontend. O frontend salva e chama pin_to_wall. Não existe uma terceira regra de transição.
 
 ## wallpaper.rs
 

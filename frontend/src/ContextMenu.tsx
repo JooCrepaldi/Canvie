@@ -48,7 +48,9 @@ export function ContextMenu(props: ContextMenuProps) {
   useLayoutEffect(() => {
     const menu = menuRef.current
     if (!menu) return
-    const { width, height } = menu.getBoundingClientRect()
+    // Layout size, which the opening scale animation does not change.
+    const width = menu.offsetWidth
+    const height = menu.offsetHeight
     setPlace({ left: Math.max(EDGE, Math.min(x, window.innerWidth - width - EDGE)), top: Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE)) })
     menu.querySelector<HTMLElement>('[role^="menuitem"]')?.focus()
   }, [x, y])

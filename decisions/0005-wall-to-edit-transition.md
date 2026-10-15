@@ -21,6 +21,8 @@ O backend mantém PlacementState como única autoridade. O frontend mostra a too
 
 O botão **Fixar no desktop**, Esc, Ctrl + Alt + T e o tray usam a mesma transição Edit → Wall. O backend só reparenta depois que o frontend confirma o salvamento.
 
+**Revisão de 2026-10-14 (L13):** depois do save confirmado, o frontend deixa o canvas descer e esmaecer por 180 ms antes de chamar pin_to_wall. A ordem continua salvar, depois reparentar. Ao entrar em Edit, o canvas aparece com fade e sobe. Como a janela mostra o último quadro ao subir, o backend não troca mais a janela direto: ele emite canvie-edit-requested, o frontend desenha a pose de entrada e chama enter_edit, e o backend entra sozinho se não houver resposta em 300 ms. Com a redução de movimento do Windows, não há animação nem espera.
+
 ## Consequências
 
 - O usuário trabalha no desktop sem uma toolbar permanente.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { AnimationEvent } from 'react'
 import { fitArea, type Viewport } from './canvas/area'
 import { AreaSelector } from './canvas/AreaSelector'
 import { fitCamera, measureNotes, zoomCamera } from './canvas/camera'
@@ -6,9 +7,11 @@ import { Canvas } from './canvas/Canvas'
 import { DEFAULT_NOTE_FONT, INK_COLORS, type Area, type Background, type Brush, type CanvasDoc, type NoteFont, type NoteSize, type Tool } from './canvasTypes'
 import { ClearDialog, ContextMenu } from './ContextMenu'
 import type { DocumentPersistence, LoadResult } from './persistence'
-import { enterEdit, getPlacement, initialPlacement, onCloseRequested, onPinRequested, onPlacementChanged, onToolbarReset, pinToWall, quitApp, type Placement } from './placement'
+import { enterEdit, getPlacement, initialPlacement, onCloseRequested, onEditRequested, onPinRequested, onPlacementChanged, onToolbarReset, pinToWall, quitApp, type Placement } from './placement'
 import { loadToolbarPosition, saveToolbarPosition, type ToolbarPosition } from './preferences'
+import { prefersReducedMotion, waitForExit } from './motion'
 import { Toolbar, type ToolbarPopover } from './Toolbar'
+import './motion.css'
 
 const TOOL_SHORTCUTS: Record<string, Tool | undefined> = {
   h: 'hand',
@@ -139,6 +142,15 @@ export default function App({ persistence, initialLoad }: AppProps) {
   const [noteEditorOpen, setNoteEditorOpen] = useState(false)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const [confirmingClear, setConfirmingClear] = useState(false)
+  // The canvas is sinking out of Edit after a successful save.
+  const [leaving, setLeaving] = useState(false)
+  // The canvas is rising into Edit from the desktop. Only that change plays
+  // the rise: an area that is just being drawn stays where the pointer left it.
+  const [entering, setEntering] = useState(false)
+  // Wall was asked to become Edit: the canvas takes the pose its entrance
+  // starts from before the window rises.
+  const [preparing, setPreparing] = useState(false)
+  const lastPlacementRef = useRef(placement)
   const [recovered, setRecovered] = useState(initialLoad.status === 'recovered')
   const [pinning, setPinning] = useState(false)
   const [pinFailed, setPinFailed] = useState(false)
@@ -302,9 +314,13 @@ export default function App({ persistence, initialLoad }: AppProps) {
     setConfirmingClear(false)
     try {
       await persistence.saveNow(docRef.current)
+      // Only a saved document leaves; the window moves once the canvas has sunk.
+      setLeaving(true)
+      await waitForExit()
       await pinToWall().catch((error: unknown) => {
         console.warn('Canvie: pin_to_wall failed; staying in Edit', error)
         setPinFailed(true)
+        setLeaving(false)
       })
     } catch {
       // saveNow already logged the failure and raised the save notice.
@@ -411,11 +427,53 @@ export default function App({ persistence, initialLoad }: AppProps) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [chooseTool, confirmingClear, deleteSelection, editing, menu, openMenuAtCenter, popover, redo, requestPin, selection, showAreaSelector, undo])
 
+  // Wall ends the exit; the canvas then settles on the desktop.
+  useEffect(() => {
+    if (!editing) setLeaving(false)
+  }, [editing])
+
+  // The rise ends on its own animationend, so a slower frame rate never cuts
+  // it short; Wall clears it too, in case the rise was interrupted.
+  useEffect(() => {
+    const previous = lastPlacementRef.current
+    lastPlacementRef.current = placement
+    if (placement === 'wall') setEntering(false)
+    else {
+      setPreparing(false)
+      if (previous === 'wall' && docRef.current.area !== null && !prefersReducedMotion()) setEntering(true)
+    }
+  }, [placement])
+
+  // The window shows its last frame as it rises, so the pose must be drawn
+  // first: two animation frames, then enter_edit. Without a canvas or with
+  // reduced motion there is nothing to pose.
+  useEffect(
+    () =>
+      onEditRequested(() => {
+        const enter = () =>
+          enterEdit().catch((error: unknown) => {
+            console.warn('Canvie: enter_edit failed after the edit request', error)
+            setPreparing(false)
+          })
+        if (docRef.current.area === null || prefersReducedMotion()) {
+          void enter()
+          return
+        }
+        setPreparing(true)
+        requestAnimationFrame(() => requestAnimationFrame(() => void enter()))
+      }),
+    [],
+  )
+
+  const endEntering = useCallback((event: AnimationEvent<HTMLElement>) => {
+    if (event.animationName === 'canvas-rise') setEntering(false)
+  }, [])
+
   const area = doc.area && fitArea(doc.area, viewport)
 
   // On the desktop only the area is painted; the edit chrome exists in Edit.
   return (
-    <main className="canvie-shell" aria-label="Canvie">
+    <main className={`canvie-shell is-${placement}${preparing ? ' is-preparing' : ''}${entering ? ' is-entering' : ''}${leaving ? ' is-leaving' : ''}`} aria-label="Canvie" onAnimationEnd={endEntering}>
       {area && (
         <>
           <Canvas

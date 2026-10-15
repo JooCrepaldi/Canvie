@@ -91,7 +91,9 @@ export function Toolbar(props: ToolbarProps) {
     const root = rootRef.current
     if (!element || !root) return
     const bar = root.getBoundingClientRect()
-    const { width, height } = element.getBoundingClientRect()
+    // Layout size, which the opening scale animation does not change.
+    const width = element.offsetWidth
+    const height = element.offsetHeight
     const centered = bar.left + bar.width / 2 - width / 2
     const left = Math.min(window.innerWidth - width - EDGE, Math.max(EDGE, centered))
     const next = { shift: Math.round(left - centered), below: bar.top - POPOVER_GAP - height < EDGE }

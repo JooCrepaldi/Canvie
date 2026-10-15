@@ -107,6 +107,25 @@ A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fic
 
 **Done:** uma nota em cada fonte e nos seis tamanhos, um traço de marca-texto e um traço em cada cor, salvos e restaurados depois de matar e abrir o processo.
 
+## L13 — Movimento e escrita fluida
+
+**Objetivo:** tirar a fricção da troca entre Fixo e Edição e da escrita, agora que o Canvie é usado no dia a dia. Pedido do criador em 2026-10-14.
+
+**Inclui:**
+
+- **Ctrl + Alt + T para editar:** o canvas aparece com fade e sobe 12 px em 220 ms, o escurecimento entra junto, e a toolbar sobe 60 ms depois;
+- **Ctrl + Alt + T, Esc ou Fixar:** depois do save, o canvas desce 12 px com fade em 180 ms, e só então a janela volta ao desktop, onde o canvas pousa com um fade de 160 ms;
+- **camadas:** popovers, menu e diálogo abrem com fade e escala de 0,96 para 1; a barra de alinhamento sobe 4 px com fade;
+- **microinterações:** botões afundam ao clicar, hover e estado ativo mudam em 120 ms, as amostras de tinta crescem no hover, as notas ganham um halo leve sob o ponteiro em Seleção, e o anel da seleção cresce a partir da nota;
+- **notas:** uma nota concluída aparece com fade, e o Markdown cru vira a nota renderizada sem salto; o post-it pousa com uma leve escala;
+- **escrita:** o editor guarda o próprio texto, e uma tecla não renderiza o canvas inteiro; o foco entra antes do primeiro quadro, e a primeira tecla não se perde; o escurecimento fica numa camada própria, e a digitação não repinta a tela inteira;
+- **traço:** curvas pelos pontos médios das amostras do ponteiro, só no desenho;
+- **redução de movimento do Windows:** nenhuma animação, nenhuma transição e nenhuma espera.
+
+**Falha tratada:** Fixar só anima depois de o save passar. Um save que falha mantém a Edição sem animação, e um pin que falha devolve o canvas ao lugar. Durante a saída, o canvas não recebe ponteiro.
+
+**Done:** os nomes, as durações e o atraso das animações conferidos na entrada, na saída, nas camadas e na nota concluída; um Ctrl + Alt + T real sem o canvas do desktop piscar à frente das janelas antes do fade-in, medido pixel a pixel; a saída começando só depois de o save conter o último traço; nenhuma animação com redução de movimento; nenhuma tecla levando 50 ms ou mais para aparecer num canvas com 30 notas, medido também na build anterior; quadros da tela real da entrada em câmera lenta e da saída.
+
 ## Fechamento
 
 - A matriz da L7 roda de novo na build instalada da 0.0.2, instalada de fora do pacote do Claude ([OPERATIONS.md](OPERATIONS.md#instalar-fora-de-um-app-empacotado)), e as suítes L2 a L5 continuam passando.
@@ -115,7 +134,7 @@ A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fic
 
 ## Ordem
 
-    L6 → L7 → L8 → L9 → L10 → L11 → L12 → fechamento
+    L6 → L7 → L8 → L9 → L10 → L11 → L12 → L13 → fechamento
 
 A L8 vem antes porque todas as camadas seguintes gravam campos novos. A L9 vem antes da toolbar nova porque a Mover sai e a Seleção precisa existir. A L10 vem antes da L11 porque Fundo e Área precisam do menu antes de sair da barra.
 

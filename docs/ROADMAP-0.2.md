@@ -1,18 +1,18 @@
-# Roadmap da 0.0.2
+# Roadmap da 0.2
 
-A 0.0.2 deixa a anotação mais rápida sem mudar a proposta: continua uma área, um canvas e um documento, no monitor principal. Ela troca a toolbar, cria a seleção, adiciona o menu do botão direito e os valores prontos de texto e pincel. As decisões estão em [0008](../decisions/0008-preset-values.md), [0009](../decisions/0009-toolbar-tab-and-icons.md) e [0010](../decisions/0010-implicit-selection-and-hand.md). As versões seguintes estão em [product.md](../product.md#próximas-versões).
+A 0.2 deixa a anotação mais rápida sem mudar a proposta: continua uma área, um canvas e um documento, no monitor principal. Ela troca a toolbar, cria a seleção, adiciona o menu do botão direito e os valores prontos de texto e pincel. As decisões estão em [0008](../decisions/0008-preset-values.md), [0009](../decisions/0009-toolbar-tab-and-icons.md) e [0010](../decisions/0010-implicit-selection-and-hand.md). As versões seguintes estão em [product.md](../product.md#próximas-versões).
 
 As camadas continuam a numeração do [roadmap do primeiro ciclo](MVP-0-ROADMAP.md). Cada uma fecha um comportamento observável antes da próxima, e a evidência fica em [OPERATIONS.md](OPERATIONS.md).
 
 ## Entrada
 
-A 0.0.2 começa quando a 0.0.1 fechar a L6 e a L7 do primeiro ciclo. A tag v0.0.1 marca o código. A L6 e a L7 provam o uso real: Alt + F4, reinício do Explorer, instalação, escala de tela, RAM e CPU.
+A 0.2 começa quando a 0.0.1 fechar a L6 e a L7 do primeiro ciclo. A tag v0.0.1 marca o código. A L6 e a L7 provam o uso real: Alt + F4, reinício do Explorer, instalação, escala de tela, RAM e CPU.
 
-**Exceção registrada em 2026-10-14:** por decisão do produto, a L8 começou com a L7 provada na build instalada, mas sem as quatro verificações manuais listadas em [OPERATIONS.md](OPERATIONS.md#pendências-manuais-da-l7): reinício do Windows, escala de 125% a 200%, Narrador e alto contraste. Elas continuam pendentes e voltam no fechamento da 0.0.2.
+**Exceção registrada em 2026-10-14:** por decisão do produto, a L8 começou com a L7 provada na build instalada, mas sem as quatro verificações manuais listadas em [OPERATIONS.md](OPERATIONS.md#pendências-manuais-da-l7): reinício do Windows, escala de 125% a 200%, Narrador e alto contraste. Elas continuam pendentes e voltam no fechamento da 0.2.
 
 ## L8 — Documento v2
 
-**Objetivo:** mudar o formato do documento uma única vez para toda a 0.0.2, sem perder o canvas de quem usa a 0.0.1.
+**Objetivo:** mudar o formato do documento uma única vez para toda a 0.2, sem perder o canvas de quem usa a 0.0.1.
 
 **Inclui:**
 
@@ -128,8 +128,10 @@ A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fic
 
 ## Fechamento
 
-- A matriz da L7 roda de novo na build instalada da 0.0.2, instalada de fora do pacote do Claude ([OPERATIONS.md](OPERATIONS.md#instalar-fora-de-um-app-empacotado)), e as suítes L2 a L5 continuam passando.
-- A versão 0.0.2 entra em package.json, Cargo.toml e tauri.conf.json.
+**Fechado em 2026-10-15**, com a evidência em [OPERATIONS.md](OPERATIONS.md#evidência-registrada-em-2026-10-15-fechamento-da-02). As quatro verificações manuais da L7 continuam com o criador.
+
+- A matriz da L7 roda de novo na build instalada da 0.2, instalada de fora do pacote do Claude ([OPERATIONS.md](OPERATIONS.md#instalar-fora-de-um-app-empacotado)), e as suítes L2 a L5 continuam passando.
+- A versão 0.2.0 entra em package.json, Cargo.toml e tauri.conf.json ([0012](../decisions/0012-version-numbering.md)).
 - product.md, o PRD e CONTEXT.md descrevem o comportamento entregue.
 
 ## Ordem
@@ -138,6 +140,6 @@ A [decisão 0011](../decisions/0011-document-v2-storage.md) define onde o v2 fic
 
 A L8 vem antes porque todas as camadas seguintes gravam campos novos. A L9 vem antes da toolbar nova porque a Mover sai e a Seleção precisa existir. A L10 vem antes da L11 porque Fundo e Área precisam do menu antes de sair da barra.
 
-## Fora da 0.0.2
+## Fora da 0.2
 
 Formas, Novo canvas, configurações, alinhamento de canvases, Fixed Canvas e outros monitores estão em [product.md](../product.md#próximas-versões).

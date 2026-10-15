@@ -266,7 +266,7 @@ Na mesma build, a regressão passou: L3 27 de 27, L4 15 de 15, L5 24 de 24, L6 1
 - arrastar a aba moveu a barra 500 × 420 px e gravou `{ left: 342, top: 534 }` em `canvie.toolbar`, fora do documento; depois de matar o processo, a toolbar abriu no mesmo lugar; Reposicionar toolbar voltou ao padrão e apagou a preferência;
 - uma posição fora da tela e um JSON inválido abriram no padrão, foram apagados e deixaram um WARN cada no log.
 
-Na build anterior, só com a aba antiga, a regressão passou: L2 41 de 41, L3 27 de 27, L5 25 de 25, L8 23 de 23 e L9 25 de 25. A primeira L2, logo depois da suíte da L10 e da L11, falhou só na checagem de long tasks (714 e 448 ms); a repetição não teve nenhuma long task. A L5 mudou para o Esc em dois passos com o Pincel. A L8 passou a esperar texto claro no editor sobre o tema preto, porque o editor não tem mais campo próprio. A L4, a L6 e a L7 não rodaram: o estado Fixo, o ciclo de vida e o instalador não mudaram, e o fechamento da 0.0.2 roda a matriz da L7 de novo. O item Reposicionar toolbar do tray não foi acionado pelo E2E, pelo mesmo motivo do resto do tray.
+Na build anterior, só com a aba antiga, a regressão passou: L2 41 de 41, L3 27 de 27, L5 25 de 25, L8 23 de 23 e L9 25 de 25. A primeira L2, logo depois da suíte da L10 e da L11, falhou só na checagem de long tasks (714 e 448 ms); a repetição não teve nenhuma long task. A L5 mudou para o Esc em dois passos com o Pincel. A L8 passou a esperar texto claro no editor sobre o tema preto, porque o editor não tem mais campo próprio. A L4, a L6 e a L7 não rodaram: o estado Fixo, o ciclo de vida e o instalador não mudaram, e o fechamento da 0.2 roda a matriz da L7 de novo. O item Reposicionar toolbar do tray não foi acionado pelo E2E, pelo mesmo motivo do resto do tray.
 
 O `lucide-react` 1.57.0, com nove ícones importados um a um, o menu e a toolbar nova levaram o JavaScript de 345,55 kB para 360,01 kB minificado (de 118,87 kB para 124,09 kB com gzip).
 
@@ -305,6 +305,25 @@ O JavaScript foi de 360,01 kB para 361,88 kB minificado (de 124,09 kB para 124,6
 
 Na mesma build, a regressão passou: L3 27 de 27, L5 25 de 25, L9 25 de 25, L10 e L11 52 de 52 e L12 18 de 18.
 
+## Evidência registrada em 2026-10-15: fechamento da 0.2
+
+A build release 0.2.0 gerou `Canvie_0.2.0_x64-setup.exe`, com SHA-256 `758ED5B5E3B6D2F1C5E0C5688F036539BD3528A462228A9EF22225D99E1060A0`.
+
+- `l7-install.ps1` rodou inteira fora do pacote do Claude, por `Win32_Process.Create`, com o instalador copiado para uma pasta fora de `AppData`. Passou 10 de 10:
+  - instalação silenciosa registrada em HKCU como Canvie 0.2.0;
+  - exe real em `%LOCALAPPDATA%\Canvie`;
+  - atalho do menu Iniciar abrindo esse exe e fechando limpo;
+  - desinstalação removendo exe, registro e atalho;
+  - o canvas em `%APPDATA%\com.canvie.app` sobrevivendo;
+  - reinstalação.
+- A primeira rodada falhou em "fechar limpo": o WM_CLOSE do script chegou durante o setup e destruiu a janela, e o watchdog reiniciou o Canvie (veja Falhas conhecidas). O script agora espera a linha `shortcut registered`, que fecha o setup.
+- `l7-installed.ps1` passou 11 de 11 na build instalada.
+- Na build release, a L3 passou 27 de 27, a L4 15 de 15 e a L5 25 de 25.
+- A primeira L2 passou as 40 checagens de comportamento; a contagem de aberturas no log falhou porque o log rotacionou no meio. Com o log recém-rotacionado, a L2 passou 41 de 41.
+- As suítes L9 a L13 passaram na mesma base de código na véspera, só com a versão diferente: L9 25 de 25, L10 e L11 52 de 52, L12 18 de 18 e L13 22 de 22.
+
+As quatro verificações manuais da L7 continuam pendentes: reinício do Windows, escala de 125% a 200%, Narrador e alto contraste.
+
 ### Pendências manuais da L7
 
 Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso ficam com quem usa a máquina, e a L7 só fecha depois deles:
@@ -316,7 +335,7 @@ Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso
 
 ## Falhas conhecidas
 
-- **A prova de instalação da L7 rodou dentro do pacote do Claude.** O instalador, o atalho e o desinstalador agiram sobre a pasta virtual. Até 2026-10-14, o Canvie não existia em `%LOCALAPPDATA%\Canvie` fora do pacote, e o atalho do menu Iniciar apontava para um arquivo inexistente. Nesse dia, a build da L12 foi instalada de fora do pacote, como descrito em [Instalar fora de um app empacotado](#instalar-fora-de-um-app-empacotado). A matriz da L7 precisa rodar de novo assim no fechamento da 0.0.2.
+- **A prova de instalação da L7 rodou dentro do pacote do Claude.** O instalador, o atalho e o desinstalador agiram sobre a pasta virtual. Até 2026-10-14, o Canvie não existia em `%LOCALAPPDATA%\Canvie` fora do pacote, e o atalho do menu Iniciar apontava para um arquivo inexistente. Nesse dia, a build da L12 foi instalada de fora do pacote, como descrito em [Instalar fora de um app empacotado](#instalar-fora-de-um-app-empacotado). A matriz da L7 precisa rodar de novo assim no fechamento da 0.2.
 
 - Win + T pertence ao Explorer. Use Ctrl + Alt + T.
 - Atrás de SHELLDLL_DefView não há input. Parede precisa de click-through.
@@ -326,6 +345,7 @@ Estes itens mudam configurações do Windows ou reiniciam o computador. Por isso
 - Quando o Explorer reinicia, a janela filha do Progman é destruída. Numa queda, o Windows não manda WM_DESTROY, e o Tauri fica com um HWND morto que IsWindow detecta. O watchdog da L6 reinicia o Canvie nos dois casos; veja [BACKEND.md](BACKEND.md#reinício-do-explorer).
 - Uma janela de outro processo criada com `UseShellExecute = false` herda os handles de quem a criou. Um explorer.exe iniciado assim segurou o pipe de saída do E2E, e o `execFileSync` do Node nunca terminou. `restart-explorer.ps1` usa CreateProcess sem herança de handles.
 - Em Edição, a janela do Canvie fica à frente de tudo e recebe o mouse real. Mexer o mouse durante uma suíte muda o hover e o alvo do ponteiro, e quebra checagens de hover, de foco e de arraste. Rode as suítes com o mouse e o teclado parados.
+- Um WM_CLOSE que chega enquanto o setup ainda encaixa a janela no Progman, no primeiro segundo depois de abrir, não passa por `on_close_requested`. A janela é destruída, o log registra `main window destroyed outside a quit`, e o watchdog reinicia o Canvie. Nada se perde, mas o app não fecha. Feche só depois da linha `shortcut registered`.
 - A checagem de long tasks da L2 falhou uma vez logo depois de outra suíte, com tarefas de 714 ms, e passou sem nenhuma ao repetir. Repita a suíte antes de investigar.
 - O log do release roda em 40 KB e descarta o arquivo anterior (padrão do tauri-plugin-log, RotationStrategy::KeepOne). Uma suíte que cruza a rotação perde as linhas de antes e falha nas checagens de log, embora o app tenha registrado tudo. Rode de novo com o log menor.
 - A simulação com um formulário WinForms como pai, morto à força, deixou a janela filha viva e órfã. Com o Explorer real, a janela morre. Teste o shell de verdade.

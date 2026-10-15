@@ -1,6 +1,6 @@
 [package]
 name = "canvie"
-version = "0.0.1"
+version = "0.2.0"
 description = "Canvie local desktop canvas"
 authors = ["JooCrepaldi"]
 license = "MIT"

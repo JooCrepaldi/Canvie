@@ -1,6 +1,6 @@
 # Frontend
 
-Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, L5 the transition between Fixo and Edição, and L6 the persistence failures in the release log. In 0.0.2, L8 delivered the v2 document, L9 Seleção and the Mão, L10 the right-click menu and L11 the icon toolbar.
+Frontend is implemented in layers. Paths are relative to frontend/src. L1 delivered the canvas and toolbar, L2 the persistent document, L3 the area and the MVP content, L4 the Wall view, L5 the transition between Fixo and Edição, and L6 the persistence failures in the release log. In 0.2, L8 delivered the v2 document, L9 Seleção and the Mão, L10 the right-click menu and L11 the icon toolbar.
 
 ## Files
 

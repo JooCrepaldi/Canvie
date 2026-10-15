@@ -33,7 +33,7 @@ type ToolbarProps = {
 
 type Drag = { pointerId: number; x: number; y: number; left: number; top: number; width: number; height: number }
 
-// Formas and Novo canvas join the bar in 0.0.3, with their functions (decision 0009).
+// Formas and Novo canvas join the bar in 0.3, with their functions (decision 0009).
 const TOOLS: ReadonlyArray<{ id: Tool; label: string; shortcut: string; Icon: LucideIcon }> = [
   { id: 'text', label: 'Texto', shortcut: 'T', Icon: Type },
   { id: 'postit', label: 'Post-it', shortcut: 'P', Icon: StickyNote },
